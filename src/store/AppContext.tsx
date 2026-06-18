@@ -37,6 +37,7 @@ interface AppState {
   deleteHabit: (id: string) => void;
   
   addEvent: (event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateEvent: (id: string, updates: Partial<CalendarEvent>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
   
   addKnowledge: (entry: Omit<KnowledgeEntry, 'id' | 'updatedAt' | 'createdAt'>) => void;
@@ -285,6 +286,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
+    if (user) {
+      updateDocument(`users/${user.uid}/events`, id, updates);
+    } else {
+      setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    }
+    if (googleToken && googleEvents.some(e => e.id === id)) {
+      setGoogleEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    }
+  };
+
   const deleteEvent = async (id: string) => {
     if (googleToken && googleEvents.some(e => e.id === id)) {
       try {
@@ -333,7 +345,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loginGoogle, logoutGoogle, syncCalendar,
       addTask, updateTask, deleteTask,
       addHabit, toggleHabit, deleteHabit,
-      addEvent, deleteEvent,
+      addEvent, updateEvent, deleteEvent,
       addKnowledge, updateKnowledge, deleteKnowledge
     }}>
       {children}

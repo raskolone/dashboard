@@ -6,7 +6,7 @@ import { ProductivityChart } from '../components/ProductivityChart';
 import { PomodoroTimer } from '../components/PomodoroTimer';
 
 export function Dashboard() {
-  const { tasks, habits, events, googleEvents, googleToken } = useAppStore();
+  const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit } = useAppStore();
   const [activeFilterTag, setActiveFilterTag] = React.useState<string | null>(null);
 
   const predefinedTags = ['Health', 'Work', 'Personal', 'Learning', 'Fitness'];
@@ -19,6 +19,89 @@ export function Dashboard() {
   const isGoogleConnected = !!googleToken;
   const activeEvents = isGoogleConnected ? googleEvents : events;
   const todaysEvents = activeEvents.filter(e => e.date === todayStr);
+
+  const focusItems = React.useMemo(() => {
+    const items: Array<{
+      id: string;
+      type: 'task' | 'habit';
+      title: string;
+      subtitle: string;
+      completed: boolean;
+      score: number;
+      color?: string;
+      icon?: string;
+    }> = [];
+
+    // 1. Add tasks
+    tasks.forEach(t => {
+      const isCompletedToday = t.status === 'done' && t.updatedAt?.startsWith(todayStr);
+      
+      if (t.status !== 'done' || isCompletedToday) {
+        let score = 50;
+        let priorityLabel = 'Niski';
+        if (t.priority === 'urgent') {
+          score = 100;
+          priorityLabel = 'Pilny!';
+        } else if (t.priority === 'high') {
+          score = 90;
+          priorityLabel = 'Wysoki';
+        } else if (t.priority === 'medium') {
+          score = 70;
+          priorityLabel = 'Średni';
+        }
+
+        if (t.due_date === todayStr) {
+          score += 20;
+        }
+
+        if (isCompletedToday) {
+          score -= 50; // push completed to bottom
+        }
+
+        items.push({
+          id: t.id,
+          type: 'task',
+          title: t.title,
+          subtitle: `Zadanie • ${priorityLabel} priorytet${t.due_date === todayStr ? ' • Na dziś' : ''}`,
+          completed: isCompletedToday,
+          score,
+          color: t.color || '#3b82f6',
+        });
+      }
+    });
+
+    // 2. Add habits
+    habits.forEach(h => {
+      const isCompletedToday = h.completedDates.includes(todayStr);
+      let score = 80;
+      
+      if (isCompletedToday) {
+        score -= 50; // push completed to bottom
+      }
+
+      items.push({
+        id: h.id,
+        type: 'habit',
+        title: h.name,
+        subtitle: `Nawyk • Częstotliwość: ${h.frequency === 'daily' ? 'Codziennie' : 'Tygodniowo'}`,
+        completed: isCompletedToday,
+        score,
+        icon: h.icon,
+        color: h.color || '#c084fc',
+      });
+    });
+
+    items.sort((a, b) => b.score - a.score);
+    return items.slice(0, 3);
+  }, [tasks, habits, todayStr]);
+
+  const handleToggleFocusItem = (item: typeof focusItems[0]) => {
+    if (item.type === 'task') {
+      updateTask(item.id, { status: item.completed ? 'todo' : 'done' });
+    } else {
+      toggleHabit(item.id, todayStr);
+    }
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -86,6 +169,81 @@ export function Dashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* Today's Focus Card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card p-6 rounded-3xl"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
+              <Brain className="w-5 h-5 text-[#75d36e]" />
+              Skupienie na dziś
+            </h2>
+            <p className="text-sm text-slate-400 mt-1">Niezbędne kroki, aby dzisiejszy dzień był udany (Top 3 priorytety).</p>
+          </div>
+          {focusItems.length > 0 && (
+            <span className="text-xs font-mono font-bold text-[#75d36e] bg-[#75d36e]/10 px-3 py-1.5 rounded-full border border-[#75d36e]/20 self-start sm:self-center">
+              Ukończono: {focusItems.filter(i => i.completed).length}/{focusItems.length}
+            </span>
+          )}
+        </div>
+
+        {focusItems.length === 0 ? (
+          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center">
+            <p className="text-slate-400 text-sm">Wszystkie kluczowe zadania i nawyki na dziś zostały zaliczone! Czas na odpoczynek! 🎉</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {focusItems.map(item => (
+              <div 
+                key={`${item.type}-${item.id}`} 
+                className={`flex items-center gap-3 p-4 rounded-xl bg-[#141414] border hover:border-[#75d36e]/30 transition-all relative overflow-hidden group ${
+                  item.completed ? 'border-[#222222] opacity-75' : 'border-[#222222]'
+                }`}
+              >
+                {item.color && (
+                  <div 
+                    className="absolute left-0 top-0 bottom-0 w-1 transition-all" 
+                    style={{ backgroundColor: item.color }}
+                  />
+                )}
+                
+                <button 
+                  onClick={() => handleToggleFocusItem(item)}
+                  aria-label={item.completed ? "Oznacz jako nieukończone" : "Oznacz jako ukończone"}
+                  className={`shrink-0 flex items-center justify-center w-5 h-5 rounded-md border transition-all duration-200 focus:outline-none ${
+                    item.completed 
+                      ? 'bg-[#75d36e] border-[#75d36e] text-[#1a1a1a]' 
+                      : 'border-slate-600 hover:border-[#75d36e]'
+                  }`}
+                >
+                  {item.completed && (
+                    <svg className="w-3.5 h-3.5 stroke-current" fill="none" viewBox="0 0 24 24" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+
+                <div 
+                  className="flex-1 min-w-0 cursor-pointer select-none" 
+                  onClick={() => handleToggleFocusItem(item)}
+                >
+                  <span className={`block truncate text-sm font-semibold ${item.completed ? 'text-slate-500 line-through' : 'text-white'}`}>
+                    {item.icon && <span className="mr-1.5">{item.icon}</span>}
+                    {item.title}
+                  </span>
+                  <span className="block truncate text-[10px] text-slate-500 font-mono mt-0.5">
+                    {item.subtitle}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <section className="glass-card rounded-3xl p-6">

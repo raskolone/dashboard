@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store/AppContext';
-import { Target, Circle, CheckCircle2, PlayCircle, Plus, Edit2, Trash2, X, AlertTriangle } from 'lucide-react';
+import { Target, Circle, CheckCircle2, PlayCircle, Plus, Edit2, Trash2, X, AlertTriangle, List, LayoutGrid, GripVertical } from 'lucide-react';
 import { TaskStatus, TaskPriority, TaskCategory, Task } from '../types';
 import { GenieModal } from '../components/GenieModal';
 import { motion, AnimatePresence } from 'motion/react';
@@ -93,8 +93,29 @@ export function Tasks() {
 
   type ViewMode = 'today' | 'week' | 'all';
   type FilterStatus = 'all' | 'active' | 'done';
+  type LayoutMode = 'list' | 'board';
   const [viewMode, setViewMode] = useState<ViewMode>('today');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('active');
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('board');
+  const [isDragging, setIsDragging] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
+    setIsDragging(id);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStatus: TaskStatus) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (taskId) {
+      updateTask(taskId, { status: targetStatus });
+    }
+    setIsDragging(null);
+  };
 
   const todayStr = new Date().toISOString().split('T')[0];
   
@@ -115,6 +136,15 @@ export function Tasks() {
       return t.due_date >= todayStr && t.due_date <= nextWeekStr;
     }
     
+    return true; // 'all'
+  });
+
+  const boardTasks = tasks.filter(t => {
+    if (viewMode === 'today') {
+      return t.due_date === todayStr;
+    } else if (viewMode === 'week') {
+      return t.due_date >= todayStr && t.due_date <= nextWeekStr;
+    }
     return true; // 'all'
   });
 
@@ -169,137 +199,268 @@ export function Tasks() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row justify-between gap-4 relative z-10">
-        <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
-          <button 
-            onClick={() => setViewMode('today')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'today' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
-          >
-            Dzisiaj
-          </button>
-          <button 
-            onClick={() => setViewMode('week')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'week' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
-          >
-            Ten tydzień
-          </button>
-          <button 
-            onClick={() => setViewMode('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'all' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
-          >
-            Wszystkie
-          </button>
+      <div className="flex flex-col lg:flex-row justify-between gap-4 relative z-10">
+        <div className="flex gap-4 items-center">
+          <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
+            <button 
+              onClick={() => setViewMode('today')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'today' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+            >
+              Dzisiaj
+            </button>
+            <button 
+              onClick={() => setViewMode('week')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'week' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+            >
+              Ten tydzień
+            </button>
+            <button 
+              onClick={() => setViewMode('all')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'all' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+            >
+              Wszystkie
+            </button>
+          </div>
+
+          <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
+            <button 
+              onClick={() => setLayoutMode('list')}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${layoutMode === 'list' ? 'bg-[#2D2D2D] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+            >
+              <List className="w-4 h-4 text-[#75d36e]" />
+              Lista
+            </button>
+            <button 
+              onClick={() => setLayoutMode('board')}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${layoutMode === 'board' ? 'bg-[#2D2D2D] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+            >
+              <LayoutGrid className="w-4 h-4 text-[#75d36e]" />
+              Tablica (D&D)
+            </button>
+          </div>
         </div>
 
-        <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
-           <button 
-            onClick={() => setFilterStatus('active')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'active' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
-          >
-            Aktywne
-          </button>
-          <button 
-            onClick={() => setFilterStatus('done')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'done' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
-          >
-            Ukończone
-          </button>
-          <button 
-            onClick={() => setFilterStatus('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'all' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
-          >
-            Zarówno
-          </button>
-        </div>
+        {layoutMode === 'list' && (
+          <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
+             <button 
+              onClick={() => setFilterStatus('active')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'active' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+            >
+              Aktywne
+            </button>
+            <button 
+              onClick={() => setFilterStatus('done')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'done' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+            >
+              Ukończone
+            </button>
+            <button 
+              onClick={() => setFilterStatus('all')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'all' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+            >
+              Zarówno
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="glass-card p-6 relative z-10">
-        <motion.div layout className="space-y-2">
-          <AnimatePresence mode="popLayout">
-            {filteredTasks.length === 0 ? (
-              <motion.div 
-                key="empty"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="text-center py-12 text-slate-500"
+      {layoutMode === 'board' ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+          {statuses.map(colStatus => {
+            const colTasks = boardTasks.filter(t => t.status === colStatus);
+            const label = colStatus === 'todo' ? 'Do zrobienia' : colStatus === 'in_progress' ? 'W toku' : 'Ukończone';
+            const accentColor = colStatus === 'todo' ? 'text-blue-400' : colStatus === 'in_progress' ? 'text-orange-400' : 'text-[#75d36e]';
+            
+            return (
+              <div 
+                key={colStatus}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => handleDrop(e, colStatus)}
+                className={cn(
+                  "glass-card p-4 rounded-[1.5rem] flex flex-col min-h-[450px] transition-all duration-200 border border-[#222222]",
+                  isDragging ? "border-dashed border-white/20 bg-white/5" : ""
+                )}
               >
-                <Target className="w-12 h-12 mx-auto stroke-[1.5] opacity-40 mb-3" />
-                <p>Brak zadań w wybranym widoku.</p>
-              </motion.div>
-            ) : (
-              filteredTasks.map(task => (
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#222222]">
+                  <h3 className={cn("font-display font-semibold flex items-center gap-2 text-sm uppercase tracking-wider", accentColor)}>
+                    <span className={cn("w-2 h-2 rounded-full", colStatus === 'todo' ? 'bg-blue-400' : colStatus === 'in_progress' ? 'bg-orange-400' : 'bg-[#75d36e]')} />
+                    {label}
+                  </h3>
+                  <span className="text-xs font-mono font-semibold text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-lg border border-[#222222]">
+                    {colTasks.length}
+                  </span>
+                </div>
+
+                <div className="flex-1 space-y-3 overflow-y-auto max-h-[500px] pr-1 scrollbar-none">
+                  <AnimatePresence mode="popLayout">
+                    {colTasks.length === 0 ? (
+                      <div className="h-32 flex flex-col items-center justify-center text-xs text-slate-500 border border-dashed border-[#222222] rounded-xl p-4 text-center">
+                        <Target className="w-6 h-6 mb-2 stroke-[1.5] opacity-20" />
+                        Pusto. Przeciągnij zadanie tutaj.
+                      </div>
+                    ) : (
+                      colTasks.map(task => (
+                        <motion.div 
+                          layout
+                          key={task.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, task.id)}
+                          onDragEnd={handleDragEnd}
+                          className={cn(
+                            "group p-3.5 rounded-xl bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-all relative overflow-hidden cursor-grab active:cursor-grabbing hover:bg-[#181818]/90",
+                            isDragging === task.id ? "opacity-30" : "opacity-100"
+                          )}
+                        >
+                          {task.color && (
+                            <div 
+                              className="absolute left-0 top-0 bottom-0 w-1" 
+                              style={{ backgroundColor: task.color }}
+                            />
+                          )}
+                          
+                          <div className="flex items-start justify-between gap-2">
+                            <span className={cn(
+                              "text-sm font-semibold truncate block max-w-[80%]",
+                              task.status === 'done' ? 'text-slate-500 line-through' : 'text-white'
+                            )}>
+                              {task.title}
+                            </span>
+                            <div className="flex shrink-0 items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
+                                className="p-1 rounded text-slate-400 hover:text-[#75d36e] hover:bg-[#75d36e]/10 transition-colors"
+                                title="Edytuj"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDelete(task.id, task.title); }}
+                                className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                title="Usuń"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                            <span className="font-mono">
+                              Do: {task.due_date}
+                            </span>
+                            <span className={cn(
+                              "uppercase font-bold tracking-wider px-2 py-0.5 rounded-full text-[8px]",
+                              task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
+                              task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
+                              task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
+                              'bg-slate-800 text-slate-300'
+                            )}>
+                              {task.priority}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="glass-card p-6 relative z-10">
+          <motion.div layout className="space-y-2">
+            <AnimatePresence mode="popLayout">
+              {filteredTasks.length === 0 ? (
                 <motion.div 
-                  layout
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
-                  key={task.id} 
-                  className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl bg-[#141414]/90 dark:bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-colors group relative overflow-hidden"
+                  key="empty"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="text-center py-12 text-slate-500"
                 >
-                  {task.color && (
-                    <div 
-                      className="absolute left-0 top-0 bottom-0 w-1" 
-                      style={{ backgroundColor: task.color }}
-                    />
-                  )}
-                  <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
-                    <button 
-                      onClick={() => handleStatusChange(task.id, task.status)} 
-                      className="shrink-0 hover:scale-110 transition-transform pl-1"
-                      title="Zmień status"
-                    >
-                      {getStatusIcon(task.status)}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className={cn(
-                        "truncate",
-                        task.status === 'done' ? 'text-slate-500 line-through font-medium' : 'text-white font-medium'
-                      )}>
-                        {task.title}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5 font-mono">
-                        Termin: {task.due_date}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
-                    <div className="flex gap-2">
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
-                        {task.category}
-                      </span>
-                      <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                        task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
-                        task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
-                        task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
-                        'bg-slate-800 text-slate-300'
-                      }`}>
-                        {task.priority}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => openEditModal(task)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#75d36e] hover:bg-[#75d36e]/10 transition-colors"
-                        title="Edytuj"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(task.id, task.title)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                        title="Usuń"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                  <Target className="w-12 h-12 mx-auto stroke-[1.5] opacity-40 mb-3" />
+                  <p>Brak zadań w wybranym widoku.</p>
                 </motion.div>
-              ))
-            )}
-          </AnimatePresence>
-        </motion.div>
-      </div>
+              ) : (
+                filteredTasks.map(task => (
+                  <motion.div 
+                    layout
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, task.id)}
+                    onDragEnd={handleDragEnd}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                    key={task.id} 
+                    className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl bg-[#141414]/90 dark:bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-colors group relative overflow-hidden cursor-grab active:cursor-grabbing"
+                  >
+                    {task.color && (
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 w-1" 
+                        style={{ backgroundColor: task.color }}
+                      />
+                    )}
+                    <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+                      <div className="shrink-0 flex items-center gap-1">
+                        <GripVertical className="w-3.5 h-3.5 text-slate-600 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                        <button 
+                          onClick={() => handleStatusChange(task.id, task.status)} 
+                          className="shrink-0 hover:scale-110 transition-transform pl-1"
+                          title="Zmień status"
+                        >
+                          {getStatusIcon(task.status)}
+                        </button>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={cn(
+                          "truncate",
+                          task.status === 'done' ? 'text-slate-500 line-through font-medium' : 'text-white font-medium'
+                        )}>
+                          {task.title}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5 font-mono">
+                          Termin: {task.due_date}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
+                      <div className="flex gap-2">
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                          {task.category}
+                        </span>
+                        <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                          task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
+                          task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
+                          task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
+                          'bg-slate-800 text-slate-300'
+                        }`}>
+                          {task.priority}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => openEditModal(task)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-[#75d36e] hover:bg-[#75d36e]/10 transition-colors"
+                          title="Edytuj"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(task.id, task.title)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          title="Usuń"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </div>
+      )}
 
       {/* Modal Add / Edit */}
       <GenieModal 
