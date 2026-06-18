@@ -4,6 +4,7 @@ import { Target, Circle, CheckCircle2, PlayCircle, Plus, Edit2, Trash2, X, Alert
 import { TaskStatus, TaskPriority, TaskCategory, Task } from '../types';
 import { GenieModal } from '../components/GenieModal';
 import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '../lib/utils';
 
 export function Tasks() {
   const { tasks, addTask, updateTask, deleteTask } = useAppStore();
@@ -234,7 +235,7 @@ export function Tasks() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
                   key={task.id} 
-                  className="flex items-center gap-4 p-4 rounded-xl bg-[#141414]/90 dark:bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-colors group relative overflow-hidden"
+                  className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl bg-[#141414]/90 dark:bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-colors group relative overflow-hidden"
                 >
                   {task.color && (
                     <div 
@@ -242,22 +243,27 @@ export function Tasks() {
                       style={{ backgroundColor: task.color }}
                     />
                   )}
-                  <button 
-                    onClick={() => handleStatusChange(task.id, task.status)} 
-                    className="shrink-0 hover:scale-110 transition-transform pl-1"
-                    title="Zmień status"
-                  >
-                    {getStatusIcon(task.status)}
-                  </button>
-                  <div className="flex-1">
-                    <span className={task.status === 'done' ? 'text-slate-500 line-through font-medium' : 'text-white font-medium'}>
-                      {task.title}
-                    </span>
-                    <div className="text-xs text-slate-500 mt-0.5 font-mono">
-                      Termin: {task.due_date}
+                  <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+                    <button 
+                      onClick={() => handleStatusChange(task.id, task.status)} 
+                      className="shrink-0 hover:scale-110 transition-transform pl-1"
+                      title="Zmień status"
+                    >
+                      {getStatusIcon(task.status)}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className={cn(
+                        "truncate",
+                        task.status === 'done' ? 'text-slate-500 line-through font-medium' : 'text-white font-medium'
+                      )}>
+                        {task.title}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5 font-mono">
+                        Termin: {task.due_date}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
                     <div className="flex gap-2">
                       <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
                         {task.category}

@@ -59,7 +59,7 @@ export function ParticleBackground({ forceDark }: { forceDark?: boolean } = {}) 
 
     const initParticles = () => {
       const area = canvas.width * canvas.height;
-      const count = Math.min(Math.floor(area / 15000), 100);
+      const count = Math.min(Math.floor(area / 20000), 50); // Reduced particle count
       particles = [];
       for (let i = 0; i < count; i++) {
         particles.push(new Particle());

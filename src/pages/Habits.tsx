@@ -249,11 +249,11 @@ export function Habits() {
                 </button>
               </div>
 
-              <div className="mt-2 md:mt-0 pt-4 md:pt-0 border-t border-[#222222] md:border-none">
+              <div className="mt-2 md:mt-0 pt-4 md:pt-0 border-t border-[#222222] md:border-none w-full md:w-auto overflow-hidden">
                 <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500 mb-2 flex items-center gap-1">
                   <CalendarDays className="w-3" /> Ostatnie 14 dni (Kliknij, aby odznaczyć)
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                   {last14Days.map(date => {
                     const isCompleted = habit.completedDates.includes(date);
                     const isToday = date === format(new Date(), 'yyyy-MM-dd');

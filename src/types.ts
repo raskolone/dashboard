@@ -11,6 +11,8 @@ export interface Task {
   category: TaskCategory;
   due_date: string; // ISO format YYYY-MM-DD
   color?: string; // Hex color for categorization/tagging
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Habit {
@@ -21,7 +23,8 @@ export interface Habit {
   target_count: number;
   color: string;
   completedDates: string[]; // ISO formats YYYY-MM-DD
-  createdAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   tags: string[];
 }
 
@@ -36,6 +39,8 @@ export interface CalendarEvent {
   type: EventType;
   description?: string;
   location?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type KnowledgeCategory = 'Notes' | 'Ideas' | 'Bookmarks' | 'Resources' | 'Snippets';
@@ -47,5 +52,6 @@ export interface KnowledgeEntry {
   category: KnowledgeCategory;
   tags: string[];
   is_pinned: boolean;
-  updatedAt: string; // ISO format
+  createdAt?: string;
+  updatedAt?: string; // ISO format
 }

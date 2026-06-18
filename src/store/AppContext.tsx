@@ -4,6 +4,7 @@ import { Task, Habit, CalendarEvent, KnowledgeEntry, TaskStatus, TaskPriority, T
 import { mockTasks, mockHabits, mockEvents, mockKnowledge } from '../lib/mockData';
 import { initAuth, googleSignIn, logout as firebaseLogout } from '../lib/auth';
 import { fetchCalendarEvents, createGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../lib/calendar';
+import { subscribeToCollection, createDocument, updateDocument, deleteDocument, generateId } from '../lib/db';
 
 export type AppTheme = 'dark' | 'light';
 
@@ -31,14 +32,14 @@ interface AppState {
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   
-  addHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt'>) => void;
+  addHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt'>) => void;
   toggleHabit: (id: string, date: string) => void;
   deleteHabit: (id: string) => void;
   
-  addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<void>;
+  addEvent: (event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
   
-  addKnowledge: (entry: Omit<KnowledgeEntry, 'id' | 'updatedAt'>) => void;
+  addKnowledge: (entry: Omit<KnowledgeEntry, 'id' | 'updatedAt' | 'createdAt'>) => void;
   updateKnowledge: (id: string, updates: Partial<KnowledgeEntry>) => void;
   deleteKnowledge: (id: string) => void;
 }
@@ -46,42 +47,11 @@ interface AppState {
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // Persistence Loading
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const saved = localStorage.getItem('app_tasks');
-      return saved ? JSON.parse(saved) : mockTasks;
-    } catch {
-      return mockTasks;
-    }
-  });
-
-  const [habits, setHabits] = useState<Habit[]>(() => {
-    try {
-      const saved = localStorage.getItem('app_habits');
-      return saved ? JSON.parse(saved) : mockHabits;
-    } catch {
-      return mockHabits;
-    }
-  });
-
-  const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    try {
-      const saved = localStorage.getItem('app_events');
-      return saved ? JSON.parse(saved) : mockEvents;
-    } catch {
-      return mockEvents;
-    }
-  });
-
-  const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('app_knowledge');
-      return saved ? JSON.parse(saved) : mockKnowledge;
-    } catch {
-      return mockKnowledge;
-    }
-  });
+  // Application Data States
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>([]);
 
   const [theme, setTheme] = useState<AppTheme>(() => {
     try {
@@ -122,23 +92,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
 
-  // Persistence Saving
-  useEffect(() => {
-    localStorage.setItem('app_tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  useEffect(() => {
-    localStorage.setItem('app_habits', JSON.stringify(habits));
-  }, [habits]);
-
-  useEffect(() => {
-    localStorage.setItem('app_events', JSON.stringify(events));
-  }, [events]);
-
-  useEffect(() => {
-    localStorage.setItem('app_knowledge', JSON.stringify(knowledge));
-  }, [knowledge]);
-
   useEffect(() => {
     localStorage.setItem('app_google_events', JSON.stringify(googleEvents));
   }, [googleEvents]);
@@ -159,6 +112,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
     return () => unsubscribe();
   }, []);
+
+  // Firebase Sync
+  useEffect(() => {
+    if (user) {
+      const uId = user.uid;
+      const unsubs = [
+        subscribeToCollection<Task>(`users/${uId}/tasks`, (data) => setTasks(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
+        subscribeToCollection<Habit>(`users/${uId}/habits`, (data) => setHabits(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
+        subscribeToCollection<CalendarEvent>(`users/${uId}/events`, (data) => setEvents(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
+        subscribeToCollection<KnowledgeEntry>(`users/${uId}/knowledge`, (data) => setKnowledge(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
+      ];
+
+      return () => {
+        unsubs.forEach(u => u());
+      }
+    } else {
+      // Fallback
+      setTasks(mockTasks);
+      setHabits(mockHabits);
+      setEvents(mockEvents);
+      setKnowledge(mockKnowledge);
+    }
+  }, [user]);
 
   const loginGoogle = async () => {
     try {
@@ -228,31 +204,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Tasks actions
   const addTask = (task: Omit<Task, 'id'>) => {
-    setTasks(prev => [{ ...task, id: `t_${Date.now()}` }, ...prev]);
+    if (user) {
+      const id = generateId();
+      createDocument(`users/${user.uid}/tasks`, id, task);
+    } else {
+      setTasks(prev => [{ ...task, id: generateId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...prev]);
+    }
   };
   const updateTask = (id: string, updates: Partial<Task>) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    if (user) {
+      updateDocument(`users/${user.uid}/tasks`, id, updates);
+    } else {
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    }
   };
-  const deleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
+  const deleteTask = (id: string) => {
+    if (user) {
+      deleteDocument(`users/${user.uid}/tasks`, id);
+    } else {
+      setTasks(prev => prev.filter(t => t.id !== id));
+    }
+  }
 
   // Habits actions
-  const addHabit = (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt'>) => {
-    setHabits(prev => [{ ...habit, id: `h_${Date.now()}`, completedDates: [], createdAt: new Date().toISOString() }, ...prev]);
+  const addHabit = (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt'>) => {
+    const newHabit = { ...habit, completedDates: [] as string[] };
+    if (user) {
+      createDocument(`users/${user.uid}/habits`, generateId(), newHabit);
+    } else {
+      setHabits(prev => [{ ...newHabit, id: generateId(), createdAt: new Date().toISOString() }, ...prev]);
+    }
   };
   const toggleHabit = (id: string, date: string) => {
-    setHabits(prev => prev.map(h => {
-      if (h.id !== id) return h;
-      const isCompleted = h.completedDates.includes(date);
-      return {
-        ...h,
-        completedDates: isCompleted ? h.completedDates.filter(d => d !== date) : [...h.completedDates, date]
-      };
-    }));
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return;
+    
+    const isCompleted = habit.completedDates.includes(date);
+    const newDates = isCompleted ? habit.completedDates.filter(d => d !== date) : [...habit.completedDates, date];
+    
+    if (user) {
+      updateDocument(`users/${user.uid}/habits`, id, { completedDates: newDates });
+    } else {
+      setHabits(prev => prev.map(h => h.id === id ? { ...h, completedDates: newDates } : h));
+    }
   };
-  const deleteHabit = (id: string) => setHabits(prev => prev.filter(h => h.id !== id));
+  const deleteHabit = (id: string) => {
+    if (user) {
+      deleteDocument(`users/${user.uid}/habits`, id);
+    } else {
+      setHabits(prev => prev.filter(h => h.id !== id));
+    }
+  }
 
   // Events actions (supporting Google + Local)
-  const addEvent = async (event: Omit<CalendarEvent, 'id'>) => {
+  const addEvent = async (event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (googleToken) {
       try {
         await createGoogleCalendarEvent({
@@ -265,10 +270,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await syncCalendar();
       } catch (err) {
         console.error('Google Calendar event write failed, saving locally:', err);
-        setEvents(prev => [{ ...event, id: `e_${Date.now()}` }, ...prev]);
+        if (user) {
+          createDocument(`users/${user.uid}/events`, generateId(), event);
+        } else {
+          setEvents(prev => [{ ...event, id: generateId() }, ...prev]);
+        }
       }
     } else {
-      setEvents(prev => [{ ...event, id: `e_${Date.now()}` }, ...prev]);
+       if (user) {
+          createDocument(`users/${user.uid}/events`, generateId(), event);
+       } else {
+          setEvents(prev => [{ ...event, id: generateId() }, ...prev]);
+       }
     }
   };
 
@@ -281,18 +294,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error('Google Calendar delete error:', err);
       }
     } else {
-      setEvents(prev => prev.filter(e => e.id !== id));
+      if (user) {
+        deleteDocument(`users/${user.uid}/events`, id);
+      } else {
+        setEvents(prev => prev.filter(e => e.id !== id));
+      }
     }
   };
 
   // Knowledge actions
-  const addKnowledge = (entry: Omit<KnowledgeEntry, 'id' | 'updatedAt'>) => {
-    setKnowledge(prev => [{ ...entry, id: `k_${Date.now()}`, updatedAt: new Date().toISOString() }, ...prev]);
+  const addKnowledge = (entry: Omit<KnowledgeEntry, 'id' | 'updatedAt' | 'createdAt'>) => {
+    if (user) {
+      createDocument(`users/${user.uid}/knowledge`, generateId(), entry);
+    } else {
+      setKnowledge(prev => [{ ...entry, id: generateId(), updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() }, ...prev]);
+    }
   };
   const updateKnowledge = (id: string, updates: Partial<KnowledgeEntry>) => {
-    setKnowledge(prev => prev.map(k => k.id === id ? { ...k, ...updates, updatedAt: new Date().toISOString() } : k));
+    if (user) {
+      updateDocument(`users/${user.uid}/knowledge`, id, updates);
+    } else {
+      setKnowledge(prev => prev.map(k => k.id === id ? { ...k, ...updates, updatedAt: new Date().toISOString() } : k));
+    }
   };
-  const deleteKnowledge = (id: string) => setKnowledge(prev => prev.filter(k => k.id !== id));
+  const deleteKnowledge = (id: string) => {
+    if (user) {
+      deleteDocument(`users/${user.uid}/knowledge`, id);
+    } else {
+      setKnowledge(prev => prev.filter(k => k.id !== id));
+    }
+  }
 
   return (
     <AppContext.Provider value={{

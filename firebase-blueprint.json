@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A single task that the user wants to accomplish.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+        "category": { "type": "string", "enum": ["work", "personal", "learning", "health", "project"] },
+        "due_date": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "status", "priority", "category", "due_date", "createdAt", "updatedAt"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "A habit tracking entity for the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "frequency": { "type": "string", "enum": ["daily", "weekly"] },
+        "target_count": { "type": "number" },
+        "color": { "type": "string" },
+        "completedDates": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "tags": { "type": "array" }
+      },
+      "required": ["userId", "name", "icon", "frequency", "target_count", "color", "completedDates", "createdAt", "updatedAt", "tags"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "A local calendar event for the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "type": { "type": "string", "enum": ["meeting", "lesson", "personal", "deadline", "reminder"] },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "date", "start_time", "end_time", "type", "createdAt", "updatedAt"]
+    },
+    "KnowledgeEntry": {
+      "title": "Knowledge Entry",
+      "description": "A knowledge base entry (note, idea, etc.) for the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string", "enum": ["Notes", "Ideas", "Bookmarks", "Resources", "Snippets"] },
+        "tags": { "type": "array" },
+        "is_pinned": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "content", "category", "tags", "is_pinned", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Tasks belonging to a specific user."
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": { "$ref": "#/entities/Habit" },
+      "description": "Habits belonging to a specific user."
+    },
+    "/users/{userId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/Event" },
+      "description": "Local calendar events belonging to a specific user."
+    },
+    "/users/{userId}/knowledge/{knowledgeId}": {
+      "schema": { "$ref": "#/entities/KnowledgeEntry" },
+      "description": "Knowledge entries belonging to a specific user."
+    }
+  }
+}

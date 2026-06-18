@@ -12,11 +12,15 @@
   --color-card-bg: #111111;
 }
 
+html {
+  overflow-x: hidden;
+}
 body {
   font-family: var(--font-sans);
   background-color: var(--color-dark-bg);
   color: #e2e8f0;
   transition: background-color 0.3s, color 0.3s;
+  overflow-x: hidden;
 }
 
 html.dark body {
@@ -32,10 +36,10 @@ html.light body {
 
 html.light .glass-card {
   background: rgba(255, 255, 255, 0.6) !important;
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   border: 1px solid rgba(255, 255, 255, 0.5) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.05) !important;
   border-radius: 1.5rem; /* rounded-3xl */
 }
 
@@ -90,10 +94,10 @@ html.light .bg-white\/5 { background-color: rgba(0,0,0,0.03) !important; }
 
 .glass-card {
   background: rgba(17, 17, 17, 0.4) !important;
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.2) !important;
   border-radius: 1.5rem; /* bardziej zaokrąglone rogi (rounded-3xl) */
 }
 

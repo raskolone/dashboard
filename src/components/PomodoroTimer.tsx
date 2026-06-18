@@ -112,18 +112,18 @@ export function PomodoroTimer() {
   return (
     <div className="glass-card p-6 relative overflow-hidden group">
       {/* Vibrant Atmospheric Background for Pomodoro */}
-      <div className="absolute inset-0 z-[-1] pointer-events-none opacity-40 dark:opacity-50 overflow-hidden dark:mix-blend-screen">
+      <div className="absolute inset-0 z-[-1] pointer-events-none opacity-40 dark:opacity-50 overflow-hidden dark:mix-blend-screen" style={{ willChange: 'transform' }}>
         <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0.8, 0.6] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] rounded-full blur-[80px]"
-          style={{ background: mode === 'pomodoro' ? '#75d36e' : mode === 'shortBreak' ? '#3b82f6' : '#a855f7' }}
+          animate={{ x: [0, -20, 0], y: [0, 10, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] rounded-full blur-[60px]"
+          style={{ willChange: 'transform', background: mode === 'pomodoro' ? '#75d36e' : mode === 'shortBreak' ? '#3b82f6' : '#a855f7' }}
         />
         <motion.div 
-          animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0.5, 0.3], x: [0, -20, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute bottom-[-20%] left-[-10%] w-[250px] h-[250px] rounded-full blur-[80px]"
-          style={{ background: mode === 'pomodoro' ? '#3b82f6' : mode === 'shortBreak' ? '#75d36e' : '#ec4899' }}
+          animate={{ x: [0, 20, 0], y: [0, -10, 0] }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear", delay: 1 }}
+          className="absolute bottom-[-20%] left-[-10%] w-[250px] h-[250px] rounded-full blur-[60px]"
+          style={{ willChange: 'transform', background: mode === 'pomodoro' ? '#3b82f6' : mode === 'shortBreak' ? '#75d36e' : '#ec4899' }}
         />
       </div>
 
@@ -328,25 +328,21 @@ export function PomodoroTimer() {
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden"
             style={{ backgroundColor: '#0a0a0a' }}
           >
-            <div className="absolute inset-0 z-0 pointer-events-none opacity-60 mix-blend-screen">
-              <ParticleBackground forceDark={true} />
-            </div>
-            
-            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden mix-blend-screen opacity-70">
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden mix-blend-screen opacity-70" style={{ willChange: 'transform' }}>
               <motion.div 
-                animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.8, 0.5], x: [0, 100, 0], y: [0, -50, 0] }}
-                transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-[-10%] right-[10%] w-[800px] h-[800px] rounded-full blur-[150px] pointer-events-none"
+                animate={{ x: [0, 50, 0], y: [0, -30, 0] }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="absolute top-[-10%] right-[10%] w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none"
                 style={{
-                  background: mode === 'pomodoro' ? '#75d36e' : mode === 'shortBreak' ? '#3b82f6' : '#a855f7'
+                  willChange: 'transform', background: mode === 'pomodoro' ? '#75d36e' : mode === 'shortBreak' ? '#3b82f6' : '#a855f7'
                 }}
               />
               <motion.div 
-                animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0.6, 0.3], x: [0, -100, 0], y: [0, 100, 0] }}
-                transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                className="absolute bottom-[-10%] left-[5%] w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none"
+                animate={{ x: [0, -50, 0], y: [0, 50, 0] }}
+                transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
+                className="absolute bottom-[-10%] left-[5%] w-[500px] h-[500px] rounded-full blur-[100px] pointer-events-none"
                 style={{
-                  background: mode === 'pomodoro' ? '#3b82f6' : mode === 'shortBreak' ? '#75d36e' : '#ec4899'
+                  willChange: 'transform', background: mode === 'pomodoro' ? '#3b82f6' : mode === 'shortBreak' ? '#75d36e' : '#ec4899'
                 }}
               />
             </div>
