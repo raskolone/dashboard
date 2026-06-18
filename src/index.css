@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-neon-alt: #75d36e;
+  --color-neon: #75d36e;
+  --color-dark-bg: #0a0a0a;
+  --color-card-bg: #111111;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-dark-bg);
+  color: #e2e8f0;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+html.dark body {
+  background-color: var(--color-dark-bg);
+  color: #e2e8f0;
+}
+
+/* Day Mode Overrides */
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light .glass-card {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05) !important;
+  border-radius: 1.5rem; /* rounded-3xl */
+}
+
+html.light .bg-\[\#111111\] { background-color: #ffffff !important; }
+html.light .bg-\[\#141414\] { background-color: #f8fafc !important; }
+html.light .bg-\[\#161616\] { background-color: #f1f5f9 !important; }
+html.light .bg-\[\#0a0a0a\] { background-color: #ffffff !important; }
+html.light .bg-[#111111] { background-color: #ffffff !important; }
+html.light .bg-[#141414] { background-color: #f8fafc !important; }
+html.light .bg-[#161616] { background-color: #f1f5f9 !important; }
+html.light .bg-[#0a0a0a] { background-color: #ffffff !important; }
+
+html.light .border-\[\#222222\],
+html.light .border-\[\#262626\] {
+  border-color: #cbd5e1 !important;
+}
+html.light .border-\[\#333333\] {
+  border-color: #94a3b8 !important;
+}
+html.light .border-white\/5 {
+  border-color: rgba(0,0,0,0.1) !important;
+}
+html.light .border-white\/10 {
+  border-color: rgba(0,0,0,0.15) !important;
+}
+
+/* Typography Overrides for Light Mode */
+html.light .text-white { color: #0f172a !important; }
+html.light .text-slate-400 { color: #334155 !important; } /* slate-700 */
+html.light .text-slate-300 { color: #1e293b !important; } /* slate-800 */
+html.light .text-slate-500 { color: #475569 !important; } /* slate-600 */
+
+html.light .hover\:bg-white\/5:hover { background-color: rgba(0,0,0,0.05) !important; }
+html.light .hover\:bg-white\/10:hover { background-color: rgba(0,0,0,0.1) !important; }
+html.light .bg-white\/5 { background-color: rgba(0,0,0,0.03) !important; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.5);
+}
+
+.glass-card {
+  background: rgba(17, 17, 17, 0.4) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4) !important;
+  border-radius: 1.5rem; /* bardziej zaokrąglone rogi (rounded-3xl) */
+}
+
+.editor-content:empty:before {
+  content: attr(placeholder);
+  color: #64748b;
+  pointer-events: none;
+  display: block;
+}
+html.light .editor-content:empty:before {
+  color: #94a3b8;
+}
+
+.editor-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.editor-content h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-neon);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+html.light .editor-content h1 {
+  color: #15803d; /* Darker green for light mode */
+}
+.editor-content h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: inherit;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.editor-content p, .editor-content div {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+  color: inherit;
+}
+.editor-content b, .editor-content strong {
+  font-weight: 600;
+  color: inherit;
+}
+.editor-content i, .editor-content em {
+  font-style: italic;
+}
+
+
+

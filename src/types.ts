@@ -1,0 +1,51 @@
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskCategory = 'work' | 'personal' | 'learning' | 'health' | 'project';
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  category: TaskCategory;
+  due_date: string; // ISO format YYYY-MM-DD
+  color?: string; // Hex color for categorization/tagging
+}
+
+export interface Habit {
+  id: string;
+  name: string;
+  icon: string;
+  frequency: 'daily' | 'weekly';
+  target_count: number;
+  color: string;
+  completedDates: string[]; // ISO formats YYYY-MM-DD
+  createdAt: string;
+  tags: string[];
+}
+
+export type EventType = 'meeting' | 'lesson' | 'personal' | 'deadline' | 'reminder';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string; // ISO DB date
+  start_time: string; // HH:mm
+  end_time: string; // HH:mm
+  type: EventType;
+  description?: string;
+  location?: string;
+}
+
+export type KnowledgeCategory = 'Notes' | 'Ideas' | 'Bookmarks' | 'Resources' | 'Snippets';
+
+export interface KnowledgeEntry {
+  id: string;
+  title: string;
+  content: string;
+  category: KnowledgeCategory;
+  tags: string[];
+  is_pinned: boolean;
+  updatedAt: string; // ISO format
+}
