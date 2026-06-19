@@ -2,6 +2,14 @@ export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskCategory = 'work' | 'personal' | 'learning' | 'health' | 'project';
 
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+  priority?: TaskPriority;
+  dueDate?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -11,6 +19,7 @@ export interface Task {
   category: TaskCategory;
   due_date: string; // ISO format YYYY-MM-DD
   color?: string; // Hex color for categorization/tagging
+  checklist?: ChecklistItem[];
   createdAt?: string;
   updatedAt?: string;
 }
