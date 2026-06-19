@@ -533,18 +533,19 @@ export function Tasks() {
         onClose={() => setIsModalOpen(false)} 
         title={editingTask ? 'Szczegóły zadania' : 'Nowe zadanie'}
       >
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Tytuł zadania</label>
-            <input 
-              type="text" 
-              value={title} 
-              onChange={e => setTitle(e.target.value)} 
-              required
-              placeholder="np. Przygotować raport kwartalny"
-              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Tytuł zadania</label>
+              <input 
+                type="text" 
+                value={title} 
+                onChange={e => setTitle(e.target.value)} 
+                required
+                placeholder="np. Przygotować raport kwartalny"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+              />
+            </div>
 
           <div>
             <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Opis szczegółowy (opcjonalnie)</label>
@@ -603,7 +604,15 @@ export function Tasks() {
                 type="date" 
                 value={dueDate} 
                 onChange={e => setDueDate(e.target.value)}
+                onClick={(e) => {
+                  try {
+                    if ('showPicker' in HTMLInputElement.prototype) {
+                      (e.target as HTMLInputElement).showPicker();
+                    }
+                  } catch (err) {}
+                }}
                 className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+               style={{ colorScheme: 'dark' }}
               />
             </div>
           </div>
@@ -687,7 +696,15 @@ export function Tasks() {
                   type="date"
                   value={newSubDueDate}
                   onChange={e => setNewSubDueDate(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      if ('showPicker' in HTMLInputElement.prototype) {
+                        (e.target as HTMLInputElement).showPicker();
+                      }
+                    } catch (err) {}
+                  }}
                   className="bg-[#161616] border border-[#262626] rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-[#75d36e] transition-colors flex-1"
+                  style={{ colorScheme: 'dark' }}
                 />
                 <button
                   type="button"
@@ -716,8 +733,9 @@ export function Tasks() {
               ))}
             </div>
           </div>
+          </div>
 
-          <div className="pt-4 border-t border-[#222222] flex justify-end gap-3">
+          <div className="p-6 pt-4 border-t border-[#222222] bg-[#111111] sticky bottom-0 z-10 flex justify-end gap-3 mt-auto">
             <button 
               type="button"
               onClick={() => setIsModalOpen(false)}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 
@@ -10,6 +10,17 @@ interface GenieModalProps {
 }
 
 export function GenieModal({ isOpen, onClose, title, children }: GenieModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -55,9 +66,9 @@ export function GenieModal({ isOpen, onClose, title, children }: GenieModalProps
                 mass: 0.8
               }}
               style={{ originY: 1 }}
-              className="bg-[#111111] border border-[#222222] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl pointer-events-auto"
+              className="bg-[#111111] flex flex-col border border-[#222222] rounded-2xl w-full max-w-lg max-h-[90vh] shadow-2xl pointer-events-auto"
             >
-              <div className="px-6 py-4 border-b border-[#222222] flex items-center justify-between bg-white/5 backdrop-blur-md">
+              <div className="px-6 py-4 border-b border-[#222222] flex items-center justify-between shrink-0 bg-white/5 backdrop-blur-md">
                 <h2 className="text-xl font-display font-semibold text-white">{title}</h2>
                 <button 
                   type="button"
@@ -68,7 +79,7 @@ export function GenieModal({ isOpen, onClose, title, children }: GenieModalProps
                 </button>
               </div>
               
-              <div className="bg-[#111111]">
+              <div className="bg-[#111111] overflow-y-auto min-h-0 relative">
                 {children}
               </div>
             </motion.div>
