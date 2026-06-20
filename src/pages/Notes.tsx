@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../store/AppContext';
 import { 
   Plus, Trash2, Search, Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, 
-  Menu, List, ListOrdered, Quote, Code, Link as LinkIcon, Eye, Edit2, ChevronDown, ChevronRight, CheckSquare, FolderPlus
+  Menu, List, ListOrdered, Quote, Code, Link as LinkIcon, Eye, Edit2, ChevronDown, ChevronRight, CheckSquare, FolderPlus,
+  Sliders, Check, HelpCircle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -17,6 +18,31 @@ export function Notes() {
   
   const [activeFolder, setActiveFolder] = useState<string | null>('Notes');
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  
+  const [editorSettings, setEditorSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('notes_editor_settings_v2');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      renderMarkdown: true,
+      recognizeAsteriskTask: true,
+      recognizeDashTask: true,
+      recognizeNumberTask: false,
+      defaultBullet: 'dash', // 'asterisk' or 'dash'
+      showHelpText: true,
+      smartLinks: true,
+      autoPairBrackets: true
+    };
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('notes_editor_settings_v2', JSON.stringify(editorSettings));
+    } catch {}
+  }, [editorSettings]);
+
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
   
   const editorRef = useRef<any>(null);
 
@@ -62,6 +88,110 @@ export function Notes() {
     if (activeNoteId) {
       deleteKnowledge(activeNoteId);
       setActiveNoteId(null);
+    }
+  };
+
+  const handlePasteAndConvertLinks = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!editorSettings.smartLinks) return;
+    const pastedText = e.clipboardData.getData('text');
+    const urlRegex = /^(https?:\/\/[^\s]+)$/g;
+    if (urlRegex.test(pastedText.trim())) {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const value = textarea.value;
+      
+      let domain = 'Link';
+      try {
+        const urlObj = new URL(pastedText.trim());
+        domain = urlObj.hostname.replace('www.', '');
+      } catch {}
+      
+      const markdownLink = `[${domain}](${pastedText.trim()})`;
+      const newValue = value.substring(0, start) + markdownLink + value.substring(end);
+      handleContentChange(newValue);
+      
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + markdownLink.length;
+      }, 0);
+    }
+  };
+
+  const handleKeyPressInRaw = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const start = textarea.selectionStart;
+    const value = textarea.value;
+    
+    if (e.key === ' ' && start > 0) {
+      const lastChar = value[start - 1];
+      const beforeLast = start > 1 ? value[start - 2] : '\n';
+      
+      // Checking if we are starting a line
+      const isLineStart = beforeLast === '\n' || beforeLast === '\r';
+      
+      if (isLineStart) {
+        if (lastChar === '*' && editorSettings.recognizeAsteriskTask) {
+          e.preventDefault();
+          const newValue = value.substring(0, start - 1) + '* [ ] ' + value.substring(start);
+          handleContentChange(newValue);
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = start + 5;
+          }, 0);
+          return;
+        } else if (lastChar === '-' && editorSettings.recognizeDashTask) {
+          e.preventDefault();
+          const newValue = value.substring(0, start - 1) + '- [ ] ' + value.substring(start);
+          handleContentChange(newValue);
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = start + 5;
+          }, 0);
+          return;
+        } else if (lastChar === '.' && start > 1) {
+          // If previous was number, like '1.'
+          const preChar = value[start - 2];
+          if (preChar >= '0' && preChar <= '9' && editorSettings.recognizeNumberTask) {
+            e.preventDefault();
+            const newValue = value.substring(0, start) + ' [ ] ' + value.substring(start);
+            handleContentChange(newValue);
+            setTimeout(() => {
+              textarea.selectionStart = textarea.selectionEnd = start + 5;
+            }, 0);
+            return;
+          }
+        }
+      }
+    }
+    
+    // Auto pairing brackets
+    if (editorSettings.autoPairBrackets) {
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const value = textarea.value;
+      
+      if (e.key === '[') {
+        e.preventDefault();
+        const newValue = value.substring(0, start) + '[]' + value.substring(end);
+        handleContentChange(newValue);
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 1;
+        }, 0);
+      } else if (e.key === '(') {
+        e.preventDefault();
+        const newValue = value.substring(0, start) + '()' + value.substring(end);
+        handleContentChange(newValue);
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 1;
+        }, 0);
+      } else if (e.key === '{') {
+        e.preventDefault();
+        const newValue = value.substring(0, start) + '{}' + value.substring(end);
+        handleContentChange(newValue);
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 1;
+        }, 0);
+      }
     }
   };
 
@@ -237,131 +367,387 @@ export function Notes() {
         </div>
       </div>
 
-      {/* Right Content (Editor) */}
-      <div className={`flex-1 flex flex-col h-full bg-[#0a0a0a]/50 backdrop-blur-md min-w-0 ${!isSidebarOpen ? 'block' : 'hidden md:flex'}`}>
-        {activeNote ? (
-          <>
-            {/* Editor Toolbar */}
-            <div className="h-14 border-b border-[#222222] flex items-center justify-between px-4 sticky top-0 z-20">
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                <button 
-                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                  className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg mr-2 shrink-0"
-                >
-                  <Menu className="w-5 h-5" />
-                </button>
-                
-                {/* View Mode Toggle (Removed, now WYSIWYG) */}
-                <div className="flex items-center gap-2 mr-2">
-                  <span className="text-xs font-mono text-slate-500 uppercase tracking-wider px-2 py-1 bg-white/5 rounded-md">WYSIWYG Markdown</span>
+      {/* Right Content (Editor and Settings) */}
+      <div className={`flex-1 flex h-full bg-[#0a0a0a]/50 backdrop-blur-md min-w-0 ${!isSidebarOpen ? 'block' : 'hidden md:flex'}`}>
+        
+        {/* Editor Main Column */}
+        <div className="flex-1 flex flex-col h-full min-w-0 border-r border-[#222222]">
+          {activeNote ? (
+            <>
+              {/* Editor Toolbar */}
+              <div className="h-14 border-b border-[#222222] flex items-center justify-between px-4 sticky top-0 z-20 shrink-0">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                  <button 
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg mr-2 shrink-0"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
+                  
+                  {/* View Mode Indicator */}
+                  <div className="flex items-center gap-2 mr-2">
+                    <span className="text-xs font-mono text-slate-500 uppercase tracking-wider px-2 py-1 bg-white/5 rounded-md">
+                      {editorSettings.renderMarkdown ? 'WYSIWYG Markdown' : 'Raw Markdown Editor'}
+                    </span>
+                  </div>
+
+                  <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
+                  
+                  {/* Headings */}
+                  <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
+                    <button onClick={() => formatText('h1')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Nagłówek 1"><Heading1 className="w-4 h-4" /></button>
+                    <button onClick={() => formatText('h2')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Nagłówek 2"><Heading2 className="w-4 h-4" /></button>
+                    <button onClick={() => formatText('h3')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Nagłówek 3"><Heading3 className="w-4 h-4" /></button>
+                  </div>
+
+                  <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
+
+                  {/* Text Formatting */}
+                  <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
+                    <button onClick={() => formatText('bold')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors font-bold" title="Pogrubienie"><Bold className="w-4 h-4" /></button>
+                    <button onClick={() => formatText('italic')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors italic" title="Kursywa"><Italic className="w-4 h-4" /></button>
+                    <button onClick={() => formatText('strike')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Przekreślenie"><Strikethrough className="w-4 h-4" /></button>
+                  </div>
+
+                  <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
+
+                  {/* Lists & Quotes */}
+                  <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
+                    <button onClick={() => formatText('bullet')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Lista punktowa"><List className="w-4 h-4" /></button>
+                    <button onClick={() => formatText('ordered')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Lista numerowana"><ListOrdered className="w-4 h-4" /></button>
+                    <button onClick={() => formatText('tasklist')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Lista zadań (Checklista)"><CheckSquare className="w-4 h-4" /></button>
+                    <button onClick={() => formatText('quote')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Cytat"><Quote className="w-4 h-4" /></button>
+                  </div>
+
+                  <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
+
+                  {/* Code & Links */}
+                  <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
+                    <button onClick={() => formatText('code')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Kod inline"><Code className="w-4 h-4" /></button>
+                  </div>
+
+                  <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
+
+                  {/* Extras */}
+                  <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
+                    <button onClick={() => formatText('details')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors flex items-center gap-1" title="Zwijana grupa">
+                      <ChevronDown className="w-4 h-4" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline-block pr-1 font-mono">Zwijane</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
-                
-                {/* Headings */}
-                <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
-                  <button onClick={() => formatText('h1')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Nagłówek 1"><Heading1 className="w-4 h-4" /></button>
-                  <button onClick={() => formatText('h2')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Nagłówek 2"><Heading2 className="w-4 h-4" /></button>
-                  <button onClick={() => formatText('h3')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Nagłówek 3"><Heading3 className="w-4 h-4" /></button>
-                </div>
-
-                <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
-
-                {/* Text Formatting */}
-                <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
-                  <button onClick={() => formatText('bold')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors font-bold" title="Pogrubienie"><Bold className="w-4 h-4" /></button>
-                  <button onClick={() => formatText('italic')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors italic" title="Kursywa"><Italic className="w-4 h-4" /></button>
-                  <button onClick={() => formatText('strike')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Przekreślenie"><Strikethrough className="w-4 h-4" /></button>
-                </div>
-
-                <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
-
-                {/* Lists & Quotes */}
-                <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
-                  <button onClick={() => formatText('bullet')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Lista punktowa"><List className="w-4 h-4" /></button>
-                  <button onClick={() => formatText('ordered')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Lista numerowana"><ListOrdered className="w-4 h-4" /></button>
-                  <button onClick={() => formatText('tasklist')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Lista zadań (Checklista)"><CheckSquare className="w-4 h-4" /></button>
-                  <button onClick={() => formatText('quote')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Cytat"><Quote className="w-4 h-4" /></button>
-                </div>
-
-                <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
-
-                {/* Code & Links */}
-                <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
-                  <button onClick={() => formatText('code')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors" title="Kod inline"><Code className="w-4 h-4" /></button>
-                </div>
-
-                <div className="w-px h-6 bg-[#262626] mx-1 shrink-0"></div>
-
-                {/* Extras */}
-                <div className="flex bg-[#161616] rounded-lg p-1 border border-[#262626] shrink-0">
-                  <button onClick={() => formatText('details')} className="p-1.5 text-slate-400 hover:text-white hover:bg-[#222222] rounded-md transition-colors flex items-center gap-1" title="Zwijana grupa">
-                    <ChevronDown className="w-4 h-4" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline-block pr-1">Zwijane</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button 
+                    onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
+                    className={`p-2 rounded-xl transition-all flex items-center gap-1.5 ${isSettingsPanelOpen ? 'text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/30' : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                    title="Ustawienia formatowania i autouzupełniania"
+                  >
+                    <Sliders className="w-4 h-4" />
+                    <span className="text-xs font-bold hidden xl:inline-block tracking-wide">Opcje</span>
+                  </button>
+                  <button 
+                    onClick={handleDelete}
+                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-xl transition-colors border border-transparent"
+                    title="Usuń notatkę"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
+
+              {/* Editor Area */}
+              <div className="flex-1 overflow-y-auto p-8 lg:p-12 relative">
+                <div className="max-w-3xl mx-auto h-full flex flex-col">
+                  <input
+                    type="text"
+                    value={activeNote.title}
+                    onChange={handleTitleChange}
+                    placeholder="Tytuł notatki"
+                    className="w-full bg-transparent text-4xl font-display font-bold text-white mb-2 focus:outline-none placeholder:text-slate-600 shrink-0"
+                  />
+                  
+                  <div className="flex flex-wrap gap-4 mb-8 text-sm shrink-0">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <span className="font-bold">Folder:</span>
+                      <input 
+                        type="text"
+                        value={activeNote.category || 'Notes'}
+                        onChange={(e) => updateKnowledge(activeNote.id, { category: e.target.value })}
+                        className="bg-transparent focus:outline-none focus:text-white border-b border-transparent focus:border-[#4ade80] transition-colors"
+                        placeholder="Nazwa kategorii"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <span className="font-bold">Tagi:</span>
+                      <input 
+                        type="text"
+                        value={(activeNote.tags || []).join(', ')}
+                        onChange={(e) => updateKnowledge(activeNote.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+                        className="bg-transparent focus:outline-none focus:text-white border-b border-transparent focus:border-[#4ade80] transition-colors min-w-[200px]"
+                        placeholder="oddziel tagi przecinkami"
+                      />
+                    </div>
+                    <div className="flex-1 text-right text-xs text-slate-600 self-center">
+                      Zaktualizowano: {new Date(activeNote.updatedAt || Date.now()).toLocaleDateString()}{' '}
+                      {new Date(activeNote.updatedAt || Date.now()).toLocaleTimeString()}
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 flex flex-col">
+                    {editorSettings.renderMarkdown ? (
+                      <MarkdownEditor 
+                        content={activeNote.content}
+                        onChange={handleContentChange}
+                        editorRef={editorRef}
+                      />
+                    ) : (
+                      <textarea
+                        value={activeNote.content}
+                        onChange={(e) => handleContentChange(e.target.value)}
+                        onPaste={handlePasteAndConvertLinks}
+                        onKeyDown={handleKeyPressInRaw}
+                        placeholder="Zacznij pisać tutaj przy użyciu czystego formatu Markdown..."
+                        className="w-full flex-1 bg-transparent text-slate-300 font-mono text-sm leading-relaxed focus:outline-none resize-none min-h-[400px]"
+                      />
+                    )}
+
+                    {activeNote.content === '' && editorSettings.showHelpText && (
+                      <div className="mt-8 p-6 rounded-2xl bg-[#0c151a] border border-[#21353e] space-y-3 animate-fade-in text-slate-300">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-teal-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                            <HelpCircle className="w-3.5 h-3.5" />
+                            Pomocnik Autouzupełniania Myśli
+                          </span>
+                          <button 
+                            onClick={() => {
+                              let bulletSymbol = editorSettings.defaultBullet === 'dash' ? '-' : '*';
+                              let demoNote = `# Notatka robocza\n\n${bulletSymbol} Główna idea dająca początek planowaniu\n${bulletSymbol} Drugi podpunkt do zrealizowania\n\n### Lista Zadań\n${bulletSymbol} [ ] Przeanalizować cele tygodniowe\n${bulletSymbol} [ ] Wyznaczyć czas pracy w Pomodoro\n\n_Zapisano i uporządkowano w bazie danych._`;
+                              handleContentChange(demoNote);
+                            }}
+                            className="text-[10px] font-bold uppercase tracking-wider bg-teal-400/10 hover:bg-teal-400/20 text-teal-300 px-3 py-1.5 rounded-lg border border-teal-400/30 transition-all font-sans"
+                          >
+                            Wstaw szablon notatki
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-relaxed font-sans">
+                          Wskazówka: Możesz włączyć inteligentne poprawianie myślników, rozpoznawanie list zadań oraz automatyczne domykanie nawiasów w wysuwanym panelu <strong className="text-teal-300">"Opcje"</strong> po prawej stronie.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+              <Menu className="w-12 h-12 mb-4 opacity-20" />
+              <p>Wybierz notatkę lub utwórz nową</p>
+            </div>
+          )}
+        </div>
+
+        {/* Configurations Side Panel (Fidelity matching Screenshot) */}
+        {activeNote && isSettingsPanelOpen && (
+          <div className="w-80 border-l border-[#222222] bg-[#051115]/95 backdrop-blur-2xl p-6 flex flex-col h-full overflow-y-auto shrink-0 select-none text-slate-300">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-teal-400 animate-pulse" />
+                <h3 className="text-xs font-bold text-teal-300 uppercase tracking-widest font-mono">
+                  Opcje Edytora
+                </h3>
+              </div>
               <button 
-                onClick={handleDelete}
-                className="p-2 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors shrink-0"
-                title="Usuń notatkę"
+                onClick={() => setIsSettingsPanelOpen(false)}
+                className="text-xs font-semibold px-2 py-1 rounded bg-[#161a1d] border border-[#2d3748] hover:border-slate-500 text-slate-400 hover:text-white transition-all"
               >
-                <Trash2 className="w-4 h-4" />
+                Zamknij
               </button>
             </div>
 
-            {/* Editor Area */}
-            <div className="flex-1 overflow-y-auto p-8 lg:p-12 relative">
-              <div className="max-w-3xl mx-auto h-full flex flex-col">
-                <input
-                  type="text"
-                  value={activeNote.title}
-                  onChange={handleTitleChange}
-                  placeholder="Tytuł notatki"
-                  className="w-full bg-transparent text-4xl font-display font-bold text-white mb-2 focus:outline-none placeholder:text-slate-600 shrink-0"
-                />
-                
-                <div className="flex gap-4 mb-8 text-sm">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <span className="font-bold">Folder:</span>
+            {/* List resembling the user's config screenshot exactly */}
+            <div className="space-y-6">
+              
+              {/* Option 1: Render Markdown */}
+              <div className="flex flex-col gap-1">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
                     <input 
-                      type="text"
-                      value={activeNote.category || 'Notes'}
-                      onChange={(e) => updateKnowledge(activeNote.id, { category: e.target.value })}
-                      className="bg-transparent focus:outline-none focus:text-white border-b border-transparent focus:border-[#4ade80] transition-colors"
-                      placeholder="Nazwa kategorii"
+                      type="checkbox" 
+                      checked={editorSettings.renderMarkdown}
+                      onChange={e => setEditorSettings(prev => ({ ...prev, renderMarkdown: e.target.checked }))}
+                      className="sr-only"
                     />
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${editorSettings.renderMarkdown ? 'bg-teal-500 border-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.4)]' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.renderMarkdown && <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <span className="font-bold">Tagi:</span>
-                    <input 
-                      type="text"
-                      value={(activeNote.tags || []).join(', ')}
-                      onChange={(e) => updateKnowledge(activeNote.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-                      className="bg-transparent focus:outline-none focus:text-white border-b border-transparent focus:border-[#4ade80] transition-colors min-w-[200px]"
-                      placeholder="oddziel tagi przecinkami"
-                    />
-                  </div>
-                  <div className="flex-1 text-right text-xs text-slate-600 self-center">
-                    Zaktualizowano: {new Date(activeNote.updatedAt || Date.now()).toLocaleDateString()}{' '}
-                    {new Date(activeNote.updatedAt || Date.now()).toLocaleTimeString()}
-                  </div>
-                </div>
-                
-                <MarkdownEditor 
-                  content={activeNote.content}
-                  onChange={handleContentChange}
-                  editorRef={editorRef}
-                />
+                  <span className="text-sm font-semibold tracking-wide text-slate-200 group-hover:text-white transition-colors">Render Markdown</span>
+                </label>
               </div>
+
+              {/* Option 2: Recognize * as Task */}
+              <div className="flex flex-col gap-1">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input 
+                      type="checkbox" 
+                      checked={editorSettings.recognizeAsteriskTask}
+                      onChange={e => setEditorSettings(prev => ({ ...prev, recognizeAsteriskTask: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${editorSettings.recognizeAsteriskTask ? 'bg-teal-500 border-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.4)]' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.recognizeAsteriskTask && <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold tracking-wide text-slate-200 group-hover:text-white transition-colors">Recognize <span className="text-teal-400 font-bold">*</span> as Task</span>
+                </label>
+              </div>
+
+              {/* Option 3: Recognize - as Task */}
+              <div className="flex flex-col gap-1">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input 
+                      type="checkbox" 
+                      checked={editorSettings.recognizeDashTask}
+                      onChange={e => setEditorSettings(prev => ({ ...prev, recognizeDashTask: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${editorSettings.recognizeDashTask ? 'bg-teal-500 border-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.4)]' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.recognizeDashTask && <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold tracking-wide text-slate-200 group-hover:text-white transition-colors">Recognize <span className="text-teal-400 font-bold">-</span> as Task</span>
+                </label>
+              </div>
+
+              {/* Option 4: Recognize 1. as Task */}
+              <div className="flex flex-col gap-1">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input 
+                      type="checkbox" 
+                      checked={editorSettings.recognizeNumberTask}
+                      onChange={e => setEditorSettings(prev => ({ ...prev, recognizeNumberTask: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${editorSettings.recognizeNumberTask ? 'bg-teal-500 border-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.4)]' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.recognizeNumberTask && <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold tracking-wide text-slate-200 group-hover:text-white transition-colors">Recognize <span className="text-teal-400 font-bold">1.</span> as Task</span>
+                </label>
+                <span className="text-[11px] text-slate-400 leading-relaxed">
+                  Items with square brackets are recognized as Tasks by default * [ ]
+                </span>
+              </div>
+
+              {/* Radio 1: Use * as default */}
+              <div className="flex flex-col gap-1 pt-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input 
+                      type="radio" 
+                      name="defaultBullet"
+                      checked={editorSettings.defaultBullet === 'asterisk'}
+                      onChange={() => setEditorSettings(prev => ({ ...prev, defaultBullet: 'asterisk' }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${editorSettings.defaultBullet === 'asterisk' ? 'bg-teal-500 border-teal-400' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.defaultBullet === 'asterisk' && <div className="w-2 h-2 rounded-full bg-slate-950" />}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Use <span className="text-teal-400 font-bold">*</span> as default</span>
+                </label>
+              </div>
+
+              {/* Radio 2: Use dash (-) as default */}
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input 
+                      type="radio" 
+                      name="defaultBullet"
+                      checked={editorSettings.defaultBullet === 'dash'}
+                      onChange={() => setEditorSettings(prev => ({ ...prev, defaultBullet: 'dash' }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${editorSettings.defaultBullet === 'dash' ? 'bg-teal-500 border-teal-400' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.defaultBullet === 'dash' && <div className="w-2 h-2 rounded-full bg-slate-950" />}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Use dash <span className="text-teal-400 font-bold">(-)</span> as default</span>
+                </label>
+                <span className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  The list and task shortcuts would print the default selected bullet, except only one option is selected to be recognized as Task when it is used.
+                </span>
+              </div>
+
+              {/* Option 5: Show help text */}
+              <div className="flex flex-col gap-2 pt-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input 
+                      type="checkbox" 
+                      checked={editorSettings.showHelpText}
+                      onChange={e => setEditorSettings(prev => ({ ...prev, showHelpText: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${editorSettings.showHelpText ? 'bg-teal-500 border-teal-400' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.showHelpText && <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Show help text (and template button)</span>
+                </label>
+                <span className="text-[11px] text-slate-400 leading-relaxed">
+                  Shows the help text in empty notes and selected empty blocks.
+                </span>
+              </div>
+
+              {/* Option 6: Smart links */}
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input 
+                      type="checkbox" 
+                      checked={editorSettings.smartLinks}
+                      onChange={e => setEditorSettings(prev => ({ ...prev, smartLinks: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${editorSettings.smartLinks ? 'bg-teal-500 border-teal-400' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.smartLinks && <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Smart Markdown links</span>
+                </label>
+                <span className="text-[11px] text-slate-400 leading-relaxed">
+                  Web links which are pasted into the editor are converted to markdown links with the title from the website. NotePlan uses a simulated fast title resolver for this.
+                </span>
+              </div>
+
+              {/* Option 7: Auto pair brackets */}
+              <div className="flex flex-col gap-1 pt-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input 
+                      type="checkbox" 
+                      checked={editorSettings.autoPairBrackets}
+                      onChange={e => setEditorSettings(prev => ({ ...prev, autoPairBrackets: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${editorSettings.autoPairBrackets ? 'bg-teal-500 border-teal-400' : 'border-slate-600 bg-transparent'}`}>
+                      {editorSettings.autoPairBrackets && <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Auto pair brackets</span>
+                </label>
+              </div>
+
             </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
-            <Menu className="w-12 h-12 mb-4 opacity-20" />
-            <p>Wybierz notatkę lub utwórz nową</p>
           </div>
         )}
+
       </div>
     </div>
   );
