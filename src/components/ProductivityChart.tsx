@@ -105,7 +105,7 @@ export function ProductivityChart({ tasks, habits }: ProductivityChartProps) {
         .attr("width", Math.max(x.bandwidth() / 2 - 2, 1))
         .attr("y", height)
         .attr("height", 0)
-        .attr("fill", "#75d36e")
+        .attr("fill", "#4ade80")
         .attr("rx", Math.min(x.bandwidth() / 4, 3))
         .transition(t as any)
         .attr("y", d => y(d.habitsDone))
@@ -121,7 +121,7 @@ export function ProductivityChart({ tasks, habits }: ProductivityChartProps) {
         .attr("width", Math.max(x.bandwidth() / 2 - 2, 1))
         .attr("y", height)
         .attr("height", 0)
-        .attr("fill", "#3b82f6")
+        .attr("fill", "#4ade80")
         .attr("rx", Math.min(x.bandwidth() / 4, 3))
         .transition(t as any)
         .attr("y", d => y(d.tasksDone))
@@ -149,7 +149,7 @@ export function ProductivityChart({ tasks, habits }: ProductivityChartProps) {
     <div className="w-full">
       <div className="flex items-center gap-4 mb-4 text-xs font-mono">
         <div className="flex items-center gap-1.5 text-slate-300">
-          <div className="w-3 h-3 rounded-sm bg-[#75d36e]"></div> Nawyk (Habit)
+          <div className="w-3 h-3 rounded-sm bg-[#4ade80]"></div> Nawyk (Habit)
         </div>
         <div className="flex items-center gap-1.5 text-slate-300">
           <div className="w-3 h-3 rounded-sm bg-blue-500"></div> Zadanie (Task)

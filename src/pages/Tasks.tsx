@@ -17,14 +17,14 @@ export function Tasks() {
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [taskColor, setTaskColor] = useState<string>('#75d36e');
+  const [taskColor, setTaskColor] = useState<string>('#4ade80');
   const [description, setDescription] = useState('');
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [newSubPriority, setNewSubPriority] = useState<TaskPriority>('medium');
   const [newSubDueDate, setNewSubDueDate] = useState('');
 
-  const taskColors = ['#75d36e', '#3b82f6', '#c084fc', '#f43f5e', '#facc15', '#14b8a6', '#64748b'];
+  const taskColors = ['#4ade80', '#94a3b8', '#64748b', '#475569', '#334155', '#1e293b', '#0f172a'];
 
   const handleAddChecklistItem = () => {
     if (!newChecklistItem.trim()) return;
@@ -61,7 +61,7 @@ export function Tasks() {
     switch (status) {
       case 'todo': return <Circle className="w-5 h-5 text-slate-500" />;
       case 'in_progress': return <PlayCircle className="w-5 h-5 text-orange-400" />;
-      case 'done': return <CheckCircle2 className="w-5 h-5 text-[#75d36e]" />;
+      case 'done': return <CheckCircle2 className="w-5 h-5 text-[#4ade80]" />;
     }
   };
 
@@ -72,7 +72,7 @@ export function Tasks() {
     setPriority('medium');
     setStatus('todo');
     setDueDate(new Date().toISOString().split('T')[0]);
-    setTaskColor('#75d36e');
+    setTaskColor('#4ade80');
     setDescription('');
     setChecklist([]);
     setNewChecklistItem('');
@@ -87,7 +87,7 @@ export function Tasks() {
     setStatus(task.status);
     setDueDate(task.due_date);
     setDescription(task.description || '');
-    setTaskColor(task.color || '#75d36e');
+    setTaskColor(task.color || '#4ade80');
     setChecklist(task.checklist || []);
     setNewChecklistItem('');
     setIsModalOpen(true);
@@ -197,7 +197,7 @@ export function Tasks() {
         </div>
         <button 
           onClick={openAddModal}
-          className="flex justify-center items-center gap-2 bg-[#75d36e] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="flex justify-center items-center gap-2 bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="w-5 h-5" />
           Dodaj zadanie
@@ -215,10 +215,10 @@ export function Tasks() {
             <div>
               <h3 className="text-white font-bold mb-1">Status realizacji zadań</h3>
               <p className="text-slate-400 text-xs">
-                Ukończone: <span className="text-[#75d36e] font-semibold">{completedCount}</span> &bull; Oczekujące: <span className="text-blue-400 font-semibold">{pendingCount}</span>
+                Ukończone: <span className="text-[#4ade80] font-semibold">{completedCount}</span> &bull; Oczekujące: <span className="text-blue-400 font-semibold">{pendingCount}</span>
               </p>
             </div>
-            <div className="text-2xl font-display font-bold text-[#75d36e]">
+            <div className="text-2xl font-display font-bold text-[#4ade80]">
               {Math.round(progressPercent)}%
             </div>
           </div>
@@ -227,7 +227,7 @@ export function Tasks() {
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
               transition={{ duration: 1, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-[#75d36e] to-[#3b82f6] rounded-full shadow-[0_0_15px_rgba(117,211,110,0.5)]"
+              className="h-full bg-[#4ade80] rounded-full shadow-[0_0_15px_rgba(74,222,128,0.3)]"
             />
           </div>
         </motion.div>
@@ -262,14 +262,14 @@ export function Tasks() {
               onClick={() => setLayoutMode('list')}
               className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${layoutMode === 'list' ? 'bg-[#2D2D2D] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
-              <List className="w-4 h-4 text-[#75d36e]" />
+              <List className="w-4 h-4 text-[#4ade80]" />
               Lista
             </button>
             <button 
               onClick={() => setLayoutMode('board')}
               className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${layoutMode === 'board' ? 'bg-[#2D2D2D] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
-              <LayoutGrid className="w-4 h-4 text-[#75d36e]" />
+              <LayoutGrid className="w-4 h-4 text-[#4ade80]" />
               Tablica (D&D)
             </button>
           </div>
@@ -279,13 +279,13 @@ export function Tasks() {
           <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
              <button 
               onClick={() => setFilterStatus('active')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'active' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'active' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
               Aktywne
             </button>
             <button 
               onClick={() => setFilterStatus('done')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'done' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'done' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
               Ukończone
             </button>
@@ -304,7 +304,7 @@ export function Tasks() {
           {statuses.map(colStatus => {
             const colTasks = boardTasks.filter(t => t.status === colStatus);
             const label = colStatus === 'todo' ? 'Do zrobienia' : colStatus === 'in_progress' ? 'W toku' : 'Ukończone';
-            const accentColor = colStatus === 'todo' ? 'text-blue-400' : colStatus === 'in_progress' ? 'text-orange-400' : 'text-[#75d36e]';
+            const accentColor = colStatus === 'todo' ? 'text-blue-400' : colStatus === 'in_progress' ? 'text-orange-400' : 'text-[#4ade80]';
             
             return (
               <div 
@@ -318,7 +318,7 @@ export function Tasks() {
               >
                 <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#222222]">
                   <h3 className={cn("font-display font-semibold flex items-center gap-2 text-sm uppercase tracking-wider", accentColor)}>
-                    <span className={cn("w-2 h-2 rounded-full", colStatus === 'todo' ? 'bg-blue-400' : colStatus === 'in_progress' ? 'bg-orange-400' : 'bg-[#75d36e]')} />
+                    <span className={cn("w-2 h-2 rounded-full", colStatus === 'todo' ? 'bg-blue-400' : colStatus === 'in_progress' ? 'bg-orange-400' : 'bg-[#4ade80]')} />
                     {label}
                   </h3>
                   <span className="text-xs font-mono font-semibold text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-lg border border-[#222222]">
@@ -339,8 +339,8 @@ export function Tasks() {
                           layout
                           key={task.id}
                           draggable
-                          onDragStart={(e) => handleDragStart(e, task.id)}
-                          onDragEnd={handleDragEnd}
+                          onDragStart={(e: any) => handleDragStart(e, task.id)}
+                          onDragEnd={handleDragEnd as any}
                           className={cn(
                             "group p-3.5 rounded-xl bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-all relative overflow-hidden",
                             isDragging === task.id ? "opacity-30" : "opacity-100"
@@ -371,7 +371,7 @@ export function Tasks() {
                                 <div className="hidden md:flex opacity-0 group-hover:opacity-100 items-center gap-1 transition-opacity">
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
-                                    className="p-1 rounded text-slate-400 hover:text-[#75d36e] hover:bg-[#75d36e]/10 transition-colors"
+                                    className="p-1 rounded text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors"
                                     title="Szczegóły"
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
@@ -392,7 +392,7 @@ export function Tasks() {
                                 <span className="font-mono flex flex-col gap-1">
                                   <span>Do: {task.due_date}</span>
                                   {task.checklist && task.checklist.length > 0 && (
-                                    <span className="flex items-center gap-1 text-[#75d36e]">
+                                    <span className="flex items-center gap-1 text-[#4ade80]">
                                       <ListChecks className="w-3 h-3" />
                                       {task.checklist.filter(c => c.isCompleted).length}/{task.checklist.length}
                                     </span>
@@ -439,8 +439,8 @@ export function Tasks() {
                   <motion.div 
                     layout
                     draggable
-                    onDragStart={(e) => handleDragStart(e, task.id)}
-                    onDragEnd={handleDragEnd}
+                    onDragStart={(e: any) => handleDragStart(e, task.id)}
+                    onDragEnd={handleDragEnd as any}
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
@@ -479,7 +479,7 @@ export function Tasks() {
                           <div className="text-xs text-slate-500 mt-0.5 font-mono flex items-center gap-3">
                             <span>Termin: {task.due_date}</span>
                             {task.checklist && task.checklist.length > 0 && (
-                              <span className="flex items-center gap-1 text-[#75d36e]">
+                              <span className="flex items-center gap-1 text-[#4ade80]">
                                 <ListChecks className="w-3 h-3" />
                                 {task.checklist.filter(c => c.isCompleted).length}/{task.checklist.length}
                               </span>
@@ -504,7 +504,7 @@ export function Tasks() {
                         <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#75d36e] hover:bg-[#75d36e]/10 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors"
                             title="Szczegóły"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -543,7 +543,7 @@ export function Tasks() {
                 onChange={e => setTitle(e.target.value)} 
                 required
                 placeholder="np. Przygotować raport kwartalny"
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
               />
             </div>
 
@@ -554,7 +554,7 @@ export function Tasks() {
               onChange={e => setDescription(e.target.value)} 
               placeholder="Dodatkowe informacje o zadaniu..."
               rows={3}
-              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors resize-y"
+              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors resize-y"
             />
           </div>
 
@@ -564,7 +564,7 @@ export function Tasks() {
               <select 
                 value={category} 
                 onChange={e => setCategory(e.target.value as TaskCategory)}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors capitalize"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
               >
                 {categories.map(c => (
                   <option key={c} value={c}>{c}</option>
@@ -576,7 +576,7 @@ export function Tasks() {
               <select 
                 value={priority} 
                 onChange={e => setPriority(e.target.value as TaskPriority)}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors capitalize"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
               >
                 {priorities.map(p => (
                   <option key={p} value={p}>{p}</option>
@@ -591,7 +591,7 @@ export function Tasks() {
               <select 
                 value={status} 
                 onChange={e => setStatus(e.target.value as TaskStatus)}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors capitalize"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
               >
                 {statuses.map(s => (
                   <option key={s} value={s}>{s}</option>
@@ -611,7 +611,7 @@ export function Tasks() {
                     }
                   } catch (err) {}
                 }}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
                style={{ colorScheme: 'dark' }}
               />
             </div>
@@ -630,7 +630,7 @@ export function Tasks() {
                     onClick={() => handleToggleChecklistItem(item.id)}
                     className={cn(
                       "flex-shrink-0 text-slate-400 transition-colors",
-                      item.isCompleted ? "text-[#75d36e]" : "hover:text-[#75d36e]"
+                      item.isCompleted ? "text-[#4ade80]" : "hover:text-[#4ade80]"
                     )}
                   >
                     {item.isCompleted ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
@@ -679,13 +679,13 @@ export function Tasks() {
                   }
                 }}
                 placeholder="Dodaj element listy..."
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#4ade80] transition-colors"
               />
               <div className="flex gap-2">
                 <select 
                   value={newSubPriority} 
                   onChange={e => setNewSubPriority(e.target.value as TaskPriority)}
-                  className="bg-[#161616] border border-[#262626] rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-[#75d36e] transition-colors capitalize flex-1"
+                  className="bg-[#161616] border border-[#262626] rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-[#4ade80] transition-colors capitalize flex-1"
                 >
                   <option value="low">Niski</option>
                   <option value="medium">Średni</option>
@@ -703,7 +703,7 @@ export function Tasks() {
                       }
                     } catch (err) {}
                   }}
-                  className="bg-[#161616] border border-[#262626] rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-[#75d36e] transition-colors flex-1"
+                  className="bg-[#161616] border border-[#262626] rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-[#4ade80] transition-colors flex-1"
                   style={{ colorScheme: 'dark' }}
                 />
                 <button
@@ -745,7 +745,7 @@ export function Tasks() {
             </button>
             <button 
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#75d36e] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
+              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
             >
               {editingTask ? 'Zapisz zmiany' : 'Dodaj zadanie'}
             </button>

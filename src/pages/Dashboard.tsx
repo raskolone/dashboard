@@ -65,7 +65,7 @@ export function Dashboard() {
           subtitle: `Zadanie • ${priorityLabel} priorytet${t.due_date === todayStr ? ' • Na dziś' : ''}`,
           completed: isCompletedToday,
           score,
-          color: t.color || '#3b82f6',
+          color: t.color || '#4ade80',
         });
       }
     });
@@ -87,7 +87,7 @@ export function Dashboard() {
         completed: isCompletedToday,
         score,
         icon: h.icon,
-        color: h.color || '#c084fc',
+        color: h.color || '#4ade80',
       });
     });
 
@@ -114,7 +114,7 @@ export function Dashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <span className="text-[#75d36e] text-sm font-semibold tracking-wider uppercase">{new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+          <span className="text-[#4ade80] text-sm font-semibold tracking-wider uppercase">{new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
           <h1 className="text-4xl font-display font-bold text-white mt-1 leading-tight">
             {getGreeting()}
           </h1>
@@ -126,7 +126,7 @@ export function Dashboard() {
           <button
             onClick={() => setActiveFilterTag(null)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-              activeFilterTag === null ? 'bg-[#75d36e] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
+              activeFilterTag === null ? 'bg-[#4ade80] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
             }`}
           >
             Wszystkie Tagi
@@ -136,7 +136,7 @@ export function Dashboard() {
               key={tag}
               onClick={() => setActiveFilterTag(tag)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-                activeFilterTag === tag ? 'bg-[#75d36e] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
+                activeFilterTag === tag ? 'bg-[#4ade80] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
               }`}
             >
               {tag}
@@ -149,7 +149,7 @@ export function Dashboard() {
         {[
           { title: "Zadania do zrobienia", value: activeTasks.length, icon: CheckCircle2, color: "text-blue-400", bg: "bg-blue-400/10" },
           { title: "Dzisiejsze eventy", value: todaysEvents.length, icon: CalendarIcon, color: "text-purple-400", bg: "bg-purple-400/10" },
-          { title: "Zwyczaje ukończone", value: filteredHabits.filter(h => h.completedDates.includes(todayStr)).length, icon: Target, color: "text-[#75d36e]", bg: "bg-[#75d36e]/10" },
+          { title: "Zwyczaje ukończone", value: filteredHabits.filter(h => h.completedDates.includes(todayStr)).length, icon: Target, color: "text-[#4ade80]", bg: "bg-[#4ade80]/10" },
           { title: "W toku", value: tasks.filter(t => t.status === 'in_progress').length, icon: Clock, color: "text-orange-400", bg: "bg-orange-400/10" },
         ].map((stat, i) => (
           <motion.div 
@@ -157,7 +157,7 @@ export function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="glass-card p-6 rounded-3xl flex items-center justify-between group hover:border-[#75d36e]/30 transition-colors duration-300"
+            className="glass-card p-6 rounded-3xl flex items-center justify-between group hover:border-[#4ade80]/30 transition-colors duration-300"
           >
             <div>
               <span className="text-slate-400 text-sm font-medium">{stat.title}</span>
@@ -179,13 +179,13 @@ export function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
-              <Brain className="w-5 h-5 text-[#75d36e]" />
+              <Brain className="w-5 h-5 text-[#4ade80]" />
               Skupienie na dziś
             </h2>
             <p className="text-sm text-slate-400 mt-1">Niezbędne kroki, aby dzisiejszy dzień był udany (Top 3 priorytety).</p>
           </div>
           {focusItems.length > 0 && (
-            <span className="text-xs font-mono font-bold text-[#75d36e] bg-[#75d36e]/10 px-3 py-1.5 rounded-full border border-[#75d36e]/20 self-start sm:self-center">
+            <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#4ade80]/10 px-3 py-1.5 rounded-full border border-[#4ade80]/20 self-start sm:self-center">
               Ukończono: {focusItems.filter(i => i.completed).length}/{focusItems.length}
             </span>
           )}
@@ -200,7 +200,7 @@ export function Dashboard() {
             {focusItems.map(item => (
               <div 
                 key={`${item.type}-${item.id}`} 
-                className={`flex items-center gap-3 p-4 rounded-xl bg-[#141414] border hover:border-[#75d36e]/30 transition-all relative overflow-hidden group ${
+                className={`flex items-center gap-3 p-4 rounded-xl bg-[#141414] border hover:border-[#4ade80]/30 transition-all relative overflow-hidden group ${
                   item.completed ? 'border-[#222222] opacity-75' : 'border-[#222222]'
                 }`}
               >
@@ -216,8 +216,8 @@ export function Dashboard() {
                   aria-label={item.completed ? "Oznacz jako nieukończone" : "Oznacz jako ukończone"}
                   className={`shrink-0 flex items-center justify-center w-5 h-5 rounded-md border transition-all duration-200 focus:outline-none ${
                     item.completed 
-                      ? 'bg-[#75d36e] border-[#75d36e] text-[#1a1a1a]' 
-                      : 'border-slate-600 hover:border-[#75d36e]'
+                      ? 'bg-[#4ade80] border-[#4ade80] text-[#1a1a1a]' 
+                      : 'border-slate-600 hover:border-[#4ade80]'
                   }`}
                 >
                   {item.completed && (
@@ -248,7 +248,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <section className="glass-card rounded-3xl p-6">
           <h2 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
-             <Target className="w-5 h-5 text-[#75d36e]" />
+             <Target className="w-5 h-5 text-[#4ade80]" />
              Dzisiejsze Zadania
           </h2>
 
@@ -261,14 +261,14 @@ export function Dashboard() {
               <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md relative overflow-hidden">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs text-slate-400 font-medium font-mono uppercase tracking-wider">Postęp ogólny zadań</span>
-                  <span className="text-xs text-[#75d36e] font-bold font-mono">{Math.round(progressPercent)}% ({completedCount}/{totalCount})</span>
+                  <span className="text-xs text-[#4ade80] font-bold font-mono">{Math.round(progressPercent)}% ({completedCount}/{totalCount})</span>
                 </div>
                 <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${progressPercent}%` }}
                     transition={{ duration: 1.2, ease: "easeOut" }}
-                    className="h-full bg-gradient-to-r from-[#75d36e] to-[#3b82f6] rounded-full shadow-[0_0_10px_rgba(117,211,110,0.3)]"
+                    className="h-full bg-[#4ade80] rounded-full shadow-[0_0_10px_rgba(74,222,128,0.2)]"
                   />
                 </div>
               </div>
@@ -289,7 +289,7 @@ export function Dashboard() {
                   )}
                   <div className="font-medium text-white">{task.title}</div>
                   <div className="flex gap-2 mt-2">
-                     <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#75d36e]/10 text-[#75d36e]">
+                     <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#4ade80]/10 text-[#4ade80]">
                        {task.status.replace('_', ' ')}
                      </span>
                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
@@ -330,7 +330,7 @@ export function Dashboard() {
       {/* Productivity Chart Section */}
       <section className="glass-card rounded-3xl p-6 mb-8">
         <h2 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
-           <Activity className="w-5 h-5 text-[#3b82f6]" />
+           <Activity className="w-5 h-5 text-[#4ade80]" />
            Produktywność (Ostatnie 7 Dni) {activeFilterTag && `- ${activeFilterTag}`}
         </h2>
         <ProductivityChart tasks={tasks} habits={filteredHabits} />

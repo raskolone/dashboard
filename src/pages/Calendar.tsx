@@ -231,7 +231,7 @@ export function Calendar() {
       case 'lesson':
         return 'bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/20';
       case 'personal':
-        return 'bg-emerald-500/10 text-[#75d36e] border border-[#75d36e]/20 hover:bg-emerald-500/20';
+        return 'bg-emerald-500/10 text-[#4ade80] border border-[#4ade80]/20 hover:bg-emerald-500/20';
       case 'deadline':
         return 'bg-red-500/10 text-red-350 border border-red-500/20 hover:bg-red-500/20';
       default:
@@ -324,12 +324,12 @@ export function Calendar() {
               className="p-2.5 rounded-xl border border-[#222222] bg-[#111111] text-slate-300 hover:text-white transition-colors disabled:opacity-40"
               title="Synchronizuj teraz"
             >
-              <RefreshCw className={`w-5 h-5 ${isSyncingCalendar ? 'animate-spin text-[#75d36e]' : ''}`} />
+              <RefreshCw className={`w-5 h-5 ${isSyncingCalendar ? 'animate-spin text-[#4ade80]' : ''}`} />
             </button>
           )}
           <button 
             onClick={openAddForm}
-            className="flex items-center gap-2 bg-[#75d36e] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2.5 rounded-xl font-bold transition-transform cursor-pointer"
+            className="flex items-center gap-2 bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2.5 rounded-xl font-bold transition-transform cursor-pointer"
           >
             <Plus className="w-5 h-5" />
             Dodaj spotkanie
@@ -341,7 +341,7 @@ export function Calendar() {
       {isAuthLoading ? (
         <div className="glass-card rounded-3xl p-8 flex items-center justify-center">
           <div className="text-center space-y-3">
-            <Loader2 className="w-8 h-8 animate-spin text-[#75d36e] mx-auto" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#4ade80] mx-auto" />
             <p className="text-slate-400 text-sm">Inicjalizacja i sprawdzanie sesji Google...</p>
           </div>
         </div>
@@ -368,16 +368,16 @@ export function Calendar() {
         <div className="flex flex-wrap items-center justify-between p-4 rounded-2xl glass-card text-xs text-slate-400 gap-4 border border-[#222222]">
           <div className="flex items-center gap-3">
             {user?.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName || 'Google'} className="w-7 h-7 rounded-full border border-[#75d36e]/30" referrerPolicy="no-referrer" />
+              <img src={user.photoURL} alt={user.displayName || 'Google'} className="w-7 h-7 rounded-full border border-[#4ade80]/30" referrerPolicy="no-referrer" />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-[#75d36e]/10 border border-[#75d36e]/30 flex items-center justify-center text-[#75d36e] font-bold">
+              <div className="w-7 h-7 rounded-full bg-[#4ade80]/10 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80] font-bold">
                 {user?.displayName?.substring(0, 1) || 'G'}
               </div>
             )}
             <div>
               <span className="text-white font-medium">{user?.displayName || user?.email}</span>
               <span className="mx-2 text-slate-700">•</span>
-              <span className="inline-flex items-center gap-1 font-mono px-1.5 py-0.5 rounded bg-[#75d36e]/10 text-[#75d36e] text-[10px]">
+              <span className="inline-flex items-center gap-1 font-mono px-1.5 py-0.5 rounded bg-[#4ade80]/10 text-[#4ade80] text-[10px]">
                 <Check className="w-3 h-3" /> Synchronizacja Google aktywna
               </span>
             </div>
@@ -433,7 +433,7 @@ export function Calendar() {
             onClick={() => setCalViewMode('daily')}
             className={cn(
               "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer",
-              calViewMode === 'daily' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
+              calViewMode === 'daily' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
             )}
           >
             Dzień
@@ -442,7 +442,7 @@ export function Calendar() {
             onClick={() => setCalViewMode('weekly')}
             className={cn(
               "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer",
-              calViewMode === 'weekly' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
+              calViewMode === 'weekly' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
             )}
           >
             Tydzień
@@ -451,7 +451,7 @@ export function Calendar() {
             onClick={() => setCalViewMode('monthly')}
             className={cn(
               "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer",
-              calViewMode === 'monthly' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
+              calViewMode === 'monthly' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
             )}
           >
             Miesiąc
@@ -460,7 +460,7 @@ export function Calendar() {
             onClick={() => setCalViewMode('agenda')}
             className={cn(
               "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer",
-              calViewMode === 'agenda' ? 'bg-[#2a2a2a] text-[#75d36e] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
+              calViewMode === 'agenda' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
             )}
           >
             Agenda
@@ -469,8 +469,8 @@ export function Calendar() {
       </div>
 
       {/* Drag & Drop Hint Ribbon */}
-      <div className="flex items-center gap-2 bg-[#75d36e]/5 border border-[#75d36e]/20 p-3 rounded-xl text-xs text-[#75d36e] font-mono select-none">
-        <span className="animate-pulse flex h-2 w-2 rounded-full bg-[#75d36e]" />
+      <div className="flex items-center gap-2 bg-[#4ade80]/5 border border-[#4ade80]/20 p-3 rounded-xl text-xs text-[#4ade80] font-mono select-none">
+        <span className="animate-pulse flex h-2 w-2 rounded-full bg-[#4ade80]" />
         <span>Przeciągnij wydarzenie na inny dzień lub godzinę, aby natychmiast przenieść termin (D&D)!</span>
       </div>
 
@@ -500,16 +500,16 @@ export function Calendar() {
                     onDrop={(e) => handleEventDropOnDate(e, keyStr)}
                     className={cn(
                       "min-h-[110px] p-2 bg-[#121212]/40 rounded-xl border transition-all duration-150 flex flex-col justify-between group cursor-pointer",
-                      isCurrentMonth ? "border-white/5 hover:border-[#75d36e]/40" : "border-transparent opacity-30 hover:opacity-75",
-                      isToday ? "bg-[#75d36e]/5 border-[#75d36e]/40 shadow-[0_0_15px_rgba(117,211,110,0.05)]" : "",
-                      isDraggingEventId ? "border-dashed border-white/20 hover:bg-[#75d36e]/10" : ""
+                      isCurrentMonth ? "border-white/5 hover:border-[#4ade80]/40" : "border-transparent opacity-30 hover:opacity-75",
+                      isToday ? "bg-[#4ade80]/5 border-[#4ade80]/40 shadow-[0_0_15px_rgba(117,211,110,0.05)]" : "",
+                      isDraggingEventId ? "border-dashed border-white/20 hover:bg-[#4ade80]/10" : ""
                     )}
                   >
                     {/* Header cell */}
                     <div className="flex justify-between items-center">
                       <span className={cn(
                         "text-xs font-mono font-bold flex items-center justify-center w-5 h-5 rounded-full select-none",
-                        isToday ? "bg-[#75d36e] text-[#1a1a1a]" : "text-slate-400 group-hover:text-white"
+                        isToday ? "bg-[#4ade80] text-[#1a1a1a]" : "text-slate-400 group-hover:text-white"
                       )}>
                         {dayDate.getDate()}
                       </span>
@@ -559,15 +559,15 @@ export function Calendar() {
                   onDrop={(e) => handleEventDropOnDate(e, keyStr)}
                   className={cn(
                     "glass-card p-3 rounded-2xl flex flex-col min-h-[400px] border border-[#222222] transition-colors cursor-pointer",
-                    isToday ? "border-[#75d36e]/40 bg-[#75d36e]/5 shadow-[0_0_15px_rgba(117,211,110,0.05)]" : "",
-                    isDraggingEventId ? "border-dashed border-white/20 hover:bg-[#75d36e]/10" : "hover:border-[#333333]"
+                    isToday ? "border-[#4ade80]/40 bg-[#4ade80]/5 shadow-[0_0_15px_rgba(117,211,110,0.05)]" : "",
+                    isDraggingEventId ? "border-dashed border-white/20 hover:bg-[#4ade80]/10" : "hover:border-[#333333]"
                   )}
                 >
                   <div className="text-center pb-2 border-b border-[#222222] mb-3 select-none">
                     <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest">{weekdayLabel}</span>
                     <span className={cn(
                       "inline-block text-base font-mono font-bold mt-1 px-2 py-0.5 rounded-full",
-                      isToday ? "bg-[#75d36e] text-[#1a1a1a]" : "text-white"
+                      isToday ? "bg-[#4ade80] text-[#1a1a1a]" : "text-white"
                     )}>
                       {dayDate.getDate()}
                     </span>
@@ -636,9 +636,9 @@ export function Calendar() {
                     onDrop={(e) => handleEventDropOnDate(e, keyStr)}
                     className={cn(
                       "p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center",
-                      isSelectedDate ? "bg-[#75d36e] text-[#1a1a1a] border-[#75d36e]" : "text-slate-400 hover:text-white border-transparent hover:bg-white/5",
-                      isToday && !isSelectedDate ? "border-[#75d36e]/40 text-[#75d36e]" : "",
-                      isDraggingEventId ? "border-dashed border-[#75d36e]/40 bg-[#75d36e]/5 hover:bg-[#75d36e]/20" : ""
+                      isSelectedDate ? "bg-[#4ade80] text-[#1a1a1a] border-[#4ade80]" : "text-slate-400 hover:text-white border-transparent hover:bg-white/5",
+                      isToday && !isSelectedDate ? "border-[#4ade80]/40 text-[#4ade80]" : "",
+                      isDraggingEventId ? "border-dashed border-[#4ade80]/40 bg-[#4ade80]/5 hover:bg-[#4ade80]/20" : ""
                     )}
                   >
                     <span className="text-[10px] uppercase font-bold tracking-wider">{weekday}</span>
@@ -664,7 +664,7 @@ export function Calendar() {
                       onDrop={(e) => handleEventDropOnHour(e, hour)}
                       className={cn(
                         "grid grid-cols-[80px_1fr] items-start border-b border-white/5 min-h-[64px] hover:bg-white/1 flex items-center transition-all cursor-pointer group py-1.5",
-                        isDraggingEventId ? "border-dashed border-[#75d36e]/20 hover:bg-[#75d36e]/5" : ""
+                        isDraggingEventId ? "border-dashed border-[#4ade80]/20 hover:bg-[#4ade80]/5" : ""
                       )}
                     >
                       {/* Hour stamp */}
@@ -730,7 +730,7 @@ export function Calendar() {
               <div className="space-y-6">
                 {sortedDates.map(dateStr => (
                   <div key={dateStr} className="space-y-2">
-                    <h3 className="text-sm font-mono font-semibold text-[#75d36e] uppercase tracking-wider px-1">
+                    <h3 className="text-sm font-mono font-semibold text-[#4ade80] uppercase tracking-wider px-1">
                       {new Date(dateStr).toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
                     </h3>
                     <div className="grid grid-cols-1 gap-2">
@@ -738,7 +738,7 @@ export function Calendar() {
                         <div key={ev.id} className="glass-card p-4 rounded-xl flex items-center justify-between gap-4 group hover:border-white/10 transition-all border border-[#222222]">
                           <div className="flex items-start gap-4">
                             <div className="h-10 w-10 shrink-0 bg-[#161616] border border-[#222222] rounded-lg flex flex-col items-center justify-center text-xs font-mono text-slate-400">
-                              <Clock className="w-4 h-4 text-[#75d36e]" />
+                              <Clock className="w-4 h-4 text-[#4ade80]" />
                             </div>
                             <div>
                               <div className="font-medium text-white flex items-center gap-2">
@@ -790,7 +790,7 @@ export function Calendar() {
               onChange={e => setTitle(e.target.value)} 
               required
               placeholder="np. Sync z zespołem"
-              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
               disabled={isSubmitting}
             />
           </div>
@@ -801,7 +801,7 @@ export function Calendar() {
               <select 
                 value={type} 
                 onChange={e => setType(e.target.value as EventType)}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors capitalize"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
                 disabled={isSubmitting}
               >
                 <option value="meeting">Spotkanie (Meeting)</option>
@@ -817,7 +817,7 @@ export function Calendar() {
                 type="date" 
                 value={date} 
                 onChange={e => setDate(e.target.value)}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
                 disabled={isSubmitting}
               />
             </div>
@@ -830,7 +830,7 @@ export function Calendar() {
                 type="time" 
                 value={startTime} 
                 onChange={e => setStartTime(e.target.value)}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
                 disabled={isSubmitting}
               />
             </div>
@@ -840,7 +840,7 @@ export function Calendar() {
                 type="time" 
                 value={endTime} 
                 onChange={e => setEndTime(e.target.value)}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
                 disabled={isSubmitting}
               />
             </div>
@@ -853,7 +853,7 @@ export function Calendar() {
               onChange={e => setDescription(e.target.value)} 
               placeholder="np. Omówienie postępów kwartalnych i kroki milowe."
               rows={3}
-              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors resize-none"
+              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors resize-none"
               disabled={isSubmitting}
             />
           </div>
@@ -869,7 +869,7 @@ export function Calendar() {
             </button>
             <button 
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#75d36e] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm flex items-center gap-2 cursor-pointer"
               disabled={isSubmitting}
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

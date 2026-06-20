@@ -113,7 +113,7 @@ export function ParticleBackground({ forceDark }: { forceDark?: boolean } = {}) 
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(mouseX, mouseY);
-          // 43, 102, 234 - blueish for Day or keep neon green #75d36e (117, 211, 110)
+          // 43, 102, 234 - blueish for Day or keep neon green #4ade80 (117, 211, 110)
           const mouseConnectionColor = isLight ? '0, 100, 200' : '117, 211, 110';
           ctx.strokeStyle = `rgba(${mouseConnectionColor}, ${0.4 - distMouse / 400})`; 
           ctx.stroke();

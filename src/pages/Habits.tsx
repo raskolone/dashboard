@@ -15,7 +15,7 @@ export function Habits() {
   const [icon, setIcon] = useState('🧘');
   const [frequency, setFrequency] = useState<'daily' | 'weekly'>('daily');
   const [targetCount, setTargetCount] = useState(1);
-  const [color, setColor] = useState('#75d36e');
+  const [color, setColor] = useState('#4ade80');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Filter state
@@ -27,11 +27,11 @@ export function Habits() {
 
   const popularEmojis = ['🧘', '📖', '💧', '🏃', '🥦', '✍️', '💻', '🦷', '🛌', '🍎'];
   const popularColors = [
-    { code: '#75d36e', label: 'Neon Green' },
+    { code: '#4ade80', label: 'Neon Green' },
     { code: '#60a5fa', label: 'Blue' },
     { code: '#f87171', label: 'Red' },
     { code: '#fbbf24', label: 'Amber' },
-    { code: '#c084fc', label: 'Purple' }
+    { code: '#4ade80', label: 'Purple' }
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,7 +52,7 @@ export function Habits() {
     setIcon('🧘');
     setFrequency('daily');
     setTargetCount(1);
-    setColor('#75d36e');
+    setColor('#4ade80');
     setSelectedTags([]);
   };
 
@@ -71,7 +71,7 @@ export function Habits() {
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-[#75d36e] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="flex items-center gap-2 bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="w-5 h-5" />
           Dodaj zwyczaj
@@ -92,7 +92,7 @@ export function Habits() {
               const totalHabits = habits.length;
               const dailyProgress = totalHabits > 0 ? (habitsCompletedToday / totalHabits) * 100 : 0;
               return (
-                <div className="text-2xl font-display font-bold text-[#75d36e]">
+                <div className="text-2xl font-display font-bold text-[#4ade80]">
                   {Math.round(dailyProgress)}%
                 </div>
               );
@@ -109,7 +109,7 @@ export function Habits() {
                   initial={{ width: 0 }}
                   animate={{ width: `${dailyProgress}%` }}
                   transition={{ duration: 1, ease: 'easeOut' }}
-                  className="h-full bg-gradient-to-r from-[#75d36e] to-[#3b82f6] rounded-full shadow-[0_0_15px_rgba(117,211,110,0.5)]"
+                  className="h-full bg-[#4ade80] rounded-full shadow-[0_0_15px_rgba(74,222,128,0.3)]"
                 />
               </div>
             );
@@ -122,7 +122,7 @@ export function Habits() {
         <button
           onClick={() => setActiveFilterTag(null)}
           className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-            activeFilterTag === null ? 'bg-[#75d36e] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
+            activeFilterTag === null ? 'bg-[#4ade80] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
           }`}
         >
           Wszystkie
@@ -132,7 +132,7 @@ export function Habits() {
             key={tag}
             onClick={() => setActiveFilterTag(tag)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-              activeFilterTag === tag ? 'bg-[#75d36e] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
+              activeFilterTag === tag ? 'bg-[#4ade80] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
             }`}
           >
             {tag}
@@ -154,7 +154,7 @@ export function Habits() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   className="glass-card p-12 text-center text-slate-500"
                 >
-                  <Milestone className="w-12 h-12 mx-auto stroke-[1.5] opacity-40 mb-3 text-[#75d36e]" />
+                  <Milestone className="w-12 h-12 mx-auto stroke-[1.5] opacity-40 mb-3 text-[#4ade80]" />
                   <p>Brak śledzonych nawyków w tej kategorii.</p>
                 </motion.div>
               );
@@ -312,7 +312,7 @@ export function Habits() {
               onChange={e => setName(e.target.value)} 
               required
               placeholder="np. Pij 2l wody"
-              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+              className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
             />
           </div>
 
@@ -326,7 +326,7 @@ export function Habits() {
                   onClick={() => setIcon(emoji)}
                   className={`w-10 h-10 text-xl flex items-center justify-center rounded-xl transition-all ${
                     icon === emoji 
-                      ? 'bg-[#75d36e]/20 border border-[#75d36e] scale-110' 
+                      ? 'bg-[#4ade80]/20 border border-[#4ade80] scale-110' 
                       : 'bg-[#161616] border border-[#262626] hover:bg-white/5'
                   }`}
                 >
@@ -342,7 +342,7 @@ export function Habits() {
               <select 
                 value={frequency} 
                 onChange={e => setFrequency(e.target.value as 'daily' | 'weekly')}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
               >
                 <option value="daily">Codziennie</option>
                 <option value="weekly">Co tydzień</option>
@@ -387,7 +387,7 @@ export function Habits() {
                     }}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors border ${
                       isSelected 
-                        ? 'bg-[#75d36e]/20 border-[#75d36e] text-[#75d36e]' 
+                        ? 'bg-[#4ade80]/20 border-[#4ade80] text-[#4ade80]' 
                         : 'bg-[#161616] border-[#262626] text-slate-400 hover:text-white'
                     }`}
                   >
@@ -408,7 +408,7 @@ export function Habits() {
             </button>
             <button 
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#75d36e] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
+              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
             >
               Dodaj zwyczaj
             </button>

@@ -6,19 +6,25 @@
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   
-  --color-neon-alt: #75d36e;
-  --color-neon: #75d36e;
-  --color-dark-bg: #0a0a0a;
-  --color-card-bg: #111111;
+  --color-background: oklch(0.11 0.015 240);
+  --color-foreground: oklch(0.93 0.008 100);
+  --color-primary: oklch(0.72 0.22 145);
+  --color-muted-foreground: oklch(0.6 0.015 240);
+  
+  --color-neon-alt: #4ade80;
+  --color-neon: #4ade80;
+  --color-dark-bg: oklch(0.11 0.015 240);
+  --color-card-bg: oklch(0.14 0.015 240);
 }
 
 html {
   overflow-x: hidden;
+  color-scheme: dark;
 }
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-dark-bg);
-  color: #e2e8f0;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
   transition: background-color 0.3s, color 0.3s;
   overflow-x: hidden;
 }
@@ -101,50 +107,52 @@ html.light .bg-white\/5 { background-color: rgba(0,0,0,0.03) !important; }
   border-radius: 1.5rem; /* bardziej zaokrąglone rogi (rounded-3xl) */
 }
 
-.editor-content:empty:before {
-  content: attr(placeholder);
-  color: #64748b;
-  pointer-events: none;
-  display: block;
-}
-html.light .editor-content:empty:before {
-  color: #94a3b8;
-}
+@layer base {
+  html { color-scheme: dark; }
+  .markdown-container h1 { @apply text-2xl font-bold mt-6 mb-4 text-white; }
+  .markdown-container h2 { @apply text-xl font-bold mt-5 mb-3 text-white; }
+  .markdown-container h3 { @apply text-lg font-bold mt-4 mb-2 text-white; }
+  .markdown-container p { @apply my-3 leading-relaxed; }
+  .markdown-container ul { @apply list-disc list-inside my-3; }
+  .markdown-container ol { @apply list-decimal list-inside my-3; }
+  .markdown-container li { @apply my-1; }
+  .markdown-container blockquote { @apply border-l-4 border-[#4ade80] bg-white/5 py-2 px-4 my-4 italic rounded-r-lg text-slate-300; }
+  .markdown-container a { @apply text-[#4ade80] hover:underline transition-all; }
+  .markdown-container code { @apply bg-white/10 px-1.5 py-0.5 rounded font-mono text-sm text-slate-200; }
+  .markdown-container pre { @apply bg-black/40 p-4 rounded-xl my-4 overflow-x-auto; }
+  .markdown-container hr { @apply border-white/10 my-8; }
+  .markdown-container details { @apply border border-white/10 bg-white/5 rounded-lg p-4 my-4; }
+  .markdown-container summary { @apply font-bold cursor-pointer outline-none select-none text-white; }
+  .markdown-container details > *:not(summary) { @apply mt-3; }
 
-.editor-content {
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-}
-.editor-content h1 {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-neon);
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-html.light .editor-content h1 {
-  color: #15803d; /* Darker green for light mode */
-}
-.editor-content h2 {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: inherit;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
-}
-.editor-content p, .editor-content div {
-  margin-bottom: 1rem;
-  line-height: 1.6;
-  color: inherit;
-}
-.editor-content b, .editor-content strong {
-  font-weight: 600;
-  color: inherit;
-}
-.editor-content i, .editor-content em {
-  font-style: italic;
+  .tiptap p.is-editor-empty:first-child::before {
+    color: #64748b;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .markdown-container ul[data-type="taskList"] {
+    @apply list-none pl-0 my-3;
+  }
+  .markdown-container li[data-type="taskItem"] {
+    @apply flex items-start my-2;
+  }
+  .markdown-container li[data-type="taskItem"] label {
+    @apply flex items-center justify-center pt-1.5 mr-2 select-none;
+  }
+  .markdown-container li[data-type="taskItem"] div {
+    @apply flex-1 m-0;
+  }
+  
+  .markdown-container li[data-type="taskItem"] input[type="checkbox"] {
+    @apply w-4 h-4 appearance-none border border-slate-500 rounded bg-transparent checked:bg-[#4ade80] checked:border-[#4ade80] transition-colors cursor-pointer relative;
+  }
+  .markdown-container li[data-type="taskItem"] input[type="checkbox"]:checked::after {
+    content: "✓";
+    @apply absolute -top-[3px] left-[2px] text-black text-xs font-bold leading-none;
+  }
 }
 
 

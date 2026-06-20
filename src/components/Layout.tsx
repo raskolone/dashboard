@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { ParticleBackground } from './ParticleBackground';
+import Constellation from './Constellation';
 import { Outlet } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { QuickAddModal } from './QuickAddModal';
@@ -10,32 +10,8 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden font-sans selection:bg-[#75d36e]/30 selection:text-white flex text-[#e2e8f0] relative">
-      {/* Global Mesh Gradient Background for premium glass effect across all tabs */}
-      <div className="fixed inset-0 z-[-2] pointer-events-none opacity-40 dark:opacity-50 overflow-hidden dark:mix-blend-screen mix-blend-multiply" style={{ willChange: 'transform' }}>
-        <motion.div 
-          animate={{ x: [0, 50, 0], y: [0, 30, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          style={{ willChange: 'transform' }}
-          className="absolute top-[-10%] right-[-5%] w-[60vw] max-w-[600px] h-[60vw] max-h-[600px] rounded-full bg-[#75d36e] blur-[100px]"
-        />
-        <motion.div 
-          animate={{ x: [0, -40, 0], y: [0, -50, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear", delay: 2 }}
-          style={{ willChange: 'transform' }}
-          className="absolute bottom-[-10%] left-[-5%] w-[80vw] max-w-[800px] h-[80vw] max-h-[800px] rounded-full bg-[#3b82f6] blur-[120px]"
-        />
-        <motion.div 
-          animate={{ x: [0, 30, 0], y: [0, -30, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "linear", delay: 5 }}
-          style={{ willChange: 'transform' }}
-          className="absolute top-[40%] left-[30%] w-[50vw] max-w-[500px] h-[50vw] max-h-[500px] rounded-full bg-[#c084fc] blur-[100px]"
-        />
-      </div>
-
-      <div className="fixed inset-0 z-[-1] pointer-events-none">
-        <ParticleBackground />
-      </div>
+    <div className="min-h-screen w-full overflow-x-hidden font-sans selection:bg-[#4ade80]/30 selection:text-[#4ade80] flex text-slate-100 relative bg-background">
+      <Constellation />
 
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       

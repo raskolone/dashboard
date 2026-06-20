@@ -117,13 +117,13 @@ export function PomodoroTimer() {
           animate={{ x: [0, -20, 0], y: [0, 10, 0] }}
           transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
           className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] rounded-full blur-[60px]"
-          style={{ willChange: 'transform', background: mode === 'pomodoro' ? '#75d36e' : mode === 'shortBreak' ? '#3b82f6' : '#a855f7' }}
+          style={{ willChange: 'transform', background: mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80' }}
         />
         <motion.div 
           animate={{ x: [0, 20, 0], y: [0, -10, 0] }}
           transition={{ duration: 15, repeat: Infinity, ease: "linear", delay: 1 }}
           className="absolute bottom-[-20%] left-[-10%] w-[250px] h-[250px] rounded-full blur-[60px]"
-          style={{ willChange: 'transform', background: mode === 'pomodoro' ? '#3b82f6' : mode === 'shortBreak' ? '#75d36e' : '#ec4899' }}
+          style={{ willChange: 'transform', background: mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80' }}
         />
       </div>
 
@@ -132,14 +132,14 @@ export function PomodoroTimer() {
         className="absolute inset-0 opacity-10 pointer-events-none transition-all duration-1000 mix-blend-overlay"
         style={{
           background: `radial-gradient(circle at center, ${
-             mode === 'pomodoro' ? '#75d36e' : mode === 'shortBreak' ? '#3b82f6' : '#a855f7'
+             mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80'
           } ${100 - progress}%, transparent 100%)`
         }}
       />
       
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
-           <Brain className="w-5 h-5 text-[#a855f7]" />
+           <Brain className="w-5 h-5 text-[#4ade80]" />
            Timer Focus
         </h2>
         
@@ -165,7 +165,7 @@ export function PomodoroTimer() {
         <button 
           onClick={() => switchMode('pomodoro')}
           className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors ${
-            mode === 'pomodoro' ? 'bg-[#75d36e] text-[#1a1a1a]' : 'text-slate-400 hover:text-white'
+            mode === 'pomodoro' ? 'bg-[#4ade80] text-[#1a1a1a]' : 'text-slate-400 hover:text-white'
           }`}
         >
           Pomodoro
@@ -173,7 +173,7 @@ export function PomodoroTimer() {
         <button 
           onClick={() => switchMode('shortBreak')}
           className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors ${
-            mode === 'shortBreak' ? 'bg-[#3b82f6] text-white' : 'text-slate-400 hover:text-white'
+            mode === 'shortBreak' ? 'bg-[#4ade80] text-white' : 'text-slate-400 hover:text-white'
           }`}
         >
           Przerwa (5m)
@@ -181,7 +181,7 @@ export function PomodoroTimer() {
         <button 
           onClick={() => switchMode('longBreak')}
           className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors ${
-            mode === 'longBreak' ? 'bg-[#a855f7] text-white' : 'text-slate-400 hover:text-white'
+            mode === 'longBreak' ? 'bg-[#4ade80] text-white' : 'text-slate-400 hover:text-white'
           }`}
         >
           Długa (15m)
@@ -201,7 +201,7 @@ export function PomodoroTimer() {
             className="fill-transparent drop-shadow-md"
             strokeWidth="8"
             strokeLinecap="round"
-            stroke={mode === 'pomodoro' ? '#75d36e' : mode === 'shortBreak' ? '#3b82f6' : '#a855f7'}
+            stroke={mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80'}
             strokeDasharray={circumference}
             animate={{ strokeDashoffset }}
             transition={{ duration: 1, ease: "linear" }}
@@ -229,9 +229,9 @@ export function PomodoroTimer() {
           className={`px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform hover:scale-[1.02] active:scale-[0.98] ${
             isActive 
               ? 'bg-[#161616] border border-[#262626] text-white hover:border-[#333333]' 
-              : mode === 'pomodoro' ? 'bg-[#75d36e] text-[#1a1a1a] hover:bg-[#5bb255]' 
-                : mode === 'shortBreak' ? 'bg-[#3b82f6] text-white hover:bg-blue-500'
-                  : 'bg-[#a855f7] text-white hover:bg-purple-500'
+              : mode === 'pomodoro' ? 'bg-[#4ade80] text-[#1a1a1a] hover:bg-[#5bb255]' 
+                : mode === 'shortBreak' ? 'bg-[#4ade80] text-white hover:bg-blue-500'
+                  : 'bg-[#4ade80] text-white hover:bg-purple-500'
           }`}
         >
           {isActive ? (
@@ -311,7 +311,7 @@ export function PomodoroTimer() {
                 setIsModalOpen(false);
                 resetTimer();
               }}
-              className="px-5 py-2.5 rounded-xl bg-[#75d36e] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
+              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
             >
               Zapisz i zresetuj
             </button>
@@ -334,7 +334,7 @@ export function PomodoroTimer() {
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
                 className="absolute top-[-10%] right-[10%] w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none"
                 style={{
-                  willChange: 'transform', background: mode === 'pomodoro' ? '#75d36e' : mode === 'shortBreak' ? '#3b82f6' : '#a855f7'
+                  willChange: 'transform', background: mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80'
                 }}
               />
               <motion.div 
@@ -342,13 +342,13 @@ export function PomodoroTimer() {
                 transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
                 className="absolute bottom-[-10%] left-[5%] w-[500px] h-[500px] rounded-full blur-[100px] pointer-events-none"
                 style={{
-                  willChange: 'transform', background: mode === 'pomodoro' ? '#3b82f6' : mode === 'shortBreak' ? '#75d36e' : '#ec4899'
+                  willChange: 'transform', background: mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80'
                 }}
               />
             </div>
             
             <div className="relative z-10 flex flex-col items-center">
-              <span className="text-[#a855f7] font-bold tracking-[0.2em] uppercase mb-8 flex items-center gap-3 text-lg">
+              <span className="text-[#4ade80] font-bold tracking-[0.2em] uppercase mb-8 flex items-center gap-3 text-lg">
                 <Brain className="w-6 h-6" /> Deep Focus
               </span>
               
@@ -362,9 +362,9 @@ export function PomodoroTimer() {
                   className={`px-12 py-4 rounded-2xl font-bold flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] text-xl ${
                     isActive 
                       ? 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md' 
-                      : mode === 'pomodoro' ? 'bg-[#75d36e] text-[#1a1a1a] shadow-[0_0_30px_rgba(117,211,110,0.5)]' 
-                        : mode === 'shortBreak' ? 'bg-[#3b82f6] text-white shadow-[0_0_30px_rgba(59,130,246,0.5)]'
-                          : 'bg-[#a855f7] text-white shadow-[0_0_30px_rgba(168,85,247,0.5)]'
+                      : mode === 'pomodoro' ? 'bg-[#4ade80] text-[#1a1a1a] shadow-[0_0_30px_rgba(74,222,128,0.3)]' 
+                        : mode === 'shortBreak' ? 'bg-[#4ade80] text-white shadow-[0_0_30px_rgba(59,130,246,0.5)]'
+                          : 'bg-[#4ade80] text-white shadow-[0_0_30px_rgba(168,85,247,0.5)]'
                   }`}
                 >
                   {isActive ? (

@@ -45,7 +45,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
                 exit={{ opacity: 0, width: 0 }}
                 className="ml-3 overflow-hidden"
               >
-                <span className="font-display font-bold text-lg text-white">Base<span className="text-[#75d36e]">44</span></span>
+                <span className="font-display font-bold text-lg text-white">Base<span className="text-[#4ade80]">44</span></span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -59,7 +59,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
               className={({ isActive }) => cn(
                 "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200",
                 isActive 
-                  ? "bg-[#75d36e]/10 text-[#75d36e] shadow-[inset_0_0_12px_rgba(117,211,110,0.1)]" 
+                  ? "bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_12px_rgba(117,211,110,0.1)]" 
                   : "text-slate-400 hover:text-white hover:bg-white/5",
                 !open && "justify-start w-[44px]"
               )}

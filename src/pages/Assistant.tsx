@@ -62,7 +62,7 @@ export function Assistant() {
     <div className="max-w-4xl mx-auto">
       <header className="mb-8">
         <h1 className="text-3xl font-display font-bold text-white flex items-center gap-3">
-          <Bot className="w-8 h-8 text-[#75d36e]" />
+          <Bot className="w-8 h-8 text-[#4ade80]" />
           AI Asystent
         </h1>
         <p className="text-slate-400 mt-2 text-lg">Twój osobisty doradca ds. zarządzania czasem i nawykami.</p>
@@ -81,12 +81,12 @@ export function Assistant() {
                   className={`flex gap-4 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                    m.role === 'ai' ? 'bg-[#75d36e]/20 text-[#75d36e]' : 'bg-[#161616] border border-[#262626] text-slate-300'
+                    m.role === 'ai' ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'bg-[#161616] border border-[#262626] text-slate-300'
                   }`}>
                     {m.role === 'ai' ? <Bot className="w-4 h-4" /> : <div className="w-4 h-4 bg-white/20 rounded-full" />}
                   </div>
                   <div className={`p-4 rounded-2xl max-w-[85%] text-sm whitespace-pre-wrap ${
-                    m.role === 'ai' ? 'bg-[#161616] border border-[#262626] text-slate-300' : 'bg-[#75d36e] text-[#1a1a1a] font-medium'
+                    m.role === 'ai' ? 'bg-[#161616] border border-[#262626] text-slate-300' : 'bg-[#4ade80] text-[#1a1a1a] font-medium'
                   }`}>
                     {m.text}
                   </div>
@@ -99,7 +99,7 @@ export function Assistant() {
                   animate={{ opacity: 1 }}
                   className="flex gap-4"
                 >
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[#75d36e]/20 text-[#75d36e]">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[#4ade80]/20 text-[#4ade80]">
                     <Bot className="w-4 h-4" />
                   </div>
                   <div className="p-4 rounded-2xl bg-[#161616] border border-[#262626] text-slate-300 flex items-center gap-2">
@@ -118,12 +118,12 @@ export function Assistant() {
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   placeholder="Zapytaj o analizę tygodnia lub rady na temat nawyków..."
-                  className="w-full bg-[#161616] border border-[#262626] rounded-xl pl-4 pr-12 py-3 text-white focus:outline-none focus:border-[#75d36e] transition-colors"
+                  className="w-full bg-[#161616] border border-[#262626] rounded-xl pl-4 pr-12 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
                 />
                 <button 
                   type="submit"
                   disabled={!query.trim()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-slate-400 hover:text-[#75d36e] hover:bg-[#75d36e]/10 transition-colors disabled:opacity-50"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -136,25 +136,25 @@ export function Assistant() {
         <div className="space-y-4">
           <div className="glass-card rounded-3xl p-6">
             <h3 className="text-sm font-mono uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#75d36e]" />
+              <Sparkles className="w-4 h-4 text-[#4ade80]" />
               Szybkie akcje
             </h3>
             <div className="space-y-2">
-              <button onClick={() => setQuery("Jak wygląda moje wykonanie zadań w tym tygodniu?")} className="w-full text-left p-3 rounded-xl bg-[#161616] border border-[#262626] hover:border-[#75d36e]/50 text-sm text-slate-300 transition-colors">
+              <button onClick={() => setQuery("Jak wygląda moje wykonanie zadań w tym tygodniu?")} className="w-full text-left p-3 rounded-xl bg-[#161616] border border-[#262626] hover:border-[#4ade80]/50 text-sm text-slate-300 transition-colors">
                 📊 Podsumuj mój tydzień
               </button>
-              <button onClick={() => setQuery("Gdzie widzę największe luki w nawykach?")} className="w-full text-left p-3 rounded-xl bg-[#161616] border border-[#262626] hover:border-[#75d36e]/50 text-sm text-slate-300 transition-colors">
+              <button onClick={() => setQuery("Gdzie widzę największe luki w nawykach?")} className="w-full text-left p-3 rounded-xl bg-[#161616] border border-[#262626] hover:border-[#4ade80]/50 text-sm text-slate-300 transition-colors">
                 🎯 Analiza luk w nawykach
               </button>
-              <button onClick={() => setQuery("Zaproponuj plan działania na jutro.")} className="w-full text-left p-3 rounded-xl bg-[#161616] border border-[#262626] hover:border-[#75d36e]/50 text-sm text-slate-300 transition-colors">
+              <button onClick={() => setQuery("Zaproponuj plan działania na jutro.")} className="w-full text-left p-3 rounded-xl bg-[#161616] border border-[#262626] hover:border-[#4ade80]/50 text-sm text-slate-300 transition-colors">
                 📅 Zaplanuj mi jutro
               </button>
             </div>
           </div>
 
           <div className="glass-card rounded-3xl p-6 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#75d36e]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <BrainCircuit className="w-8 h-8 text-[#75d36e] mb-4 opacity-75" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#4ade80]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <BrainCircuit className="w-8 h-8 text-[#4ade80] mb-4 opacity-75" />
             <h3 className="text-white font-bold mb-2">Automatyzacja</h3>
             <p className="text-slate-400 text-sm">W przyszłości asystent zyska połączenie z Twoim Google Calendar, aby autonomicznie sugerować bloki czasu na rozwój osobisty i przypominać o celach z Knowledge Base.</p>
           </div>

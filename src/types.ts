@@ -52,7 +52,7 @@ export interface CalendarEvent {
   updatedAt?: string;
 }
 
-export type KnowledgeCategory = 'Notes' | 'Ideas' | 'Bookmarks' | 'Resources' | 'Snippets';
+export type KnowledgeCategory = string;
 
 export interface KnowledgeEntry {
   id: string;

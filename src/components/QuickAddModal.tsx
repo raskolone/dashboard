@@ -83,7 +83,7 @@ export function QuickAddModal() {
         icon: habitIcon,
         frequency: habitFrequency,
         target_count: habitFrequency === 'daily' ? 7 : 3,
-        color: '#75d36e',
+        color: '#4ade80',
         tags: ['Osobiste'] // default tag placeholder
       });
     } else if (type === 'event') {
@@ -113,7 +113,7 @@ export function QuickAddModal() {
       {/* Floating Action Button */}
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-[#75d36e] text-[#1a1a1a] rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform z-[150]"
+        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-[#4ade80] text-[#1a1a1a] rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform z-[150]"
         title="Szybkie dodawanie (Cmd+K)"
       >
         <Plus size={28} />
@@ -140,25 +140,25 @@ export function QuickAddModal() {
                   <div className="flex gap-1 overflow-x-auto scrollbar-none p-1 bg-[#161616] rounded-xl border border-[#262626]">
                     <button
                       onClick={() => setType('task')}
-                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors ${type === 'task' ? 'bg-[#75d36e] text-[#1a1a1a]' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors ${type === 'task' ? 'bg-[#4ade80] text-[#1a1a1a]' : 'text-slate-400 hover:text-white'}`}
                     >
                       Zadanie
                     </button>
                     <button
                       onClick={() => setType('habit')}
-                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors ${type === 'habit' ? 'bg-[#c084fc] text-[#fff]' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors ${type === 'habit' ? 'bg-[#4ade80] text-[#fff]' : 'text-slate-400 hover:text-white'}`}
                     >
                       Nawyk
                     </button>
                     <button
                       onClick={() => setType('event')}
-                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors ${type === 'event' ? 'bg-[#f43f5e] text-[#fff]' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors ${type === 'event' ? 'bg-[#4ade80] text-[#fff]' : 'text-slate-400 hover:text-white'}`}
                     >
                       Wydarzenie
                     </button>
                     <button
                       onClick={() => setType('note')}
-                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors ${type === 'note' ? 'bg-[#3b82f6] text-[#fff]' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors ${type === 'note' ? 'bg-[#4ade80] text-[#fff]' : 'text-slate-400 hover:text-white'}`}
                     >
                       Notatka
                     </button>
@@ -177,7 +177,7 @@ export function QuickAddModal() {
                     type="text"
                     required
                     placeholder={type === 'task' ? "Co masz do zrobienia?" : type === 'habit' ? "Nazwa nawyku" : type === 'event' ? "Tytuł wydarzenia" : "Tytuł notatki"}
-                    className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-[#75d36e] transition-colors"
+                    className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-[#4ade80] transition-colors"
                     value={type === 'task' ? taskTitle : type === 'habit' ? habitName : type === 'event' ? eventTitle : noteTitle}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -238,7 +238,7 @@ export function QuickAddModal() {
                   {type === 'note' && (
                     <textarea
                       placeholder="Zanotuj swoje myśli..."
-                      className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-[#3b82f6] transition-colors min-h-[100px] resize-y"
+                      className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-[#4ade80] transition-colors min-h-[100px] resize-y"
                       value={noteContent}
                       onChange={(e) => setNoteContent(e.target.value)}
                     />
@@ -290,7 +290,7 @@ export function QuickAddModal() {
                     <span className="sm:hidden">Zapisz zadanie</span>
                     <button
                       type="submit"
-                      className={`px-4 py-2 rounded-xl text-[#1a1a1a] font-bold flex items-center gap-2 transition-transform hover:scale-[1.02] active:scale-[0.98] ${type === 'task' ? 'bg-[#75d36e]' : type === 'habit' ? 'bg-[#c084fc] text-white' : type === 'event' ? 'bg-[#f43f5e] text-white' : 'bg-[#3b82f6] text-white'}`}
+                      className={`px-4 py-2 rounded-xl text-[#1a1a1a] font-bold flex items-center gap-2 transition-transform hover:scale-[1.02] active:scale-[0.98] ${type === 'task' ? 'bg-[#4ade80]' : type === 'habit' ? 'bg-[#4ade80] text-white' : type === 'event' ? 'bg-[#4ade80] text-white' : 'bg-[#4ade80] text-white'}`}
                     >
                       <Check className="w-4 h-4" />
                       Dodaj
