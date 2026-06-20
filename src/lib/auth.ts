@@ -24,7 +24,13 @@ provider.addScope('https://www.googleapis.com/auth/calendar.events');
 provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
 
 let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = (() => {
+  try {
+    return localStorage.getItem('google_access_token');
+  } catch {
+    return null;
+  }
+})();
 
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
@@ -32,14 +38,15 @@ export const initAuth = (
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
+      const token = cachedAccessToken || '';
+      if (onAuthSuccess) {
+        onAuthSuccess(user, token);
       }
     } else {
       cachedAccessToken = null;
+      try {
+        localStorage.removeItem('google_access_token');
+      } catch {}
       if (onAuthFailure) onAuthFailure();
     }
   });
@@ -55,6 +62,9 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     }
 
     cachedAccessToken = credential.accessToken;
+    try {
+      localStorage.setItem('google_access_token', cachedAccessToken);
+    } catch {}
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('Sign in error:', error);
@@ -71,4 +81,7 @@ export const getAccessToken = async (): Promise<string | null> => {
 export const logout = async () => {
   await auth.signOut();
   cachedAccessToken = null;
+  try {
+    localStorage.removeItem('google_access_token');
+  } catch {}
 };

@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Calendar, Activity, BookText, Settings, Menu, X, Sun, Moon, Bot } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar, Activity, BookText, Settings, Menu, X, Sun, Moon, Bot, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '../store/AppContext';
 
 export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean) => void }) {
-  const { theme, toggleTheme } = useAppStore();
+  const { theme, toggleTheme, user, logoutGoogle } = useAppStore();
   
   const routes = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -71,6 +71,34 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
         </nav>
 
         <div className="p-3 border-t border-[#222222] space-y-1 min-w-[220px]">
+          {user && (
+            <div className={cn(
+              "flex justify-between items-center px-3 py-3 mb-2 rounded-xl transition-all duration-200 text-white bg-white/5",
+              !open ? "flex-col w-[44px] justify-center px-0 items-center justify-center p-0 h-[44px]" : "w-full"
+            )}>
+              <div className="flex items-center gap-3 overflow-hidden">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="w-6 h-6 rounded-full flex-shrink-0" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-[#4ade80] text-black flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                    {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                  </div>
+                )}
+                {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap truncate">{user.displayName || user.email}</motion.span>}
+              </div>
+
+              {open && (
+                <button
+                  onClick={logoutGoogle}
+                  className="text-slate-400 hover:text-red-400 p-1 rounded-md hover:bg-white/5 transition-colors"
+                  title="Wyloguj"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+          
           <button 
             onClick={toggleTheme}
             className={cn(
@@ -81,13 +109,18 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
             {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap">{theme === 'dark' ? 'Jasny Motyw' : 'Ciemny Motyw'}</motion.span>}
           </button>
           
-          <button className={cn(
-            "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5",
+          <NavLink 
+            to="/settings"
+            className={({ isActive }) => cn(
+            "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200",
+            isActive 
+              ? "bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_12px_rgba(117,211,110,0.1)]" 
+              : "text-slate-400 hover:text-white hover:bg-white/5",
             !open ? "justify-start w-[44px]" : "w-full"
           )}>
             <Settings className="w-5 h-5 flex-shrink-0" />
             {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap">Ustawienia</motion.span>}
-          </button>
+          </NavLink>
         </div>
       </motion.div>
 

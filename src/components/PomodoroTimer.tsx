@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { PlayCircle, PauseCircle, RotateCcw, Target, Settings, Brain, Minimize2, Maximize2, Square } from 'lucide-react';
+import { 
+  PlayCircle, PauseCircle, RotateCcw, Target, Settings, Brain, Minimize2, 
+  Maximize2, Square, Sparkles, Sliders, Volume2, VolumeX, EyeOff, Eye, Expand 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GenieModal } from './GenieModal';
-import { ParticleBackground } from './ParticleBackground';
 
 type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak';
 
@@ -27,11 +29,21 @@ export function PomodoroTimer() {
   const [mode, setMode] = useState<TimerMode>('pomodoro');
   const [timeLeft, setTimeLeft] = useState(settings.pomodoro * 60);
   const [isActive, setIsActive] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false); // Controls full system overlay (Genie mode)
+  const [isImmersiveFocus, setIsImmersiveFocus] = useState(false); // Controls Focus Mode (Minimalist, no distractions)
+  const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
   const [sessionCount, setSessionCount] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Deep Focus modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Settings modal internal toggle (inside expanded view)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Refresh clock time when settings or mode changed and timer is not active
+  useEffect(() => {
+    if (!isActive) {
+      setTimeLeft(settings[mode] * 60);
+    }
+  }, [settings, mode]);
 
   useEffect(() => {
     let interval: number;
@@ -47,17 +59,64 @@ export function PomodoroTimer() {
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
+  // Listen to browser fullscreen changes to sync state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsBrowserFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Listen to Escape key to close settings or exit the expanded Pomodoro view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isSettingsOpen) {
+          setIsSettingsOpen(false);
+        } else if (isExpanded) {
+          setIsExpanded(false);
+          setIsImmersiveFocus(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isExpanded, isSettingsOpen]);
+
   const toggleTimer = () => {
-    if (!isActive) {
-      setIsActive(true);
-      setIsFullscreen(true);
-    } else {
-      setIsActive(false);
+    setIsActive(!isActive);
+  };
+
+  const playChime = () => {
+    if (!soundEnabled) return;
+    try {
+      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Sweet meditative chime: high sine wave fading out
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(523.25, context.currentTime); // C5
+      oscillator.frequency.exponentialRampToValueAtTime(880.00, context.currentTime + 0.15); // A5 chime up
+      
+      gainNode.gain.setValueAtTime(0.3, context.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 1.5);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      oscillator.start();
+      oscillator.stop(context.currentTime + 1.5);
+    } catch (e) {
+      console.warn("Sound generation was blocked/failed", e);
     }
   };
 
   const handleComplete = () => {
     setIsActive(false);
+    playChime();
     
     if (mode === 'pomodoro') {
       const newSessionCount = sessionCount + 1;
@@ -75,7 +134,6 @@ export function PomodoroTimer() {
 
   const switchMode = (newMode: TimerMode) => {
     setMode(newMode);
-    // newMode time setting converted to seconds
     setTimeLeft(settings[newMode] * 60);
     setIsActive(false);
   };
@@ -83,6 +141,16 @@ export function PomodoroTimer() {
   const resetTimer = () => {
     setTimeLeft(settings[mode] * 60);
     setIsActive(false);
+  };
+
+  const toggleBrowserFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.warn(`Could not request fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -94,209 +162,445 @@ export function PomodoroTimer() {
   const totalTime = settings[mode] * 60;
   const progress = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * 100 : 0;
   
-  // SVG Ring properties
-  const radius = 120;
+  // Progress circular properties
+  const radius = 110;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   const handleSettingChange = (key: keyof typeof settings, val: string) => {
-    const num = parseInt(val) || 1;
-    setSettings((prev: typeof settings) => {
-      const next = { ...prev, [key]: num };
-      // If we are currently in the mode being changed and the timer is not running
-      // we can optionally update timeLeft immediately. For simplicity, just update settings.
-      return next;
-    });
+    const num = Math.max(1, parseInt(val) || 1);
+    setSettings((prev: typeof settings) => ({
+      ...prev,
+      [key]: num
+    }));
+  };
+
+  const getModeLabelPl = (tMode: TimerMode) => {
+    switch (tMode) {
+      case 'pomodoro': return 'Praca Głęboka';
+      case 'shortBreak': return 'Krótka Przerwa';
+      case 'longBreak': return 'Długa Przerwa';
+    }
   };
 
   return (
-    <div className="glass-card p-6 relative overflow-hidden group">
-      {/* Vibrant Atmospheric Background for Pomodoro */}
-      <div className="absolute inset-0 z-[-1] pointer-events-none opacity-40 dark:opacity-50 overflow-hidden dark:mix-blend-screen" style={{ willChange: 'transform' }}>
-        <motion.div 
-          animate={{ x: [0, -20, 0], y: [0, 10, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] rounded-full blur-[60px]"
-          style={{ willChange: 'transform', background: mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80' }}
+    <>
+      {/* 1. COMPACT TILE MODULE MATCHING DASHBOARD DESIGN CEILING */}
+      <div className="glass-card hover:border-[#4ade80]/30 transition-all duration-300 p-5 rounded-3xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-4">
+        {/* Subtle Liquid Highlight Line */}
+        <div 
+          className="absolute bottom-0 left-0 h-[3px] bg-gradient-to-r from-[#4ade80] to-[#5bb255] transition-all duration-1000"
+          style={{ width: `${progress}%` }}
         />
-        <motion.div 
-          animate={{ x: [0, 20, 0], y: [0, -10, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear", delay: 1 }}
-          className="absolute bottom-[-20%] left-[-10%] w-[250px] h-[250px] rounded-full blur-[60px]"
-          style={{ willChange: 'transform', background: mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80' }}
-        />
-      </div>
 
-      {/* Background progress indicator fallback */}
-      <div 
-        className="absolute inset-0 opacity-10 pointer-events-none transition-all duration-1000 mix-blend-overlay"
-        style={{
-          background: `radial-gradient(circle at center, ${
-             mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80'
-          } ${100 - progress}%, transparent 100%)`
-        }}
-      />
-      
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
-           <Brain className="w-5 h-5 text-[#4ade80]" />
-           Timer Focus
-        </h2>
-        
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setIsFullscreen(true)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-            title="Focus Mode"
-          >
-            <Maximize2 className="w-5 h-5" />
-          </button>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-            title="Deep Focus Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+        {/* Small Ambient Glow behind the tile */}
+        <div className="absolute right-0 top-0 w-32 h-32 bg-[#4ade80]/5 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="p-3 bg-[#4ade80]/10 rounded-2xl shrink-0 text-[#4ade80]">
+            <Brain className="w-6 h-6 animate-pulse" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wider font-mono text-slate-500 font-bold">Produktywność</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] animate-ping" />
+            </div>
+            <h3 className="text-lg font-display font-medium text-white truncate">
+              {getModeLabelPl(mode)}
+            </h3>
+            <p className="text-[11px] text-slate-400 font-mono">
+              Ukończono cykle: <span className="font-bold text-white">{sessionCount}</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Big visual time inside mini tile */}
+        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+          <div className="text-right">
+            <div className="text-3xl font-display font-bold text-white tracking-widest font-variant-numeric">
+              {formatTime(timeLeft)}
+            </div>
+            <div className="text-[10px] text-slate-500 font-mono">
+              Cel: {settings.sessionsBeforeLongBreak} sesje
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Start session / Pause primary buttons */}
+            <button
+              onClick={toggleTimer}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold font-display uppercase tracking-wider transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.97] flex items-center gap-2 ${
+                isActive 
+                  ? 'bg-slate-800 text-white hover:bg-slate-700 hover:text-[#4ade80]' 
+                  : 'bg-[#4ade80] text-black shadow-[0_0_24px_rgba(74,222,128,0.15)] hover:shadow-[0_0_35px_rgba(74,222,128,0.35)]'
+              }`}
+            >
+              {isActive ? (
+                <>
+                  <PauseCircle className="w-4 h-4" /> Pauza
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="w-4 h-4" /> Start Sesji
+                </>
+              )}
+            </button>
+
+            {/* Expand button (Launches GENIE EFFECT with full system screen) */}
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="p-3 bg-white/5 hover:bg-white/10 hover:text-white text-slate-400 rounded-xl transition-colors border border-white/5"
+              title="Otwórz pełny ekran Pomodoro"
+            >
+              <Expand className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex justify-center gap-2 mb-8 bg-[#161616] p-1 rounded-xl border border-[#262626] mx-auto max-w-fit">
-        <button 
-          onClick={() => switchMode('pomodoro')}
-          className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors ${
-            mode === 'pomodoro' ? 'bg-[#4ade80] text-[#1a1a1a]' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          Pomodoro
-        </button>
-        <button 
-          onClick={() => switchMode('shortBreak')}
-          className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors ${
-            mode === 'shortBreak' ? 'bg-[#4ade80] text-white' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          Przerwa (5m)
-        </button>
-        <button 
-          onClick={() => switchMode('longBreak')}
-          className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors ${
-            mode === 'longBreak' ? 'bg-[#4ade80] text-white' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          Długa (15m)
-        </button>
-      </div>
-
-      <div className="relative flex justify-center items-center mb-8 mx-auto w-[280px] h-[280px]">
-        {/* SVG Progress Ring */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 280 280">
-          <circle 
-            cx="140" cy="140" r={radius}
-            className="stroke-[#222] dark:stroke-[#222] fill-transparent"
-            strokeWidth="8"
-          />
-          <motion.circle 
-            cx="140" cy="140" r={radius}
-            className="fill-transparent drop-shadow-md"
-            strokeWidth="8"
-            strokeLinecap="round"
-            stroke={mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80'}
-            strokeDasharray={circumference}
-            animate={{ strokeDashoffset }}
-            transition={{ duration: 1, ease: "linear" }}
-          />
-        </svg>
-
-        <div className="text-center relative z-10 flex flex-col items-center justify-center">
-          <motion.div 
-            key={timeLeft}
-            initial={{ opacity: 0.8, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-6xl font-display font-bold text-white tracking-widest font-variant-numeric"
+      {/* 2. EXPANDED FULL SYSTEM VIEW WITH GORGEOUS REPRODUCED GENIE EFFECT TRANSITIONS */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ 
+              opacity: 0,
+              scaleY: 0.05,
+              scaleX: 0.2,
+              y: '40vh',
+              filter: 'blur(16px)',
+              borderRadius: '3rem'
+            }}
+            animate={{ 
+              opacity: 1,
+              scaleY: 1,
+              scaleX: 1,
+              y: 0,
+              filter: 'blur(0px)',
+              borderRadius: '0px'
+            }}
+            exit={{ 
+              opacity: 0,
+              scaleY: 0.05,
+              scaleX: 0.2,
+              y: '45vh',
+              filter: 'blur(16px)',
+              borderRadius: '3rem'
+            }}
+            style={{ originY: 1 }}
+            transition={{ 
+              type: 'spring', 
+              damping: 24, 
+              stiffness: 160,
+              mass: 0.95
+            }}
+            className="fixed inset-0 z-50 overflow-y-auto bg-black text-white flex flex-col justify-between"
           >
-            {formatTime(timeLeft)}
+            {/* Animated liquid background blobs in expanded window */}
+            <div className="absolute inset-0 z-0 pointer-events-none opacity-40 overflow-hidden mix-blend-screen">
+              <motion.div 
+                animate={{ x: [0, 80, 0], y: [0, -40, 0], scale: [1, 1.2, 1] }}
+                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                className="absolute top-[-10%] right-[-5%] w-[550px] h-[550px] rounded-full blur-[110px]"
+                style={{ background: '#4ade80' }}
+              />
+              <motion.div 
+                animate={{ x: [0, -60, 0], y: [0, 80, 0], scale: [1.1, 0.9, 1.1] }}
+                transition={{ duration: 30, repeat: Infinity, ease: "linear", delay: 2 }}
+                className="absolute bottom-[-15%] left-[2%] w-[450px] h-[450px] rounded-full blur-[100px]"
+                style={{ background: '#5bb255' }}
+              />
+            </div>
+
+            {/* Immersive Dark overlay filter for Focus view */}
+            <div className={`absolute inset-0 bg-black/90 pointer-events-none z-10 transition-opacity duration-1000 ${isImmersiveFocus ? 'opacity-95' : 'opacity-20'}`} />
+
+            {/* HEADER AREA */}
+            <header className="relative z-20 px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#0a0a0a]/40 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <Brain className="w-6 h-6 text-[#4ade80] animate-pulse" />
+                <div>
+                  <h2 className="text-lg font-display font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    Skupienie Pomodoro
+                    <Sparkles className="w-4 h-4 text-[#4ade80]" />
+                  </h2>
+                  <p className="text-xs text-slate-400 font-mono">Moduł Głębokiej Synchronizacji Myśli</p>
+                </div>
+              </div>
+
+              {/* Utility Panel */}
+              <div className="flex items-center gap-4">
+                {/* Sound Toggle */}
+                <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                  title={soundEnabled ? "Wycisz powiadomienie dźwiękowe" : "Włącz powiadomienie dźwiękowe"}
+                >
+                  {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5 text-red-400" />}
+                </button>
+
+                {/* Settings Tab */}
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                  title="Dostosuj czasy"
+                >
+                  <Sliders className="w-5 h-5" />
+                </button>
+
+                {/* Focus Mode (Immersive View) Trigger */}
+                <button
+                  onClick={() => setIsImmersiveFocus(!isImmersiveFocus)}
+                  className={`p-2.5 rounded-xl transition-all duration-300 flex items-center gap-2 ${
+                    isImmersiveFocus 
+                      ? 'bg-[#4ade80]/15 text-[#4ade80] border border-[#4ade80]/30' 
+                      : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
+                  }`}
+                  title="Tryb bez rozpraszania (Zen Focus)"
+                >
+                  {isImmersiveFocus ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Tryb Zen</span>
+                </button>
+
+                {/* Fullscreen actual screen trigger */}
+                <button
+                  onClick={toggleBrowserFullscreen}
+                  className={`p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors ${isBrowserFullscreen && 'text-[#4ade80]'}`}
+                  title="Pełny ekran przeglądarki"
+                >
+                  <Minimize2 className="w-5 h-5" />
+                </button>
+
+                {/* Exit expanded view (Genie minimizes) */}
+                <button 
+                  onClick={() => {
+                    setIsExpanded(false);
+                    setIsImmersiveFocus(false);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/30 font-bold tracking-wide transition-all border border-red-950/80"
+                >
+                  Wróć do Pulpitu
+                </button>
+              </div>
+            </header>
+
+            {/* MAIN CONTENT PORTAL */}
+            <main className="relative z-20 flex-1 flex flex-col items-center justify-center p-8">
+              <div className="w-full max-w-4xl flex flex-col items-center">
+                
+                {/* Immersive focus title that shows when tryb zen is enabled */}
+                <AnimatePresence>
+                  {isImmersiveFocus ? (
+                     <motion.div 
+                       initial={{ opacity: 0, y: -20 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -20 }}
+                       className="text-center mb-10 pointer-events-none"
+                     >
+                       <span className="text-[#4ade80] text-sm font-bold tracking-[0.3em] uppercase block mb-2">Trwa Sesja Skupienia</span>
+                       <h1 className="text-2xl font-serif italic text-slate-400">Wyłącz powiadomienia, weź głęboki oddech i myśl...</h1>
+                     </motion.div>
+                  ) : (
+                     /* Mode switcher tab menu */
+                     <div className="flex gap-2 p-1.5 bg-[#141414]/90 backdrop-blur-xl border border-white/5 rounded-2xl mb-12 shadow-2xl">
+                       <button
+                         onClick={() => switchMode('pomodoro')}
+                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all ${
+                           mode === 'pomodoro' 
+                             ? 'bg-[#4ade80] text-black shadow-lg shadow-[#4ade80]/20' 
+                             : 'text-slate-400 hover:text-white hover:bg-white/5'
+                         }`}
+                       >
+                         Praca Głęboka (25m)
+                       </button>
+                       <button
+                         onClick={() => switchMode('shortBreak')}
+                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all ${
+                           mode === 'shortBreak' 
+                             ? 'bg-[#4ade80] text-black shadow-lg' 
+                             : 'text-slate-400 hover:text-white hover:bg-white/5'
+                         }`}
+                       >
+                         Krótka Przerwa (5m)
+                       </button>
+                       <button
+                         onClick={() => switchMode('longBreak')}
+                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all ${
+                           mode === 'longBreak' 
+                             ? 'bg-[#4ade80] text-black shadow-lg' 
+                             : 'text-slate-400 hover:text-white hover:bg-white/5'
+                         }`}
+                       >
+                         Długa Przerwa (15m)
+                       </button>
+                     </div>
+                  )}
+                </AnimatePresence>
+
+                {/* Elegant Liquid-Glass Core Circular Clock */}
+                <div className={`liquid-glass-card p-12 md:p-16 flex flex-col items-center justify-center transition-all duration-700 relative overflow-hidden ${
+                  isImmersiveFocus ? 'scale-110 !border-white/5 bg-transparent shadow-none' : 'max-w-[480px] w-full'
+                }`}>
+                  
+                  {/* SVG progress circle around */}
+                  <div className="relative w-[280px] h-[280px] md:w-[320px] md:h-[320px] flex items-center justify-center">
+                    <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 320 320">
+                      <circle 
+                        cx="160" cy="160" r={radius}
+                        className="stroke-white/5 fill-transparent"
+                        strokeWidth="10"
+                      />
+                      <motion.circle 
+                        cx="160" cy="160" r={radius}
+                        className="fill-transparent filter drop-shadow-[0_0_15px_rgba(74,222,128,0.3)]"
+                        strokeWidth="10"
+                        strokeLinecap="round"
+                        stroke='#4ade80'
+                        strokeDasharray={circumference}
+                        animate={{ strokeDashoffset }}
+                        transition={{ duration: 1, ease: "linear" }}
+                      />
+                    </svg>
+
+                    {/* Clock core text */}
+                    <div className="text-center z-10 flex flex-col items-center justify-center">
+                      <motion.div 
+                        key={timeLeft}
+                        initial={{ opacity: 0.82, scale: 0.97 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-6xl md:text-7xl font-display font-light text-white tracking-widest font-variant-numeric drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
+                      >
+                        {formatTime(timeLeft)}
+                      </motion.div>
+                      <p className="text-xs font-mono text-slate-500 mt-3 uppercase tracking-widest font-bold">
+                        {getModeLabelPl(mode)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Settings status indicator when not in zen */}
+                  {!isImmersiveFocus && (
+                    <div className="mt-8 text-center bg-black/40 border border-white/5 px-4 py-2 rounded-xl text-xs text-slate-400 font-mono flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5 text-[#4ade80]" />
+                      <span>Sesja: <b className="text-white">{(sessionCount % settings.sessionsBeforeLongBreak) + 1}</b> z <b className="text-white">{settings.sessionsBeforeLongBreak}</b></span>
+                      <span className="text-slate-600">|</span>
+                      <span>Ogółem: <b className="text-[#4ade80]">{sessionCount}</b></span>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Primary Session Operation Panel */}
+                <div className="mt-12 flex items-center justify-center gap-6">
+                  {/* Reset Timer */}
+                  {!isImmersiveFocus && (
+                    <button
+                      onClick={resetTimer}
+                      className="p-4 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all hover:scale-[1.03] active:scale-[0.97]"
+                      title="Od nowa"
+                    >
+                      <RotateCcw className="w-5 h-5" />
+                    </button>
+                  )}
+
+                  {/* Play & Pause Action */}
+                  <button
+                    onClick={toggleTimer}
+                    className={`px-12 py-4.5 rounded-2xl font-bold font-display uppercase tracking-widest transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.97] flex items-center gap-3 text-sm flex-row shrink-0 ${
+                      isActive 
+                        ? 'bg-white/15 text-white hover:bg-white/20 border border-white/20 shadow-xl' 
+                        : 'bg-[#4ade80] text-black shadow-[0_0_40px_rgba(74,222,128,0.25)] hover:shadow-[0_0_60px_rgba(74,222,128,0.45)]'
+                    }`}
+                  >
+                    {isActive ? (
+                      <>
+                        <PauseCircle className="w-5 h-5 text-current animate-spin-slow" /> Pauza
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className="w-5 h-5 text-current" /> Rozpocznij
+                      </>
+                    )}
+                  </button>
+
+                  {/* Stop Session completely */}
+                  {!isImmersiveFocus && (
+                    <button
+                      onClick={() => {
+                        setIsActive(false);
+                        setTimeLeft(settings[mode] * 60);
+                      }}
+                      className="p-4 rounded-xl bg-white/5 border border-white/10 text-red-400 hover:text-red-300 hover:border-red-500/20 transition-all hover:scale-[1.03] active:scale-[0.97]"
+                      title="Zatrzymaj"
+                    >
+                      <Square className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+
+              </div>
+            </main>
+
+            {/* EXPANDED FOOTER METRICS BAR */}
+            {!isImmersiveFocus && (
+              <footer className="relative z-20 px-8 py-6 border-t border-white/5 bg-[#0a0a0a]/30 backdrop-blur-md flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#4ade80]" />
+                  <span>Szyfrowany System Głębokiej Organizacji Czasowej.</span>
+                </div>
+                <div className="flex gap-6">
+                  <span>Długość Pracy: <b className="text-slate-400">{settings.pomodoro} min</b></span>
+                  <span>Przerwy: <b className="text-slate-400">{settings.shortBreak} / {settings.longBreak} min</b></span>
+                  <span>Cel: <b className="text-slate-400">{settings.sessionsBeforeLongBreak} cykle</b></span>
+                </div>
+              </footer>
+            )}
           </motion.div>
-          <p className="text-sm font-mono text-slate-500 mt-2 uppercase tracking-widest">
-            Sesja: {(sessionCount % settings.sessionsBeforeLongBreak) + 1} / {settings.sessionsBeforeLongBreak}
-          </p>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
 
-      <div className="flex justify-center items-center gap-4">
-        <button 
-          onClick={toggleTimer}
-          className={`px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform hover:scale-[1.02] active:scale-[0.98] ${
-            isActive 
-              ? 'bg-[#161616] border border-[#262626] text-white hover:border-[#333333]' 
-              : mode === 'pomodoro' ? 'bg-[#4ade80] text-[#1a1a1a] hover:bg-[#5bb255]' 
-                : mode === 'shortBreak' ? 'bg-[#4ade80] text-white hover:bg-blue-500'
-                  : 'bg-[#4ade80] text-white hover:bg-purple-500'
-          }`}
-        >
-          {isActive ? (
-            <>
-              <PauseCircle className="w-5 h-5" />
-              Pauza
-            </>
-          ) : (
-            <>
-              <PlayCircle className="w-5 h-5" />
-              Start sesji
-            </>
-          )}
-        </button>
-        <button 
-          onClick={resetTimer}
-          className="p-3 rounded-xl bg-[#161616] border border-[#262626] text-slate-400 hover:text-white transition-colors"
-          title="Od nowa"
-        >
-          <RotateCcw className="w-5 h-5" />
-        </button>
-      </div>
-
-      <GenieModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title="Ustawienia sesji Deep Focus"
+      {/* 3. SETTINGS DIALOG CONVECTION */}
+      <GenieModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        title="Konfigurowanie czasów Focus"
       >
         <div className="p-6 space-y-4">
-          <div className="text-slate-300 text-sm mb-4">
-            Tryb pracy głębokiej ma na celu maksymalizację produktywności. Składa się z bloków czasowych skupienia (Pomodoro) oddzielonych krótkimi przerwami. Dłuższa przerwa następuje po wykonaniu określonej liczby sesji.
-          </div>
-          
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Dostosuj bloki czasowe do swojego rytmu pracy (np. technika Ultra-Skupienia 50/10). Zmiany zostaną zaaplikowane do kolejnych sesji.
+          </p>
+
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-[#161616] border border-[#262626] p-4 rounded-xl">
-              <label className="block text-xs font-mono uppercase text-slate-500 mb-2">Długość pracy (min)</label>
+            <div className="bg-[#161616] border border-white/5 p-4 rounded-2xl">
+              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">Czas Pracy (min)</label>
               <input 
-                type="number" min="1"
+                type="number" min="1" max="180"
                 value={settings.pomodoro}
                 onChange={e => handleSettingChange('pomodoro', e.target.value)}
                 className="w-full bg-transparent text-xl text-white font-bold focus:outline-none"
               />
             </div>
-            <div className="bg-[#161616] border border-[#262626] p-4 rounded-xl">
-              <label className="block text-xs font-mono uppercase text-slate-500 mb-2">Krótka przerwa (min)</label>
+            <div className="bg-[#161616] border border-white/5 p-4 rounded-2xl">
+              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">Krótka Przerwa (min)</label>
               <input 
-                type="number" min="1"
+                type="number" min="1" max="60"
                 value={settings.shortBreak}
                 onChange={e => handleSettingChange('shortBreak', e.target.value)}
                 className="w-full bg-transparent text-xl text-white font-bold focus:outline-none"
               />
             </div>
-            <div className="bg-[#161616] border border-[#262626] p-4 rounded-xl">
-              <label className="block text-xs font-mono uppercase text-slate-500 mb-2">Długa przerwa (min)</label>
+            <div className="bg-[#161616] border border-white/5 p-4 rounded-2xl">
+              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">Długa Przerwa (min)</label>
               <input 
-                type="number" min="1"
+                type="number" min="1" max="120"
                 value={settings.longBreak}
                 onChange={e => handleSettingChange('longBreak', e.target.value)}
                 className="w-full bg-transparent text-xl text-white font-bold focus:outline-none"
               />
             </div>
-            <div className="bg-[#161616] border border-[#262626] p-4 rounded-xl">
-              <label className="block text-xs font-mono uppercase text-slate-500 mb-2">Cykle do długiej</label>
+            <div className="bg-[#161616] border border-white/5 p-4 rounded-2xl">
+              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">Liczba cykli do długiej</label>
               <input 
-                type="number" min="1"
+                type="number" min="1" max="20"
                 value={settings.sessionsBeforeLongBreak}
                 onChange={e => handleSettingChange('sessionsBeforeLongBreak', e.target.value)}
                 className="w-full bg-transparent text-xl text-white font-bold focus:outline-none"
@@ -304,105 +608,20 @@ export function PomodoroTimer() {
             </div>
           </div>
           
-          <div className="pt-4 border-t border-[#222222] flex justify-between items-center">
-            <span className="text-xs text-slate-500">Zmiany będą widoczne po zresetowaniu timera.</span>
+          <div className="pt-4 border-t border-white/5 flex justify-between items-center">
+            <span className="text-[11px] text-slate-500 font-mono">Dane zapisane lokalnie.</span>
             <button 
               onClick={() => {
-                setIsModalOpen(false);
+                setIsSettingsOpen(false);
                 resetTimer();
               }}
-              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
+              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-black font-bold font-display uppercase tracking-wider text-xs transition-colors"
             >
-              Zapisz i zresetuj
+              Zapisz i Zresetuj
             </button>
           </div>
         </div>
       </GenieModal>
-
-      <AnimatePresence>
-        {isFullscreen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden"
-            style={{ backgroundColor: '#0a0a0a' }}
-          >
-            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden mix-blend-screen opacity-70" style={{ willChange: 'transform' }}>
-              <motion.div 
-                animate={{ x: [0, 50, 0], y: [0, -30, 0] }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute top-[-10%] right-[10%] w-[600px] h-[600px] rounded-full blur-[100px] pointer-events-none"
-                style={{
-                  willChange: 'transform', background: mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80'
-                }}
-              />
-              <motion.div 
-                animate={{ x: [0, -50, 0], y: [0, 50, 0] }}
-                transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
-                className="absolute bottom-[-10%] left-[5%] w-[500px] h-[500px] rounded-full blur-[100px] pointer-events-none"
-                style={{
-                  willChange: 'transform', background: mode === 'pomodoro' ? '#4ade80' : mode === 'shortBreak' ? '#4ade80' : '#4ade80'
-                }}
-              />
-            </div>
-            
-            <div className="relative z-10 flex flex-col items-center">
-              <span className="text-[#4ade80] font-bold tracking-[0.2em] uppercase mb-8 flex items-center gap-3 text-lg">
-                <Brain className="w-6 h-6" /> Deep Focus
-              </span>
-              
-              <div className="text-8xl md:text-[180px] font-display font-bold text-white tracking-widest font-variant-numeric drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] mb-12">
-                {formatTime(timeLeft)}
-              </div>
-
-              <div className="flex gap-6 items-center">
-                <button 
-                  onClick={toggleTimer}
-                  className={`px-12 py-4 rounded-2xl font-bold flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] text-xl ${
-                    isActive 
-                      ? 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md' 
-                      : mode === 'pomodoro' ? 'bg-[#4ade80] text-[#1a1a1a] shadow-[0_0_30px_rgba(74,222,128,0.3)]' 
-                        : mode === 'shortBreak' ? 'bg-[#4ade80] text-white shadow-[0_0_30px_rgba(59,130,246,0.5)]'
-                          : 'bg-[#4ade80] text-white shadow-[0_0_30px_rgba(168,85,247,0.5)]'
-                  }`}
-                >
-                  {isActive ? (
-                    <>
-                      <PauseCircle className="w-6 h-6" />
-                      Pauza
-                    </>
-                  ) : (
-                    <>
-                      <PlayCircle className="w-6 h-6" />
-                      Wznów
-                    </>
-                  )}
-                </button>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => {
-                      resetTimer();
-                      setIsFullscreen(false);
-                    }}
-                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-red-400 transition-colors backdrop-blur-md"
-                    title="Stop (Resetuj)"
-                  >
-                    <Square className="w-6 h-6 fill-current" />
-                  </button>
-                  <button 
-                    onClick={() => setIsFullscreen(false)}
-                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors backdrop-blur-md"
-                    title="Opuść Focus Mode"
-                  >
-                    <Minimize2 className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    </>
   );
 }
