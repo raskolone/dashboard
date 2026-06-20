@@ -1,5 +1,13 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
+import { 
+  getAuth, 
+  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult, 
+  GoogleAuthProvider, 
+  onAuthStateChanged, 
+  User 
+} from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -36,6 +44,26 @@ export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
+  // Check redirect results (crucial fallback in sandscoped cross-origin iframe situations)
+  getRedirectResult(auth)
+    .then((result) => {
+      if (result) {
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        if (credential?.accessToken) {
+          cachedAccessToken = credential.accessToken;
+          try {
+            localStorage.setItem('google_access_token', cachedAccessToken);
+          } catch {}
+          if (onAuthSuccess) {
+            onAuthSuccess(result.user, cachedAccessToken);
+          }
+        }
+      }
+    })
+    .catch((error) => {
+      console.error("Redirect parsing error:", error);
+    });
+
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
       const token = cachedAccessToken || '';
@@ -55,17 +83,24 @@ export const initAuth = (
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
   try {
     isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to get access token from Firebase Auth');
-    }
-
-    cachedAccessToken = credential.accessToken;
     try {
-      localStorage.setItem('google_access_token', cachedAccessToken);
-    } catch {}
-    return { user: result.user, accessToken: cachedAccessToken };
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (!credential?.accessToken) {
+        throw new Error('Failed to get access token from Firebase Auth');
+      }
+
+      cachedAccessToken = credential.accessToken;
+      try {
+        localStorage.setItem('google_access_token', cachedAccessToken);
+      } catch {}
+      return { user: result.user, accessToken: cachedAccessToken };
+    } catch (popupError: any) {
+      console.warn("Popup blocked or rejected. Attempting Firebase redirect signin...", popupError);
+      // Attempt redirect instead of popup
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
   } catch (error: any) {
     console.error('Sign in error:', error);
     throw error;

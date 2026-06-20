@@ -26,6 +26,7 @@ interface AppState {
   isSyncingCalendar: boolean;
   loginGoogle: () => Promise<void>;
   logoutGoogle: () => Promise<void>;
+  loginDemo: () => void;
   syncCalendar: () => Promise<void>;
   
   addTask: (task: Omit<Task, 'id'>) => void;
@@ -97,16 +98,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('app_google_events', JSON.stringify(googleEvents));
   }, [googleEvents]);
 
-  // Auth initialization
+  // Auth initialization (with demo user check to prevent logging out on refresh)
   useEffect(() => {
+    const isDemoActive = localStorage.getItem('demo_mode_active_v1') === 'true';
+
     const unsubscribe = initAuth(
       (authUser, token) => {
         setUser(authUser);
         setGoogleToken(token);
         setIsAuthLoading(false);
+        try {
+          localStorage.removeItem('demo_mode_active_v1');
+        } catch {}
       },
       () => {
-        setUser(null);
+        if (isDemoActive) {
+          setUser({
+            uid: 'demo_user',
+            displayName: 'Odwiedzający (Szybkie Demo)',
+            email: 'demo@journal.io',
+            photoURL: null,
+            emailVerified: true
+          } as any);
+        } else {
+          setUser(null);
+        }
         setGoogleToken(null);
         setIsAuthLoading(false);
       }
@@ -116,7 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Firebase Sync
   useEffect(() => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       const uId = user.uid;
       const unsubs = [
         subscribeToCollection<Task>(`users/${uId}/tasks`, (data) => setTasks(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
@@ -129,7 +145,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         unsubs.forEach(u => u());
       }
     } else {
-      // Fallback
+      // Fallback to offline/mock data storage for guest/demo users
       setTasks(mockTasks);
       setHabits(mockHabits);
       setEvents(mockEvents);
@@ -143,18 +159,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (res) {
         setUser(res.user);
         setGoogleToken(res.accessToken);
+        try {
+          localStorage.removeItem('demo_mode_active_v1');
+        } catch {}
       }
     } catch (err) {
       console.error('Google Sign-In failed:', err);
     }
   };
 
+  const loginDemo = () => {
+    try {
+      localStorage.setItem('demo_mode_active_v1', 'true');
+    } catch {}
+    setUser({
+      uid: 'demo_user',
+      displayName: 'Odwiedzający (Szybkie Demo)',
+      email: 'demo@journal.io',
+      photoURL: null,
+      emailVerified: true
+    } as any);
+    setGoogleToken(null);
+  };
+
   const logoutGoogle = async () => {
     try {
-      await firebaseLogout();
+      if (user && user.uid !== 'demo_user') {
+        await firebaseLogout();
+      }
       setUser(null);
       setGoogleToken(null);
       setGoogleEvents([]);
+      try {
+        localStorage.removeItem('demo_mode_active_v1');
+      } catch {}
     } catch (err) {
       console.error('Sign out failed:', err);
     }
@@ -205,7 +243,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Tasks actions
   const addTask = (task: Omit<Task, 'id'>) => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       const id = generateId();
       createDocument(`users/${user.uid}/tasks`, id, task);
     } else {
@@ -213,14 +251,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
   const updateTask = (id: string, updates: Partial<Task>) => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       updateDocument(`users/${user.uid}/tasks`, id, updates);
     } else {
       setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
     }
   };
   const deleteTask = (id: string) => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       deleteDocument(`users/${user.uid}/tasks`, id);
     } else {
       setTasks(prev => prev.filter(t => t.id !== id));
@@ -230,7 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Habits actions
   const addHabit = (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt'>) => {
     const newHabit = { ...habit, completedDates: [] as string[] };
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       createDocument(`users/${user.uid}/habits`, generateId(), newHabit);
     } else {
       setHabits(prev => [{ ...newHabit, id: generateId(), createdAt: new Date().toISOString() }, ...prev]);
@@ -243,14 +281,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const isCompleted = habit.completedDates.includes(date);
     const newDates = isCompleted ? habit.completedDates.filter(d => d !== date) : [...habit.completedDates, date];
     
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       updateDocument(`users/${user.uid}/habits`, id, { completedDates: newDates });
     } else {
       setHabits(prev => prev.map(h => h.id === id ? { ...h, completedDates: newDates } : h));
     }
   };
   const deleteHabit = (id: string) => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       deleteDocument(`users/${user.uid}/habits`, id);
     } else {
       setHabits(prev => prev.filter(h => h.id !== id));
@@ -271,14 +309,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await syncCalendar();
       } catch (err) {
         console.error('Google Calendar event write failed, saving locally:', err);
-        if (user) {
+        if (user && user.uid !== 'demo_user') {
           createDocument(`users/${user.uid}/events`, generateId(), event);
         } else {
           setEvents(prev => [{ ...event, id: generateId() }, ...prev]);
         }
       }
     } else {
-       if (user) {
+       if (user && user.uid !== 'demo_user') {
           createDocument(`users/${user.uid}/events`, generateId(), event);
        } else {
           setEvents(prev => [{ ...event, id: generateId() }, ...prev]);
@@ -287,7 +325,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       updateDocument(`users/${user.uid}/events`, id, updates);
     } else {
       setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
@@ -306,7 +344,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error('Google Calendar delete error:', err);
       }
     } else {
-      if (user) {
+      if (user && user.uid !== 'demo_user') {
         deleteDocument(`users/${user.uid}/events`, id);
       } else {
         setEvents(prev => prev.filter(e => e.id !== id));
@@ -316,21 +354,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Knowledge actions
   const addKnowledge = (entry: Omit<KnowledgeEntry, 'id' | 'updatedAt' | 'createdAt'>) => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       createDocument(`users/${user.uid}/knowledge`, generateId(), entry);
     } else {
       setKnowledge(prev => [{ ...entry, id: generateId(), updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() }, ...prev]);
     }
   };
   const updateKnowledge = (id: string, updates: Partial<KnowledgeEntry>) => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       updateDocument(`users/${user.uid}/knowledge`, id, updates);
     } else {
       setKnowledge(prev => prev.map(k => k.id === id ? { ...k, ...updates, updatedAt: new Date().toISOString() } : k));
     }
   };
   const deleteKnowledge = (id: string) => {
-    if (user) {
+    if (user && user.uid !== 'demo_user') {
       deleteDocument(`users/${user.uid}/knowledge`, id);
     } else {
       setKnowledge(prev => prev.filter(k => k.id !== id));
@@ -342,7 +380,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tasks, habits, events, googleEvents, knowledge,
       theme, toggleTheme,
       user, googleToken, isAuthLoading, isSyncingCalendar,
-      loginGoogle, logoutGoogle, syncCalendar,
+      loginGoogle, logoutGoogle, loginDemo, syncCalendar,
       addTask, updateTask, deleteTask,
       addHabit, toggleHabit, deleteHabit,
       addEvent, updateEvent, deleteEvent,

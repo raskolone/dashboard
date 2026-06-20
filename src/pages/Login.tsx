@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 export function Login() {
   const navigate = useNavigate();
-  const { loginGoogle } = useAppStore();
+  const { loginGoogle, loginDemo } = useAppStore();
 
   const handleLogin = async () => {
     try {
@@ -13,6 +13,11 @@ export function Login() {
     } catch (error) {
       console.error("Login failed", error);
     }
+  };
+
+  const handleDemoLogin = () => {
+    loginDemo();
+    navigate('/');
   };
 
   return (
@@ -38,7 +43,7 @@ export function Login() {
                 <div className="w-10 h-10 rounded-full bg-[#4ade80]/10 flex items-center justify-center mb-4">
                   <svg className="w-5 h-5 text-[#4ade80]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">Nagrywaj mysli</h3>
+                <h3 className="text-lg font-bold text-white mb-2">Nagrywaj myśli</h3>
                 <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Wygodnie</p>
              </div>
              <div className="bg-[#111] border border-[#222] rounded-2xl p-6 flex-1 max-w-xs transition-colors hover:border-[#333]">
@@ -56,8 +61,8 @@ export function Login() {
           <div className="bg-[#111111]/80 backdrop-blur-xl border border-[#222] rounded-3xl p-10 shadow-2xl relative overflow-hidden">
              
              <div className="flex justify-between items-center mb-10">
-               <h2 className="text-2xl font-bold font-display text-white">Zacznij tutaj</h2>
-               <div className="bg-[#4ade80]/20 text-[#4ade80] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Demo</div>
+               <h2 className="text-2xl font-bold font-display text-white">Rozpocznij tutaj</h2>
+               <div className="bg-[#4ade80]/20 text-[#4ade80] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Demo gotowe</div>
              </div>
 
              <button 
@@ -75,17 +80,23 @@ export function Login() {
 
              <div className="relative flex py-8 items-center">
                 <div className="flex-grow border-t border-[#222]"></div>
-                <span className="flex-shrink-0 mx-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Lub e-mail</span>
+                <span className="flex-shrink-0 mx-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Lub bez logowania</span>
                 <div className="flex-grow border-t border-[#222]"></div>
              </div>
 
-             <button disabled className="w-full bg-[#1a1a1a] border border-[#333] text-white font-medium py-4 px-6 rounded-2xl transition flex items-center justify-center gap-3 opacity-50 cursor-not-allowed">
-               <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-               Zaloguj się przez e-mail
+             <button 
+               onClick={handleDemoLogin}
+               className="w-full bg-[#161a1d] hover:bg-[#22292f] border border-[#333] hover:border-[#4ade80]/30 text-[#4ade80]/90 hover:text-[#4ade80] font-semibold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-3 transform hover:-translate-y-0.5 active:translate-y-0"
+             >
+               <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+               </svg>
+               Uruchom wersję demonstracyjną
              </button>
 
-             <div className="mt-8 text-center text-sm font-medium text-slate-400">
-               Brak konta? Zarejestruj się
+             <div className="mt-8 text-center text-xs font-semibold text-slate-500 tracking-wide uppercase">
+               Wszystkie akcje w wersji demonstracyjnej będą rejestrowane na bieżąco.
              </div>
           </div>
         </div>
