@@ -195,7 +195,89 @@ export function Notes() {
     }
   };
 
+  const formatTextInRaw = (command: string) => {
+    const textarea = document.querySelector('textarea');
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const value = textarea.value;
+    const selectedText = value.substring(start, end);
+    
+    let replacement = '';
+    let cursorOffset = 0;
+    
+    const bulletSymbol = editorSettings.defaultBullet === 'asterisk' ? '*' : '-';
+    
+    switch (command) {
+      case 'h1': 
+        replacement = `\n# ${selectedText || 'Nagłówek 1'}\n`; 
+        cursorOffset = 3;
+        break;
+      case 'h2': 
+        replacement = `\n## ${selectedText || 'Nagłówek 2'}\n`; 
+        cursorOffset = 4;
+        break;
+      case 'h3': 
+        replacement = `\n### ${selectedText || 'Nagłówek 3'}\n`; 
+        cursorOffset = 5;
+        break;
+      case 'bold': 
+        replacement = `**${selectedText || 'pogrubienie'}**`; 
+        cursorOffset = 2;
+        break;
+      case 'italic': 
+        replacement = `_${selectedText || 'kursywa'}_`; 
+        cursorOffset = 1;
+        break;
+      case 'strike': 
+        replacement = `~~${selectedText || 'przekreślenie'}~~`; 
+        cursorOffset = 2;
+        break;
+      case 'bullet': 
+        replacement = `\n${bulletSymbol} ${selectedText || 'Punkt'}\n`; 
+        cursorOffset = bulletSymbol.length + 2;
+        break;
+      case 'ordered': 
+        replacement = `\n1. ${selectedText || 'Punkt'}\n`; 
+        cursorOffset = 4;
+        break;
+      case 'tasklist': 
+        replacement = `\n${bulletSymbol} [ ] ${selectedText || 'Zadanie'}\n`; 
+        cursorOffset = bulletSymbol.length + 6;
+        break;
+      case 'quote': 
+        replacement = `\n> ${selectedText || 'Cytat'}\n`; 
+        cursorOffset = 3;
+        break;
+      case 'code': 
+        replacement = `\`${selectedText || 'kod'}\``; 
+        cursorOffset = 1;
+        break;
+      case 'details': 
+        replacement = `\n<details open>\n<summary>${selectedText || 'Zwiń/Rozwiń'}</summary>\n<p>Ukryta treść...</p>\n</details>\n`;
+        cursorOffset = 10;
+        break;
+    }
+    
+    const newValue = value.substring(0, start) + replacement + value.substring(end);
+    handleContentChange(newValue);
+    
+    setTimeout(() => {
+      textarea.focus();
+      if (selectedText) {
+        textarea.selectionStart = start;
+        textarea.selectionEnd = start + replacement.length;
+      } else {
+        textarea.selectionStart = textarea.selectionEnd = start + cursorOffset;
+      }
+    }, 0);
+  };
+
   const formatText = (command: string, args?: any) => {
+    if (!editorSettings.renderMarkdown) {
+      formatTextInRaw(command);
+      return;
+    }
     if (!editorRef.current) return;
     const editor = editorRef.current;
     
@@ -500,6 +582,7 @@ export function Notes() {
                         content={activeNote.content}
                         onChange={handleContentChange}
                         editorRef={editorRef}
+                        editorSettings={editorSettings}
                       />
                     ) : (
                       <textarea

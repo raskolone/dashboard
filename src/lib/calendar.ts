@@ -24,6 +24,9 @@ export async function fetchCalendarEvents(timeMin: string, timeMax: string): Pro
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('UNAUTHORIZED_OR_EXPIRED');
+    }
     throw new Error('Failed to fetch calendar events');
   }
 
@@ -60,6 +63,9 @@ export async function createGoogleCalendarEvent(event: {
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('UNAUTHORIZED_OR_EXPIRED');
+    }
     const errText = await res.text();
     console.error('Google API error:', errText);
     throw new Error('Failed to create calendar event in Google Calendar');
@@ -79,6 +85,9 @@ export async function deleteGoogleCalendarEvent(eventId: string): Promise<void> 
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('UNAUTHORIZED_OR_EXPIRED');
+    }
     throw new Error('Failed to delete calendar event in Google Calendar');
   }
 }

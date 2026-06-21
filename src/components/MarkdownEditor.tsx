@@ -81,10 +81,50 @@ interface MarkdownEditorProps {
   content: string;
   onChange: (markdown: string) => void;
   editorRef?: React.MutableRefObject<any>;
+  editorSettings?: {
+    renderMarkdown: boolean;
+    recognizeAsteriskTask: boolean;
+    recognizeDashTask: boolean;
+    recognizeNumberTask: boolean;
+    defaultBullet: string;
+    showHelpText: boolean;
+    smartLinks: boolean;
+    autoPairBrackets: boolean;
+  };
 }
 
-export function MarkdownEditor({ content, onChange, editorRef }: MarkdownEditorProps) {
+export function MarkdownEditor({ content, onChange, editorRef, editorSettings }: MarkdownEditorProps) {
   const isUpdating = useRef(false);
+
+  const defaultSettings = {
+    renderMarkdown: true,
+    recognizeAsteriskTask: true,
+    recognizeDashTask: true,
+    recognizeNumberTask: false,
+    defaultBullet: 'dash',
+    showHelpText: true,
+    smartLinks: true,
+    autoPairBrackets: true
+  };
+
+  const activeSettings = editorSettings || defaultSettings;
+
+  const settingsRef = useRef(activeSettings);
+  useEffect(() => {
+    settingsRef.current = activeSettings;
+  }, [activeSettings]);
+
+  const turndown = React.useMemo(() => {
+    const defaultMarker = activeSettings.defaultBullet === 'asterisk' ? '*' : '-';
+    const td = new TurndownService({
+      headingStyle: 'atx',
+      hr: '---',
+      bulletListMarker: defaultMarker,
+      codeBlockStyle: 'fenced'
+    });
+    td.keep(['details', 'summary']);
+    return td;
+  }, [activeSettings.defaultBullet]);
 
   const editor = useEditor({
     extensions: [
@@ -111,11 +151,101 @@ export function MarkdownEditor({ content, onChange, editorRef }: MarkdownEditorP
       attributes: {
         class: 'focus:outline-none w-full max-w-none text-slate-300 markdown-container min-h-[500px]',
       },
+      handleKeyDown(view, event) {
+        const settings = settingsRef.current;
+        const { state } = view;
+        const { selection } = state;
+        const { from, to } = selection;
+
+        // Auto pairing brackets
+        if (settings.autoPairBrackets) {
+          if (event.key === '[') {
+            event.preventDefault();
+            const tr = state.tr.insertText('[]', from, to);
+            const newTr = tr.setSelection((selection as any).constructor.create(tr.doc, from + 1));
+            view.dispatch(newTr);
+            return true;
+          }
+          if (event.key === '(') {
+            event.preventDefault();
+            const tr = state.tr.insertText('()', from, to);
+            const newTr = tr.setSelection((selection as any).constructor.create(tr.doc, from + 1));
+            view.dispatch(newTr);
+            return true;
+          }
+          if (event.key === '{') {
+            event.preventDefault();
+            const tr = state.tr.insertText('{}', from, to);
+            const newTr = tr.setSelection((selection as any).constructor.create(tr.doc, from + 1));
+            view.dispatch(newTr);
+            return true;
+          }
+        }
+
+        // Recognize keys as Task list on Space key
+        if (event.key === ' ' && selection.empty) {
+          const { $from } = selection;
+          const textContentBeforeCursor = $from.parent.textBetween(0, $from.parentOffset);
+
+          if (textContentBeforeCursor === '*' && settings.recognizeAsteriskTask) {
+            event.preventDefault();
+            const tr = state.tr.delete($from.pos - 1, $from.pos);
+            view.dispatch(tr);
+            editor?.commands.toggleTaskList();
+            return true;
+          }
+
+          if (textContentBeforeCursor === '-' && settings.recognizeDashTask) {
+            event.preventDefault();
+            const tr = state.tr.delete($from.pos - 1, $from.pos);
+            view.dispatch(tr);
+            editor?.commands.toggleTaskList();
+            return true;
+          }
+
+          if (textContentBeforeCursor === '1.' && settings.recognizeNumberTask) {
+            event.preventDefault();
+            const tr = state.tr.delete($from.pos - 2, $from.pos);
+            view.dispatch(tr);
+            editor?.commands.toggleTaskList();
+            return true;
+          }
+        }
+
+        return false;
+      },
+      handlePaste(view, event) {
+        const settings = settingsRef.current;
+        if (!settings.smartLinks) return false;
+
+        const text = event.clipboardData?.getData('text') || '';
+        const urlRegex = /^(https?:\/\/[^\s]+)$/g;
+        if (urlRegex.test(text.trim())) {
+          event.preventDefault();
+          let domain = 'Link';
+          try {
+            const urlObj = new URL(text.trim());
+            domain = urlObj.hostname.replace('www.', '');
+          } catch {}
+
+          const { state } = view;
+          const { selection } = state;
+          const { from, to } = selection;
+
+          const mark = state.schema.marks.link?.create({ href: text.trim() });
+          const textNode = state.schema.text(domain, mark ? [mark] : []);
+          const tr = state.tr.replaceWith(from, to, textNode);
+          view.dispatch(tr);
+          return true;
+        }
+
+        return false;
+      }
     },
     onUpdate: ({ editor }) => {
       isUpdating.current = true;
       const html = editor.getHTML();
-      const markdown = turndownService.turndown(html);
+      const markdown = turndown.turndown(html);
       onChange(markdown);
       
       setTimeout(() => {
@@ -133,7 +263,7 @@ export function MarkdownEditor({ content, onChange, editorRef }: MarkdownEditorP
   useEffect(() => {
     if (editor && content !== undefined && !isUpdating.current) {
       const currentHtml = editor.getHTML();
-      const currentMarkdown = turndownService.turndown(currentHtml);
+      const currentMarkdown = turndown.turndown(currentHtml);
       
       if (currentMarkdown !== content.trim() && currentMarkdown !== content) {
         Promise.resolve(marked.parse(content || '')).then(html => {
@@ -141,7 +271,7 @@ export function MarkdownEditor({ content, onChange, editorRef }: MarkdownEditorP
         });
       }
     }
-  }, [content, editor]);
+  }, [content, editor, turndown]);
 
   if (!editor) {
     return null;

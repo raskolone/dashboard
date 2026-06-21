@@ -226,8 +226,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         };
       });
       setGoogleEvents(mapped);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error syncing Google Calendar:', error);
+      if (error instanceof Error && error.message === 'UNAUTHORIZED_OR_EXPIRED') {
+        setGoogleToken(null);
+        setGoogleEvents([]);
+        try {
+          localStorage.removeItem('google_access_token');
+        } catch {}
+      }
     } finally {
       setIsSyncingCalendar(false);
     }
@@ -307,8 +314,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           end_time: event.end_time
         });
         await syncCalendar();
-      } catch (err) {
+      } catch (err: any) {
         console.error('Google Calendar event write failed, saving locally:', err);
+        if (err instanceof Error && err.message === 'UNAUTHORIZED_OR_EXPIRED') {
+          setGoogleToken(null);
+          setGoogleEvents([]);
+          try {
+            localStorage.removeItem('google_access_token');
+          } catch {}
+        }
         if (user && user.uid !== 'demo_user') {
           createDocument(`users/${user.uid}/events`, generateId(), event);
         } else {
@@ -340,8 +354,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         await deleteGoogleCalendarEvent(id);
         await syncCalendar();
-      } catch (err) {
+      } catch (err: any) {
         console.error('Google Calendar delete error:', err);
+        if (err instanceof Error && err.message === 'UNAUTHORIZED_OR_EXPIRED') {
+          setGoogleToken(null);
+          setGoogleEvents([]);
+          try {
+            localStorage.removeItem('google_access_token');
+          } catch {}
+        }
       }
     } else {
       if (user && user.uid !== 'demo_user') {
