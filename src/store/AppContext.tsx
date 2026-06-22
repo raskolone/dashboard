@@ -34,6 +34,7 @@ interface AppState {
   deleteTask: (id: string) => void;
   
   addHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates'>) => void;
+  updateHabit: (id: string, updates: Partial<Habit>) => void;
   toggleHabit: (id: string, date: string) => void;
   updateHabitProgress: (id: string, date: string, progress: number, completed: boolean) => void;
   skipHabit: (id: string, date: string) => void;
@@ -365,6 +366,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const updateHabit = (id: string, updates: Partial<Habit>) => {
+    if (user && user.uid !== 'demo_user') {
+      updateDocument(`users/${user.uid}/habits`, id, updates);
+    } else {
+      setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates, updatedAt: new Date().toISOString() } : h));
+    }
+  }
+
   // Events actions (supporting Google + Local)
   const addEvent = async (event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (googleToken) {
@@ -466,7 +475,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       user, googleToken, isAuthLoading, isSyncingCalendar,
       loginGoogle, logoutGoogle, loginDemo, syncCalendar,
       addTask, updateTask, deleteTask,
-      addHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit,
+      addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit,
       addEvent, updateEvent, deleteEvent,
       addKnowledge, updateKnowledge, deleteKnowledge
     }}>

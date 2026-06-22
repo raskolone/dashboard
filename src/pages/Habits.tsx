@@ -2,6 +2,8 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useAppStore } from '../store/AppContext';
 import { Plus, X, Trash2, Milestone, CalendarDays, Flame, Trophy, Activity, Check, Edit2, Settings, BarChart2, List, Archive, ChevronLeft, ChevronRight } from 'lucide-react';
 import { subDays, format, addDays, startOfWeek, isSameDay, isToday, isYesterday } from 'date-fns';
+import { pl } from 'date-fns/locale';
+import confetti from 'canvas-confetti';
 import { calculateHabitStats, getLocalDateStr } from '../lib/utils';
 import { useLongPress } from '../hooks/useLongPress';
 import { GenieModal } from '../components/GenieModal';
@@ -51,7 +53,7 @@ const CircleProgress = ({ percentage, size, strokeWidth, color, text }: { percen
 
 const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, percentage, color, onLongPressComplete, onShortClick, streakValue }: any) => {
   const [isHolding, setIsHolding] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<any>(null);
 
   const startHold = (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -60,7 +62,7 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
     timeoutRef.current = setTimeout(() => {
       onLongPressComplete();
       setIsHolding(false);
-      timeoutRef.current = undefined;
+      timeoutRef.current = null;
     }, 2000);
   };
 
@@ -68,7 +70,7 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
     e.stopPropagation();
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
+      timeoutRef.current = null;
       setIsHolding(false);
       onShortClick();
     }
@@ -78,7 +80,7 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
     e.stopPropagation();
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
+      timeoutRef.current = null;
       setIsHolding(false);
     }
   };
@@ -104,16 +106,21 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
       onContextMenu={(e) => e.preventDefault()}
       style={{ width: size, height: size, touchAction: 'none' }}
     >
+      <div className="absolute inset-0 liquid-glass-circle pointer-events-none">
+        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/10 to-transparent" />
+        <div className="absolute inset-x-2 top-0.5 h-1/3 rounded-full bg-gradient-to-b from-white/20 to-transparent blur-[1px]" />
+      </div>
+
       {isSimple ? (
         <div 
           className="absolute inset-0 rounded-full border-2 flex items-center justify-center transition-all"
           style={{ 
-            borderColor: isCompleted ? color : '#333333',
-            backgroundColor: isCompleted ? `${color}20` : 'transparent'
+            borderColor: isCompleted ? color : 'rgba(255,255,255,0.1)',
+            backgroundColor: isCompleted ? `${color}40` : 'transparent'
           }}
         >
-          {isCompleted && <Check className="w-6 h-6" style={{ color }} />}
-          {!isCompleted && !isSkipped && <Check className="w-5 h-5 text-[#333]" />}
+          {isCompleted && <Check className="w-6 h-6 drop-shadow-md" style={{ color }} />}
+          {!isCompleted && !isSkipped && <Check className="w-5 h-5 text-white/20" />}
         </div>
       ) : (
         <div className="absolute inset-0">
@@ -124,7 +131,7 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
             color={color} 
           />
           <div className="absolute inset-0 flex items-center justify-center">
-            {isCompleted ? <Check className="w-5 h-5" style={{ color }} /> : <span className="text-xs font-bold text-white">{currentProgress}</span>}
+            {isCompleted ? <Check className="w-5 h-5 drop-shadow-md" style={{ color }} /> : <span className="text-xs font-bold text-white drop-shadow-md">{currentProgress}</span>}
           </div>
         </div>
       )}
@@ -182,7 +189,7 @@ const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, 
           progressValue: currentProgress
         });
       }}
-      className={`bg-[#1c1c1e] hover:bg-[#222224] transition-colors border border-white/5 rounded-[24px] p-4 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer ${isSkipped ? 'opacity-50' : ''}`}
+      className={`glass-card hover:border-[#a855f7]/30 transition-colors rounded-[24px] p-4 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer group ${isSkipped ? 'opacity-50' : ''}`}
     >
       <div className="flex items-center gap-4 mb-3 sm:mb-0">
         <div 
@@ -230,7 +237,7 @@ const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, 
 };
 
 export function Habits() {
-  const { habits, addHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit } = useAppStore();
+  const { habits, addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit } = useAppStore();
   
   // Tabs
   const [activeTab, setActiveTab] = useState<'home' | 'history'>('home');
@@ -241,6 +248,40 @@ export function Habits() {
   
   // Interaction Modal State
   const [interactionHabit, setInteractionHabit] = useState<any>(null);
+
+  // Settings & Edit Modal State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedEditingHabit, setSelectedEditingHabit] = useState<any>(null);
+
+  const [editName, setEditName] = useState('');
+  const [editIcon, setEditIcon] = useState('🧘');
+  const [editFrequency, setEditFrequency] = useState<'daily'|'weekly'>('daily');
+  const [editTargetCount, setEditTargetCount] = useState(1);
+  const [editUnit, setEditUnit] = useState('');
+  const [editColor, setEditColor] = useState('#a855f7');
+
+  const startEditingHabit = (habit: any) => {
+    setSelectedEditingHabit(habit);
+    setEditName(habit.name);
+    setEditIcon(habit.icon || '🧘');
+    setEditFrequency(habit.frequency || 'daily');
+    setEditTargetCount(habit.target_count || 1);
+    setEditUnit(habit.unit || '');
+    setEditColor(habit.color || '#a855f7');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editName.trim()) return;
+    updateHabit(selectedEditingHabit.id, {
+      name: editName.trim(),
+      icon: editIcon,
+      frequency: editFrequency,
+      target_count: editTargetCount,
+      unit: editUnit,
+      color: editColor
+    });
+    setSelectedEditingHabit(null);
+  };
 
   // Week generator
   const currentWeekDays = useMemo(() => {
@@ -257,7 +298,13 @@ export function Habits() {
   const handleInteractionComplete = () => {
     if (!interactionHabit) return;
     const { habit, progressValue } = interactionHabit;
-    updateHabitProgress(habit.id, selectedDate, progressValue, progressValue >= habit.target_count);
+    if (habit.target_count === 1) {
+      if (!habit.completedDates.includes(selectedDate)) {
+        toggleHabit(habit.id, selectedDate);
+      }
+    } else {
+      updateHabitProgress(habit.id, selectedDate, progressValue, progressValue >= habit.target_count);
+    }
     setInteractionHabit(null);
   };
   
@@ -274,6 +321,20 @@ export function Habits() {
   const activeCountForDate = habitsForDate.length - skippedCountForDate;
   const progressPercentage = activeCountForDate > 0 ? (completedCountForDate / activeCountForDate) * 100 : 0;
 
+  const prevProgressRef = useRef(progressPercentage);
+  React.useEffect(() => {
+    if (progressPercentage === 100 && prevProgressRef.current !== 100 && selectedDate === getLocalDateStr(new Date())) {
+      confetti({
+        particleCount: 150,
+        spread: 90,
+        origin: { y: 0.5 },
+        colors: ['#a855f7', '#4ade80', '#3b82f6', '#f43f5e'],
+        disableForReducedMotion: true
+      });
+    }
+    prevProgressRef.current = progressPercentage;
+  }, [progressPercentage, selectedDate]);
+
   const renderHome = () => (
     <div className="max-w-2xl mx-auto space-y-8 pb-20">
       
@@ -283,7 +344,7 @@ export function Habits() {
           {currentWeekDays.map(date => {
             const dateStr = getLocalDateStr(date);
             const isSel = selectedDate === dateStr;
-            const dayName = format(date, 'EEEEE'); // M, T, W...
+            const dayName = format(date, 'eeeee', { locale: pl }).toUpperCase(); 
             
             // Calc mini progress for this day
             const dCompleted = habits.filter(h => h.completedDates.includes(dateStr)).length;
@@ -315,20 +376,24 @@ export function Habits() {
         </div>
 
         <h2 className="text-3xl font-display font-bold text-white tracking-tight">
-          {selectedDate === getLocalDateStr(new Date()) ? 'Today' : 
-           selectedDate === getLocalDateStr(subDays(new Date(), 1)) ? 'Yesterday' : 
-           format(new Date(selectedDate), 'd MMMM, yyyy')}
+          {selectedDate === getLocalDateStr(new Date()) ? 'Dzisiaj' : 
+           selectedDate === getLocalDateStr(subDays(new Date(), 1)) ? 'Wczoraj' : 
+           format(new Date(selectedDate), 'd MMMM, yyyy', { locale: pl })}
         </h2>
 
         {/* Big Ring */}
         <div className="relative flex items-center justify-center my-6">
-          <CircleProgress 
-            percentage={progressPercentage} 
-            size={160} 
-            strokeWidth={14} 
-            color="#9333ea" 
-            text={<span className="text-4xl text-white tracking-tighter">{Math.round(progressPercentage)}<span className="text-lg text-slate-400 ml-1">%</span></span>}
-          />
+          <div className="relative rounded-full p-6 liquid-glass-circle shadow-[0_0_40px_rgba(147,51,234,0.4)] overflow-hidden">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+            <div className="absolute inset-x-8 top-2 h-1/3 rounded-full bg-gradient-to-b from-white/20 to-transparent blur-md pointer-events-none" />
+            <CircleProgress 
+              percentage={progressPercentage} 
+              size={160} 
+              strokeWidth={14} 
+              color="#9333ea" 
+              text={<span className="text-4xl text-white tracking-tighter drop-shadow-md">{Math.round(progressPercentage)}<span className="text-lg text-slate-300 ml-1 drop-shadow-none">%</span></span>}
+            />
+          </div>
         </div>
       </div>
 
@@ -345,7 +410,7 @@ export function Habits() {
           />
         ))}
         {habitsForDate.length === 0 && (
-          <div className="text-center py-12 text-slate-500 bg-[#1c1c1e] rounded-[24px] border border-dashed border-white/10">
+          <div className="text-center py-12 text-slate-500 bg-white/5 backdrop-blur-md rounded-[24px] border border-dashed border-white/10">
             <p className="mb-4">Brak nawyków.</p>
             <button 
               onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add', { detail: { type: 'habit' } }))}
@@ -383,9 +448,6 @@ export function Habits() {
             <h2 className="text-2xl font-display font-bold text-white tracking-tight">Dzienne cele</h2>
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-[#222] rounded-lg text-xs font-bold text-slate-400">14D</span>
-              <button className="w-8 h-8 flex items-center justify-center bg-[#222] rounded-lg text-slate-400">
-                <Settings className="w-4 h-4" />
-              </button>
             </div>
           </div>
           
@@ -395,7 +457,7 @@ export function Habits() {
               const last14Days = Array.from({ length: 14 }).map((_, i) => getLocalDateStr(subDays(new Date(), 13 - i))).reverse();
               
               return (
-                <div key={habit.id} className="bg-[#1c1c1e] rounded-[24px] p-5 border border-white/5 relative overflow-hidden group">
+                <div key={habit.id} className="bg-white/5 backdrop-blur-md rounded-[24px] p-5 border border-white/10 relative overflow-hidden group">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-xl">{habit.icon}</div>
                     <div>
@@ -433,7 +495,7 @@ export function Habits() {
                             )}
                           </div>
                           <span className="text-[9px] text-slate-600 font-medium h-3 truncate overflow-hidden max-w-[1.2rem]">
-                            {idx >= 9 ? format(new Date(dateStr), 'EEEEE') : format(new Date(dateStr), 'd/MM')}
+                            {idx >= 9 ? format(new Date(dateStr), 'eeeee', { locale: pl }).toUpperCase() : format(new Date(dateStr), 'd/MM')}
                           </span>
                         </div>
                       );
@@ -497,34 +559,29 @@ export function Habits() {
     <div className="relative min-h-[calc(100vh-8rem)] text-white overflow-x-hidden">
       
       {/* App Header (Top Nav) */}
-      <header className="flex items-center justify-between py-6 sticky top-0 z-20 bg-[#0A0A0A]/80 backdrop-blur-md px-1">
-        <button className="w-10 h-10 rounded-full bg-[#1c1c1e] flex items-center justify-center border border-white/5 active:scale-95 transition-transform">
-          <List className="w-5 h-5 text-slate-300" />
-        </button>
-        
-        <div className="flex bg-[#161616] p-1 rounded-full border border-white/5">
+      <header className="flex items-center justify-between py-6 sticky top-0 z-20 bg-[#0A0A0A]/50 backdrop-blur-xl px-4 h-[88px] max-w-2xl mx-auto w-full">
+        <div className="w-10 opacity-0 pointer-events-none" />
+        <div className="flex liquid-glass-pill p-1 shadow-2xl">
           <button 
             onClick={() => setActiveTab('home')}
-            className={`px-5 py-1.5 rounded-full text-[13px] font-semibold transition-all ${activeTab === 'home' ? 'bg-[#2c2c2e] text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+            className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all duration-300 ${activeTab === 'home' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
           >
             Główna
           </button>
           <button 
             onClick={() => setActiveTab('history')}
-            className={`px-5 py-1.5 rounded-full text-[13px] font-semibold transition-all ${activeTab === 'history' ? 'bg-[#2c2c2e] text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+            className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all duration-300 ${activeTab === 'history' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
           >
             Historia
           </button>
-          <button className="px-5 py-1.5 rounded-full text-[13px] font-semibold text-slate-400 hover:text-white transition-all">
-            Ustawienia
-          </button>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button className="hidden sm:block px-4 py-1.5 rounded-full bg-[#1c1c1e] text-[13px] font-semibold text-slate-300 border border-white/5 hover:bg-[#2c2c2e] transition-colors">
-            Edytuj
-          </button>
-        </div>
+        <button 
+          onClick={() => setIsSettingsOpen(true)}
+          className="w-10 h-10 liquid-glass-circle flex items-center justify-center hover:border-[#a855f7]/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] active:scale-95 transition-all duration-300"
+          title="Ustawienia nawyków"
+        >
+          <Settings className="w-4 h-4 text-slate-300 hover:text-white transition-colors" />
+        </button>
       </header>
 
       {/* Main Content Area */}
@@ -669,6 +726,191 @@ export function Habits() {
                   Pomiń
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Global Habits Settings & Editing Modal */}
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => {
+                setIsSettingsOpen(false);
+                setSelectedEditingHabit(null);
+              }}
+            />
+            <motion.div 
+              initial={{ y: '100%' }} 
+              animate={{ y: 0 }} 
+              exit={{ y: '100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-md bg-[#1c1c1e] border border-[#2c2c2e] rounded-t-[32px] sm:rounded-[32px] p-6 shadow-2xl z-10 overflow-hidden max-h-[85vh] flex flex-col"
+            >
+              {/* Top Handle */}
+              <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6 shrink-0" />
+              
+              {!selectedEditingHabit ? (
+                <>
+                  <div className="flex justify-between items-center mb-6 shrink-0">
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Ustawienia nawyków</h2>
+                    <button 
+                      onClick={() => setIsSettingsOpen(false)}
+                      className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colorsOn"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-1 pb-4">
+                    {habits.length === 0 ? (
+                      <div className="text-center py-8 text-slate-500">
+                        Brak nawyków do skonfigurowania.
+                      </div>
+                    ) : (
+                      habits.map(habit => (
+                        <div 
+                          key={habit.id}
+                          onClick={() => startEditingHabit(habit)}
+                          className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#a855f7]/40 cursor-pointer hover:bg-white/10 transition-all group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{habit.icon}</span>
+                            <div>
+                              <h4 className="font-semibold text-white group-hover:text-[#a855f7] transition-colors">{habit.name}</h4>
+                              <p className="text-slate-500 text-xs">Cel: {habit.target_count} {habit.unit}</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center mb-6 shrink-0">
+                    <h2 className="text-xl font-bold text-white tracking-tight">Edycja: {selectedEditingHabit.name}</h2>
+                    <button 
+                      onClick={() => setSelectedEditingHabit(null)}
+                      className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto space-y-5 pr-1 pb-4">
+                    {/* Habit Name input */}
+                    <div className="bg-[#161616]/50 rounded-2xl border border-white/10 overflow-hidden flex flex-col pl-4">
+                      <div className="flex justify-between items-center pr-4 py-3 border-b border-white/5">
+                        <span className="text-[13px] font-medium text-slate-300">Nazwa</span>
+                        <input 
+                          type="text" 
+                          value={editName} 
+                          onChange={e => setEditName(e.target.value)} 
+                          required
+                          placeholder="Wpisz nazwę"
+                          className="bg-transparent text-[#a855f7] text-[13px] font-semibold text-right focus:outline-none w-1/2 placeholder:text-slate-500"
+                        />
+                      </div>
+                      
+                      {/* Emojis selection */}
+                      <div className="flex flex-col pr-4 py-3 gap-2">
+                        <span className="text-[13px] font-medium text-slate-300">Ikona</span>
+                        <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                          {['🏃', '💧', '🧘', '📖', '🍎', '💤', '🧠', '✍️', '🦷', '💊', '🧗', '🚲', '🥗', '☕', '🚭'].map(emoji => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => setEditIcon(emoji)}
+                              className={`w-8 h-8 flex items-center justify-center rounded-full text-base transition-colors ${editIcon === emoji ? 'bg-white/10 border border-white/10' : 'hover:bg-white/5'}`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Freq & details */}
+                    <div className="bg-[#161616]/50 rounded-2xl border border-white/5 overflow-hidden flex flex-col pl-4">
+                      <div className="flex justify-between items-center pr-4 py-3 border-b border-white/5">
+                        <span className="text-[13px] font-medium text-slate-300">Częstotliwość</span>
+                        <select 
+                          value={editFrequency}
+                          onChange={(e) => setEditFrequency(e.target.value as 'daily' | 'weekly')}
+                          className="bg-transparent text-white text-[13px] font-semibold focus:outline-none outline-none appearance-none cursor-pointer"
+                          dir="rtl"
+                        >
+                          <option value="daily" className="bg-[#1c1c1e]">Cel dzienny</option>
+                          <option value="weekly" className="bg-[#1c1c1e]">Cel tygodniowy</option>
+                        </select>
+                      </div>
+
+                      <div className="flex justify-between items-center pr-4 py-3 border-b border-white/5">
+                        <span className="text-[13px] font-medium text-slate-300">Kolor</span>
+                        <div className="flex gap-1.5 flex-wrap justify-end">
+                          {['#a855f7', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#06b6d4'].map(c => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setEditColor(c)}
+                              className="w-5 h-5 rounded-full border-2 transition-transform"
+                              style={{ backgroundColor: c, borderColor: editColor === c ? 'white' : 'transparent' }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Target & Units */}
+                    <div className="bg-[#161616]/50 rounded-2xl border border-white/5 overflow-hidden flex flex-col pl-4">
+                      <div className="flex justify-between items-center pr-4 py-3 border-b border-white/5">
+                        <span className="text-[13px] font-medium text-slate-300">Cel</span>
+                        <div className="flex items-center bg-[#222] rounded-lg border border-white/5 overflow-hidden">
+                          <button type="button" onClick={() => setEditTargetCount(Math.max(1, editTargetCount - 1))} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-lg">-</button>
+                          <span className="px-3 text-sm text-white font-semibold">{editTargetCount}</span>
+                          <button type="button" onClick={() => setEditTargetCount(editTargetCount + 1)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-lg">+</button>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pr-4 py-3">
+                        <span className="text-[13px] font-medium text-slate-300">Jednostka</span>
+                        <input 
+                          type="text" 
+                          value={editUnit} 
+                          onChange={e => setEditUnit(e.target.value)} 
+                          placeholder="np. porcje, kroki"
+                          className="bg-transparent text-white text-[13px] font-semibold text-right focus:outline-none w-1/2 placeholder:text-slate-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 space-y-3 shrink-0">
+                      <button 
+                        onClick={handleSaveEdit}
+                        className="w-full py-4 rounded-2xl font-bold text-white text-[15px] shadow-lg active:scale-[0.98] transition-transform"
+                        style={{ backgroundColor: editColor }}
+                      >
+                        Zapisz zmiany
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (window.confirm(`Czy na pewno chcesz usunąć nawyk: "${selectedEditingHabit.name}"?`)) {
+                            deleteHabit(selectedEditingHabit.id);
+                            setSelectedEditingHabit(null);
+                          }
+                        }}
+                        className="w-full py-3 rounded-2xl font-bold text-red-400 text-[15px] bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 active:scale-[0.98] transition-transform"
+                      >
+                        Usuń nawyk
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </motion.div>
           </div>
         )}
