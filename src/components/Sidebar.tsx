@@ -6,15 +6,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '../store/AppContext';
 
 export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean) => void }) {
-  const { theme, toggleTheme, user, logoutGoogle } = useAppStore();
+  const { theme, toggleTheme, user, logoutGoogle, t } = useAppStore();
   
   const routes = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Zadania', path: '/tasks', icon: CheckSquare },
-    { name: 'Kalendarz', path: '/calendar', icon: Calendar },
-    { name: 'Zwyczaje', path: '/habits', icon: Activity },
-    { name: 'Notatki', path: '/knowledge', icon: BookText },
-    { name: 'AI Asystent', path: '/assistant', icon: Bot },
+    { name: t('sidebar.dashboard'), path: '/', icon: LayoutDashboard },
+    { name: t('sidebar.tasks'), path: '/tasks', icon: CheckSquare },
+    { name: t('sidebar.calendar'), path: '/calendar', icon: Calendar },
+    { name: t('sidebar.habits'), path: '/habits', icon: Activity },
+    { name: t('sidebar.notes'), path: '/knowledge', icon: BookText },
+    { name: t('sidebar.assistant'), path: '/assistant', icon: Bot },
   ];
 
   return (
@@ -91,23 +91,13 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
                 <button
                   onClick={logoutGoogle}
                   className="text-slate-400 hover:text-red-400 p-1 rounded-md hover:bg-white/5 transition-colors"
-                  title="Wyloguj"
+                  title={t('sidebar.logout')}
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               )}
             </div>
           )}
-          
-          <button 
-            onClick={toggleTheme}
-            className={cn(
-              "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5",
-              !open ? "justify-start w-[44px]" : "w-full"
-            )}>
-            {theme === 'dark' ? <Sun className="w-5 h-5 flex-shrink-0" /> : <Moon className="w-5 h-5 flex-shrink-0" />}
-            {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap">{theme === 'dark' ? 'Jasny Motyw' : 'Ciemny Motyw'}</motion.span>}
-          </button>
           
           <NavLink 
             to="/settings"
@@ -119,7 +109,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
             !open ? "justify-start w-[44px]" : "w-full"
           )}>
             <Settings className="w-5 h-5 flex-shrink-0" />
-            {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap">Ustawienia</motion.span>}
+            {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap">{t('sidebar.settings')}</motion.span>}
           </NavLink>
         </div>
       </motion.div>

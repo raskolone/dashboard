@@ -5,6 +5,7 @@ import { mockTasks, mockHabits, mockEvents, mockKnowledge } from '../lib/mockDat
 import { initAuth, googleSignIn, logout as firebaseLogout } from '../lib/auth';
 import { fetchCalendarEvents, createGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../lib/calendar';
 import { subscribeToCollection, createDocument, updateDocument, deleteDocument, generateId } from '../lib/db';
+import { translations } from '../lib/translations';
 
 export type AppTheme = 'dark' | 'light';
 
@@ -18,6 +19,11 @@ interface AppState {
   // App Theme
   theme: AppTheme;
   toggleTheme: () => void;
+
+  // App Language
+  language: 'pl' | 'en';
+  setLanguage: (lang: 'pl' | 'en') => void;
+  t: (key: string) => any;
   
   // Google Auth & Sync Info
   user: User | null;
@@ -58,29 +64,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>([]);
 
-  const [theme, setTheme] = useState<AppTheme>(() => {
+  const [theme, setTheme] = useState<AppTheme>('dark');
+  const [language, setLanguageState] = useState<'pl' | 'en'>(() => {
     try {
-      const saved = localStorage.getItem('app_theme');
-      return (saved as AppTheme) || 'dark';
+      const saved = localStorage.getItem('app_language');
+      return (saved as 'pl' | 'en') || 'pl';
     } catch {
-      return 'dark';
+      return 'pl';
     }
   });
 
-  // Theme effector
-  useEffect(() => {
-    if (theme === 'light') {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
+  const setLanguage = (lang: 'pl' | 'en') => {
+    setLanguageState(lang);
+    localStorage.setItem('app_language', lang);
+  };
+
+  const t = (path: string): any => {
+    const keys = path.split('.');
+    let result: any = (translations as any)[language];
+    for (const key of keys) {
+      if (result && result[key] !== undefined) {
+        result = result[key];
+      } else {
+        // Fallback to Polish
+        let fallback: any = (translations as any)['pl'];
+        for (const fKey of keys) {
+          if (fallback && fallback[fKey] !== undefined) {
+            fallback = fallback[fKey];
+          } else {
+            fallback = path;
+            break;
+          }
+        }
+        return fallback;
+      }
     }
-    localStorage.setItem('app_theme', theme);
-  }, [theme]);
+    return result;
+  };
+
+  // Theme effector (strictly forces dark mode)
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    document.documentElement.classList.remove('light');
+    localStorage.setItem('app_theme', 'dark');
+  }, []);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    // No-op since light mode is deleted
   };
 
   // Google Integration States
@@ -472,6 +502,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       tasks, habits, events, googleEvents, knowledge,
       theme, toggleTheme,
+      language, setLanguage, t,
       user, googleToken, isAuthLoading, isSyncingCalendar,
       loginGoogle, logoutGoogle, loginDemo, syncCalendar,
       addTask, updateTask, deleteTask,

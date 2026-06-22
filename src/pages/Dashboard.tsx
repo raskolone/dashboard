@@ -7,7 +7,7 @@ import { PomodoroTimer } from '../components/PomodoroTimer';
 import { calculateHabitStats } from '../lib/utils';
 
 export function Dashboard() {
-  const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit } = useAppStore();
+  const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit, t, language } = useAppStore();
   const [activeFilterTag, setActiveFilterTag] = React.useState<string | null>(null);
 
   const predefinedTags = ['Health', 'Work', 'Personal', 'Learning', 'Fitness'];
@@ -42,24 +42,24 @@ export function Dashboard() {
     }> = [];
 
     // 1. Add tasks
-    tasks.forEach(t => {
-      const isCompletedToday = t.status === 'done' && t.updatedAt?.startsWith(todayStr);
+    tasks.forEach(tCode => {
+      const isCompletedToday = tCode.status === 'done' && tCode.updatedAt?.startsWith(todayStr);
       
-      if (t.status !== 'done' || isCompletedToday) {
+      if (tCode.status !== 'done' || isCompletedToday) {
         let score = 50;
-        let priorityLabel = 'Niski';
-        if (t.priority === 'urgent') {
+        let priorityLabel = language === 'pl' ? 'Niski' : 'Low';
+        if (tCode.priority === 'urgent') {
           score = 100;
-          priorityLabel = 'Pilny!';
-        } else if (t.priority === 'high') {
+          priorityLabel = language === 'pl' ? 'Pilny!' : 'Urgent!';
+        } else if (tCode.priority === 'high') {
           score = 90;
-          priorityLabel = 'Wysoki';
-        } else if (t.priority === 'medium') {
+          priorityLabel = language === 'pl' ? 'Wysoki' : 'High';
+        } else if (tCode.priority === 'medium') {
           score = 70;
-          priorityLabel = 'Średni';
+          priorityLabel = language === 'pl' ? 'Średni' : 'Medium';
         }
 
-        if (t.due_date === todayStr) {
+        if (tCode.due_date === todayStr) {
           score += 20;
         }
 
@@ -68,13 +68,15 @@ export function Dashboard() {
         }
 
         items.push({
-          id: t.id,
+          id: tCode.id,
           type: 'task',
-          title: t.title,
-          subtitle: `Zadanie • ${priorityLabel} priorytet${t.due_date === todayStr ? ' • Na dziś' : ''}`,
+          title: tCode.title,
+          subtitle: language === 'pl' 
+            ? `Zadanie • ${priorityLabel} priorytet${tCode.due_date === todayStr ? ' • Na dziś' : ''}`
+            : `Task • ${priorityLabel} priority${tCode.due_date === todayStr ? ' • For today' : ''}`,
           completed: isCompletedToday,
           score,
-          color: t.color || '#4ade80',
+          color: tCode.color || '#4ade80',
         });
       }
     });
@@ -95,7 +97,9 @@ export function Dashboard() {
         id: h.id,
         type: 'habit',
         title: h.name,
-        subtitle: `Nawyk • Częstotliwość: ${h.frequency === 'daily' ? 'Codziennie' : 'Tygodniowo'}`,
+        subtitle: language === 'pl' 
+          ? `Nawyk • Częstotliwość: ${h.frequency === 'daily' ? 'Codziennie' : 'Tygodniowo'}`
+          : `Habit • Frequency: ${h.frequency === 'daily' ? 'Daily' : 'Weekly'}`,
         completed: isCompletedToday,
         score,
         icon: h.icon,
@@ -106,7 +110,7 @@ export function Dashboard() {
 
     items.sort((a, b) => b.score - a.score);
     return items.slice(0, 3);
-  }, [tasks, habits, todayStr]);
+  }, [tasks, habits, todayStr, language]);
 
   const handleToggleFocusItem = (item: typeof focusItems[0]) => {
     if (item.type === 'task') {
@@ -118,20 +122,24 @@ export function Dashboard() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Dzień dobry';
-    if (hour < 18) return 'Dobrego popołudnia';
-    return 'Dobry wieczór';
+    if (hour < 12) return language === 'pl' ? 'Dzień dobry' : 'Good morning';
+    if (hour < 18) return language === 'pl' ? 'Dobrego popołudnia' : 'Good afternoon';
+    return language === 'pl' ? 'Dobry wieczór' : 'Good evening';
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <span className="text-[#4ade80] text-sm font-semibold tracking-wider uppercase">{new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+          <span className="text-[#4ade80] text-sm font-semibold tracking-wider uppercase">
+            {new Date().toLocaleDateString(language === 'pl' ? 'pl-PL' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </span>
           <h1 className="text-4xl font-display font-bold text-white mt-1 leading-tight">
             {getGreeting()}
           </h1>
-          <p className="text-slate-400 mt-2 text-lg">Oto podsumowanie Twojego dnia.</p>
+          <p className="text-slate-400 mt-2 text-lg">
+            {language === 'pl' ? 'Oto podsumowanie Twojego dnia.' : 'Here is a quick summary of your day.'}
+          </p>
         </div>
         
         {/* Dashboard Habit Tag Filter */}
@@ -142,7 +150,7 @@ export function Dashboard() {
               activeFilterTag === null ? 'bg-[#4ade80] text-[#1a1a1a]' : 'bg-[#161616] border border-[#262626] text-slate-400 hover:text-white'
             }`}
           >
-            Wszystkie Tagi
+            {language === 'pl' ? 'Wszystkie Tagi' : 'All Tags'}
           </button>
           {predefinedTags.map(tag => (
             <button
@@ -160,10 +168,10 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: "Zadania do zrobienia", value: activeTasks.length, icon: CheckCircle2, color: "text-blue-400", bg: "bg-blue-400/10" },
-          { title: "Dzisiejsze eventy", value: todaysEvents.length, icon: CalendarIcon, color: "text-purple-400", bg: "bg-purple-400/10" },
-          { title: "Zwyczaje ukończone", value: filteredHabits.filter(h => h.completedDates.includes(todayStr)).length, icon: Target, color: "text-[#4ade80]", bg: "bg-[#4ade80]/10" },
-          { title: "W toku", value: tasks.filter(t => t.status === 'in_progress').length, icon: Clock, color: "text-orange-400", bg: "bg-orange-400/10" },
+          { title: t('dashboard.tasksTodo'), value: activeTasks.length, icon: CheckCircle2, color: "text-blue-400", bg: "bg-blue-400/10" },
+          { title: t('dashboard.todaysEvents'), value: todaysEvents.length, icon: CalendarIcon, color: "text-purple-400", bg: "bg-purple-400/10" },
+          { title: t('dashboard.habitsCompleted'), value: filteredHabits.filter(h => h.completedDates.includes(todayStr)).length, icon: Target, color: "text-[#4ade80]", bg: "bg-[#4ade80]/10" },
+          { title: t('dashboard.inProgress'), value: tasks.filter(t => t.status === 'in_progress').length, icon: Clock, color: "text-orange-400", bg: "bg-orange-400/10" },
         ].map((stat, i) => (
           <motion.div 
             key={i} 
@@ -193,20 +201,20 @@ export function Dashboard() {
           <div>
             <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
               <Brain className="w-5 h-5 text-[#4ade80]" />
-              Skupienie na dziś
+              {t('dashboard.focusForToday')}
             </h2>
-            <p className="text-sm text-slate-400 mt-1">Niezbędne kroki, aby dzisiejszy dzień był udany (Top 3 priorytety).</p>
+            <p className="text-sm text-slate-400 mt-1">{t('dashboard.focusDescription')}</p>
           </div>
           {focusItems.length > 0 && (
             <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#4ade80]/10 px-3 py-1.5 rounded-full border border-[#4ade80]/20 self-start sm:self-center">
-              Ukończono: {focusItems.filter(i => i.completed).length}/{focusItems.length}
+              {t('dashboard.completedRatio')}: {focusItems.filter(i => i.completed).length}/{focusItems.length}
             </span>
           )}
         </div>
 
         {focusItems.length === 0 ? (
           <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center">
-            <p className="text-slate-400 text-sm">Wszystkie kluczowe zadania i nawyki na dziś zostały zaliczone! Czas na odpoczynek! 🎉</p>
+            <p className="text-slate-400 text-sm">{t('dashboard.allDone')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -226,7 +234,7 @@ export function Dashboard() {
                 
                 <button 
                   onClick={() => handleToggleFocusItem(item)}
-                  aria-label={item.completed ? "Oznacz jako nieukończone" : "Oznacz jako ukończone"}
+                  aria-label={item.completed ? (language === 'pl' ? "Oznacz jako nieukończone" : "Mark as incomplete") : (language === 'pl' ? "Oznacz jako ukończone" : "Mark as completed")}
                   className={`shrink-0 flex items-center justify-center w-5 h-5 rounded-md border transition-all duration-200 focus:outline-none ${
                     item.completed 
                       ? 'bg-[#4ade80] border-[#4ade80] text-[#1a1a1a]' 
@@ -273,7 +281,7 @@ export function Dashboard() {
         <section className="glass-card rounded-3xl p-6">
           <h2 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
              <Target className="w-5 h-5 text-[#4ade80]" />
-             Dzisiejsze Zadania
+             {language === 'pl' ? 'Dzisiejsze Zadania' : "Today's Tasks"}
           </h2>
 
           {/* Visual Progress Bar for Tasks */}
@@ -284,7 +292,9 @@ export function Dashboard() {
             return (
               <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md relative overflow-hidden">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-slate-400 font-medium font-mono uppercase tracking-wider">Postęp ogólny zadań</span>
+                  <span className="text-xs text-slate-400 font-medium font-mono uppercase tracking-wider">
+                    {language === 'pl' ? 'Postęp ogólny zadań' : 'Overall Task Progress'}
+                  </span>
                   <span className="text-xs text-[#4ade80] font-bold font-mono">{Math.round(progressPercent)}% ({completedCount}/{totalCount})</span>
                 </div>
                 <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden">
@@ -301,7 +311,9 @@ export function Dashboard() {
 
           <div className="space-y-3">
             {activeTasks.length === 0 ? (
-              <p className="text-slate-500 text-sm">Masz czysto! Żadnych zadań na ten moment.</p>
+              <p className="text-slate-500 text-sm">
+                {language === 'pl' ? 'Masz czysto! Żadnych zadań na ten moment.' : 'You are all clear! No tasks right now.'}
+              </p>
             ) : (
                activeTasks.slice(0, 5).map(task => (
                 <div key={task.id} className="p-4 rounded-xl bg-[#141414] border border-[#222222] hover:border-[#333333] transition-colors relative overflow-hidden">
@@ -329,18 +341,20 @@ export function Dashboard() {
         <section className="glass-card rounded-3xl p-6">
           <h2 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
              <CalendarIcon className="w-5 h-5 text-purple-400" />
-             Agenda (Dzisiaj)
+             {language === 'pl' ? 'Agenda (Dzisiaj)' : "Agenda (Today)"}
           </h2>
           <div className="space-y-3">
              {todaysEvents.length === 0 ? (
-               <p className="text-slate-500 text-sm">Brak zaplanowanych spotkań na dzisiaj.</p>
+               <p className="text-slate-500 text-sm">
+                 {language === 'pl' ? 'Brak zaplanowanych spotkań na dzisiaj.' : 'No scheduled meetings today.'}
+               </p>
              ) : (
                todaysEvents.map(ev => (
                  <div key={ev.id} className="p-4 rounded-xl bg-[#141414] border border-[#222222] flex items-start gap-4">
                     <div className="text-slate-400 font-mono text-xs pt-1 shrink-0 w-12">{ev.start_time}</div>
                     <div>
                        <div className="font-medium text-white">{ev.title}</div>
-                       <div className="text-xs text-slate-400 mt-1">{ev.type} • {ev.location || 'Brak lokacji'}</div>
+                       <div className="text-xs text-slate-400 mt-1">{ev.type} • {ev.location || (language === 'pl' ? 'Brak lokacji' : 'No location')}</div>
                     </div>
                  </div>
                ))
@@ -355,7 +369,7 @@ export function Dashboard() {
       <section className="glass-card rounded-3xl p-6 mb-8">
         <h2 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
            <Activity className="w-5 h-5 text-[#4ade80]" />
-           Produktywność (Ostatnie 7 Dni) {activeFilterTag && `- ${activeFilterTag}`}
+           {language === 'pl' ? 'Produktywność (Ostatnie 7 Dni)' : 'Productivity (Last 7 Days)'} {activeFilterTag && `- ${activeFilterTag}`}
         </h2>
         <ProductivityChart tasks={tasks} habits={filteredHabits} />
       </section>

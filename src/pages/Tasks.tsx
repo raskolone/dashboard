@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
 export function Tasks() {
-  const { tasks, addTask, updateTask, deleteTask } = useAppStore();
+  const { tasks, addTask, updateTask, deleteTask, t, language } = useAppStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
@@ -117,7 +117,10 @@ export function Tasks() {
   };
 
   const handleDelete = (id: string, taskTitle: string) => {
-    if (window.confirm(`Czy na pewno chcesz usunąć zadanie: "${taskTitle}"?`)) {
+    const confirmMsg = language === 'pl' 
+      ? `Czy na pewno chcesz usunąć zadanie: "${taskTitle}"?` 
+      : `Are you sure you want to delete task: "${taskTitle}"?`;
+    if (window.confirm(confirmMsg)) {
       deleteTask(id);
     }
   };
@@ -154,57 +157,79 @@ export function Tasks() {
 
   const todayStr = new Date().toISOString().split('T')[0];
   
-  // Calculate end of week (assuming week ends in 7 days for simplicity, or we can use next 7 days)
   const nextWeekDate = new Date();
   nextWeekDate.setDate(nextWeekDate.getDate() + 7);
   const nextWeekStr = nextWeekDate.toISOString().split('T')[0];
 
-  const filteredTasks = tasks.filter(t => {
+  const filteredTasks = tasks.filter(tCode => {
     // Status filter
-    if (filterStatus === 'active' && t.status === 'done') return false;
-    if (filterStatus === 'done' && t.status !== 'done') return false;
+    if (filterStatus === 'active' && tCode.status === 'done') return false;
+    if (filterStatus === 'done' && tCode.status !== 'done') return false;
 
     // View mode filter
     if (viewMode === 'today') {
-      return t.due_date === todayStr;
+      return tCode.due_date === todayStr;
     } else if (viewMode === 'week') {
-      return t.due_date >= todayStr && t.due_date <= nextWeekStr;
+      return tCode.due_date >= todayStr && tCode.due_date <= nextWeekStr;
     }
     
     return true; // 'all'
   });
 
-  const boardTasks = tasks.filter(t => {
+  const boardTasks = tasks.filter(tCode => {
     if (viewMode === 'today') {
-      return t.due_date === todayStr;
+      return tCode.due_date === todayStr;
     } else if (viewMode === 'week') {
-      return t.due_date >= todayStr && t.due_date <= nextWeekStr;
+      return tCode.due_date >= todayStr && tCode.due_date <= nextWeekStr;
     }
     return true; // 'all'
   });
 
   const totalCount = filteredTasks.length;
-  const completedCount = filteredTasks.filter(t => t.status === 'done').length;
+  const completedCount = filteredTasks.filter(tCode => tCode.status === 'done').length;
   const pendingCount = totalCount - completedCount;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
+  const translateCategory = (cat: TaskCategory) => {
+    switch (cat) {
+      case 'work': return t('tasks.categoryWork');
+      case 'personal': return t('tasks.categoryPersonal');
+      case 'learning': return t('tasks.categoryLearning');
+      case 'health': return t('tasks.categoryHealth');
+      case 'project': return t('tasks.categoryProject');
+      default: return cat;
+    }
+  };
+
+  const translatePriority = (pri: TaskPriority) => {
+    switch (pri) {
+      case 'low': return t('tasks.priorityLow');
+      case 'medium': return t('tasks.priorityMedium');
+      case 'high': return t('tasks.priorityHigh');
+      case 'urgent': return t('tasks.priorityUrgent');
+      default: return pri;
+    }
+  };
+
   return (
-    <div className="relative space-y-6 animate-in fade-in duration-500 min-h-[calc(100vh-8rem)] pb-12">
+    <div className="relative space-y-6 animate-in fade-in duration-500 min-h-[calc(100vh-8rem)] pb-12 font-sans text-white">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white">Zadania</h1>
-          <p className="text-slate-400 mt-1">Zarządzaj swoimi priorytetami.</p>
+          <h1 className="text-3xl font-display font-bold text-white">{t('sidebar.tasks')}</h1>
+          <p className="text-slate-400 mt-1">
+            {language === 'pl' ? 'Zarządzaj swoimi priorytetami.' : 'Manage your priorities.'}
+          </p>
         </div>
         <button 
           onClick={openAddModal}
           className="flex justify-center items-center gap-2 bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="w-5 h-5" />
-          Dodaj zadanie
+          {t('tasks.addBtn')}
         </button>
       </header>
 
-      {/* Sleek Animated Glassmorphism Progress tracking card */}
+      {/* Sleek Animated Progress tracking card */}
       {totalCount > 0 && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -213,9 +238,11 @@ export function Tasks() {
         >
           <div className="flex justify-between items-end mb-3">
             <div>
-              <h3 className="text-white font-bold mb-1">Status realizacji zadań</h3>
+              <h3 className="text-white font-bold mb-1">
+                {language === 'pl' ? 'Status realizacji zadań' : 'Task completion details'}
+              </h3>
               <p className="text-slate-400 text-xs">
-                Ukończone: <span className="text-[#4ade80] font-semibold">{completedCount}</span> &bull; Oczekujące: <span className="text-blue-400 font-semibold">{pendingCount}</span>
+                {language === 'pl' ? 'Ukończone' : 'Completed'}: <span className="text-[#4ade80] font-semibold">{completedCount}</span> &bull; {language === 'pl' ? 'Oczekujące' : 'Pending'}: <span className="text-blue-400 font-semibold">{pendingCount}</span>
               </p>
             </div>
             <div className="text-2xl font-display font-bold text-[#4ade80]">
@@ -241,19 +268,19 @@ export function Tasks() {
               onClick={() => setViewMode('today')}
               className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'today' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
-              Dzisiaj
+              {language === 'pl' ? 'Dzisiaj' : 'Today'}
             </button>
             <button 
               onClick={() => setViewMode('week')}
               className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'week' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
-              Ten tydzień
+              {language === 'pl' ? 'Ten tydzień' : 'This week'}
             </button>
             <button 
               onClick={() => setViewMode('all')}
               className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'all' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
-              Wszystkie
+              {language === 'pl' ? 'Wszystkie' : 'All'}
             </button>
           </div>
 
@@ -263,14 +290,14 @@ export function Tasks() {
               className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${layoutMode === 'list' ? 'bg-[#2D2D2D] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
               <List className="w-4 h-4 text-[#4ade80]" />
-              Lista
+              {language === 'pl' ? 'Lista' : 'List'}
             </button>
             <button 
               onClick={() => setLayoutMode('board')}
               className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${layoutMode === 'board' ? 'bg-[#2D2D2D] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
               <LayoutGrid className="w-4 h-4 text-[#4ade80]" />
-              Tablica (D&D)
+              {language === 'pl' ? 'Tablica (D&D)' : 'Board (D&D)'}
             </button>
           </div>
         </div>
@@ -281,19 +308,19 @@ export function Tasks() {
               onClick={() => setFilterStatus('active')}
               className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'active' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
-              Aktywne
+              {language === 'pl' ? 'Aktywne' : 'Active'}
             </button>
             <button 
               onClick={() => setFilterStatus('done')}
               className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'done' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
-              Ukończone
+              {language === 'pl' ? 'Ukończone' : 'Completed'}
             </button>
             <button 
               onClick={() => setFilterStatus('all')}
               className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'all' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
             >
-              Zarówno
+              {language === 'pl' ? 'Zarówno' : 'Both'}
             </button>
           </div>
         )}
@@ -302,8 +329,15 @@ export function Tasks() {
       {layoutMode === 'board' ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
           {statuses.map(colStatus => {
-            const colTasks = boardTasks.filter(t => t.status === colStatus);
-            const label = colStatus === 'todo' ? 'Do zrobienia' : colStatus === 'in_progress' ? 'W toku' : 'Ukończone';
+            const colTasks = boardTasks.filter(tCode => tCode.status === colStatus);
+            
+            let label = language === 'pl' ? 'Do zrobienia' : 'To Do';
+            if (colStatus === 'in_progress') {
+              label = language === 'pl' ? 'W toku' : 'In Progress';
+            } else if (colStatus === 'done') {
+              label = language === 'pl' ? 'Skończone' : 'Done';
+            }
+
             const accentColor = colStatus === 'todo' ? 'text-blue-400' : colStatus === 'in_progress' ? 'text-orange-400' : 'text-[#4ade80]';
             
             return (
@@ -331,7 +365,7 @@ export function Tasks() {
                     {colTasks.length === 0 ? (
                       <div className="h-32 flex flex-col items-center justify-center text-xs text-slate-500 border border-dashed border-[#222222] rounded-xl p-4 text-center">
                         <Target className="w-6 h-6 mb-2 stroke-[1.5] opacity-20" />
-                        Pusto. Przeciągnij zadanie tutaj.
+                        {language === 'pl' ? 'Pusto. Przeciągnij zadanie tutaj.' : 'Empty. Drag a task here.'}
                       </div>
                     ) : (
                       colTasks.map(task => (
@@ -363,7 +397,6 @@ export function Tasks() {
                               </span>
                               <div className="flex shrink-0 items-center gap-1">
                                 <span className="p-1 cursor-grab active:cursor-grabbing text-slate-600 opacity-40 group-hover:opacity-100 transition-opacity" onPointerDown={(e) => {
-                                  // Drag handle inside
                                   e.stopPropagation();
                                 }}>
                                   <GripVertical className="w-3.5 h-3.5" />
@@ -372,14 +405,14 @@ export function Tasks() {
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
                                     className="p-1 rounded text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors"
-                                    title="Szczegóły"
+                                    title={language === 'pl' ? 'Szczegóły' : 'Details'}
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
                                   </button>
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); handleDelete(task.id, task.title); }}
                                     className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                    title="Usuń"
+                                    title={language === 'pl' ? "Usuń" : "Delete"}
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -390,7 +423,7 @@ export function Tasks() {
                             <div className="mt-3 flex flex-col gap-2">
                               <div className="flex items-center justify-between gap-2 text-[10px] text-slate-500">
                                 <span className="font-mono flex flex-col gap-1">
-                                  <span>Do: {task.due_date}</span>
+                                  <span>{language === 'pl' ? 'Do:' : 'Due:'} {task.due_date}</span>
                                   {task.checklist && task.checklist.length > 0 && (
                                     <span className="flex items-center gap-1 text-[#4ade80]">
                                       <ListChecks className="w-3 h-3" />
@@ -399,13 +432,13 @@ export function Tasks() {
                                   )}
                                 </span>
                                 <span className={cn(
-                                  "uppercase font-bold tracking-wider px-2 py-0.5 rounded-full text-[8px] mt-auto",
+                                  "uppercase font-bold tracking-wider px-2 py-0.5 rounded-full text-[8px] mt-auto font-mono",
                                   task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
                                   task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
                                   task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
                                   'bg-slate-800 text-slate-300'
                                 )}>
-                                  {task.priority}
+                                  {translatePriority(task.priority)}
                                 </span>
                               </div>
                             </div>
@@ -429,10 +462,10 @@ export function Tasks() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="text-center py-12 text-slate-500"
+                  className="text-center py-12 text-slate-500 font-sans"
                 >
                   <Target className="w-12 h-12 mx-auto stroke-[1.5] opacity-40 mb-3" />
-                  <p>Brak zadań w wybranym widoku.</p>
+                  <p>{language === 'pl' ? 'Brak zadań w wybranym widoku.' : 'No tasks in the selected view.'}</p>
                 </motion.div>
               ) : (
                 filteredTasks.map(task => (
@@ -445,7 +478,7 @@ export function Tasks() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
                     key={task.id} 
-                    className="flex flex-col p-4 rounded-xl bg-[#141414]/90 dark:bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-colors group relative overflow-hidden"
+                    className="flex flex-col p-4 rounded-xl bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-colors group relative overflow-hidden"
                   >
                     {task.color && (
                       <div 
@@ -464,7 +497,7 @@ export function Tasks() {
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleStatusChange(task.id, task.status); }} 
                             className="shrink-0 hover:scale-110 transition-transform pl-1"
-                            title="Zmień status"
+                            title={language === 'pl' ? "Zmień status" : "Change status"}
                           >
                             {getStatusIcon(task.status)}
                           </button>
@@ -477,7 +510,7 @@ export function Tasks() {
                             {task.title}
                           </div>
                           <div className="text-xs text-slate-500 mt-0.5 font-mono flex items-center gap-3">
-                            <span>Termin: {task.due_date}</span>
+                            <span>{language === 'pl' ? 'Termin:' : 'Due:'} {task.due_date}</span>
                             {task.checklist && task.checklist.length > 0 && (
                               <span className="flex items-center gap-1 text-[#4ade80]">
                                 <ListChecks className="w-3 h-3" />
@@ -488,9 +521,9 @@ export function Tasks() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 font-mono">
                           <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
-                            {task.category}
+                            {translateCategory(task.category)}
                           </span>
                           <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
                             task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
@@ -498,21 +531,21 @@ export function Tasks() {
                             task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
                             'bg-slate-800 text-slate-300'
                           }`}>
-                            {task.priority}
+                            {translatePriority(task.priority)}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors"
-                            title="Szczegóły"
+                            title={language === 'pl' ? 'Szczegóły' : 'Details'}
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleDelete(task.id, task.title); }}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="Usuń"
+                            title={language === 'pl' ? "Usuń" : "Delete"}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -531,28 +564,28 @@ export function Tasks() {
       <GenieModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title={editingTask ? 'Szczegóły zadania' : 'Nowe zadanie'}
+        title={editingTask ? (language === 'pl' ? 'Szczegóły zadania' : 'Task Details') : (language === 'pl' ? 'Nowe zadanie' : 'New Task')}
       >
-        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+        <form onSubmit={handleSubmit} className="flex flex-col h-full text-white">
           <div className="p-6 space-y-4">
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Tytuł zadania</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">{t('tasks.titleInput')}</label>
               <input 
                 type="text" 
                 value={title} 
                 onChange={e => setTitle(e.target.value)} 
                 required
-                placeholder="np. Przygotować raport kwartalny"
+                placeholder={language === 'pl' ? "np. Przygotować raport kwartalny" : "e.g. Prepare quarterly report"}
                 className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
               />
             </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Opis szczegółowy (opcjonalnie)</label>
+            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">{t('tasks.descInput')}</label>
             <textarea 
               value={description} 
               onChange={e => setDescription(e.target.value)} 
-              placeholder="Dodatkowe informacje o zadaniu..."
+              placeholder={language === 'pl' ? "Dodatkowe informacje o zadaniu..." : "Additional task features or details..."}
               rows={3}
               className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors resize-y"
             />
@@ -560,26 +593,26 @@ export function Tasks() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Kategoria</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">{t('tasks.category')}</label>
               <select 
                 value={category} 
                 onChange={e => setCategory(e.target.value as TaskCategory)}
                 className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
               >
                 {categories.map(c => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>{translateCategory(c)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Priorytet</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">{t('tasks.priority')}</label>
               <select 
                 value={priority} 
                 onChange={e => setPriority(e.target.value as TaskPriority)}
                 className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
               >
                 {priorities.map(p => (
-                  <option key={p} value={p}>{p}</option>
+                  <option key={p} value={p}>{translatePriority(p)}</option>
                 ))}
               </select>
             </div>
@@ -587,19 +620,20 @@ export function Tasks() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Status</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">{language === 'pl' ? 'Status' : 'Status'}</label>
               <select 
                 value={status} 
                 onChange={e => setStatus(e.target.value as TaskStatus)}
                 className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
               >
-                {statuses.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+                {statuses.map(s => {
+                  let lbl = s === 'todo' ? (language === 'pl' ? 'Do zrobienia' : 'To Do') : s === 'in_progress' ? (language === 'pl' ? 'W toku' : 'In Progress') : (language === 'pl' ? 'Skończone' : 'Completed');
+                  return <option key={s} value={s}>{lbl}</option>;
+                })}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Termin</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">{t('tasks.dueDate')}</label>
               <input 
                 type="date" 
                 value={dueDate} 
@@ -612,14 +646,14 @@ export function Tasks() {
                   } catch (err) {}
                 }}
                 className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
-               style={{ colorScheme: 'dark' }}
+                style={{ colorScheme: 'dark' }}
               />
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2 flex justify-between items-center">
-              <span>Lista zadań (Checklista)</span>
+              <span>{t('tasks.checklist')}</span>
               <span className="text-[10px] text-slate-500 font-normal">{checklist.filter(c => c.isCompleted).length}/{checklist.length}</span>
             </label>
             <div className="space-y-2 mb-3">
@@ -635,7 +669,7 @@ export function Tasks() {
                   >
                     {item.isCompleted ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
                   </button>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 text-white">
                     <span className={cn(
                       "block text-sm transition-all truncate",
                       item.isCompleted ? "text-slate-500 line-through" : "text-white"
@@ -652,7 +686,7 @@ export function Tasks() {
                             item.priority === 'high' ? 'text-orange-400' :
                             item.priority === 'medium' ? 'text-blue-400' :
                             'text-slate-400'
-                          )}>{item.priority}</span>
+                          )}>{translatePriority(item.priority)}</span>
                         )}
                       </div>
                     )}
@@ -678,7 +712,7 @@ export function Tasks() {
                     handleAddChecklistItem();
                   }
                 }}
-                placeholder="Dodaj element listy..."
+                placeholder={t('tasks.addChecklistItem')}
                 className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#4ade80] transition-colors"
               />
               <div className="flex gap-2">
@@ -687,10 +721,10 @@ export function Tasks() {
                   onChange={e => setNewSubPriority(e.target.value as TaskPriority)}
                   className="bg-[#161616] border border-[#262626] rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-[#4ade80] transition-colors capitalize flex-1"
                 >
-                  <option value="low">Niski</option>
-                  <option value="medium">Średni</option>
-                  <option value="high">Wysoki</option>
-                  <option value="urgent">Pilny</option>
+                  <option value="low">{t('tasks.priorityLow')}</option>
+                  <option value="medium">{t('tasks.priorityMedium')}</option>
+                  <option value="high">{t('tasks.priorityHigh')}</option>
+                  <option value="urgent">{t('tasks.priorityUrgent')}</option>
                 </select>
                 <input 
                   type="date"
@@ -712,14 +746,16 @@ export function Tasks() {
                   disabled={!newChecklistItem.trim()}
                   className="px-4 py-2 bg-[#262626] hover:bg-[#333333] disabled:opacity-50 text-white rounded-xl transition-colors shrink-0 font-semibold text-sm"
                 >
-                  Dodaj
+                  {t('common.add')}
                 </button>
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Kolor znacznika</label>
+            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
+              {language === 'pl' ? 'Kolor znacznika' : 'Marker Tag Color'}
+            </label>
             <div className="flex gap-2 p-1 overflow-x-auto">
               {taskColors.map(color => (
                 <button
@@ -741,13 +777,13 @@ export function Tasks() {
               onClick={() => setIsModalOpen(false)}
               className="px-4 py-2.5 rounded-xl border border-[#262626] text-slate-300 hover:text-white hover:bg-white/5 font-semibold transition-colors text-sm"
             >
-              Anuluj
+              {t('common.cancel')}
             </button>
             <button 
               type="submit"
               className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
             >
-              {editingTask ? 'Zapisz zmiany' : 'Dodaj zadanie'}
+              {editingTask ? t('common.saveChanges') : t('tasks.addBtn')}
             </button>
           </div>
         </form>
@@ -755,4 +791,3 @@ export function Tasks() {
     </div>
   );
 }
-

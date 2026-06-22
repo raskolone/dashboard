@@ -57,7 +57,6 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
 
   const startHold = (e: React.PointerEvent) => {
     e.stopPropagation();
-    // Only allow hold if not completed? Wait, if they short click, they can uncomplete. So yes let's allow hold to complete.
     setIsHolding(true);
     timeoutRef.current = setTimeout(() => {
       onLongPressComplete();
@@ -91,10 +90,6 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
 
-  // The long press fills a progress ring.
-  // The regular ring shows the current state (percentage) unless it's simple which is just solid or border.
-  // We can layer an animated ring on top that fills to 100% over 2s when holding.
-
   return (
     <div 
       className="relative cursor-pointer transition-transform hover:scale-105 shrink-0"
@@ -106,7 +101,7 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
       onContextMenu={(e) => e.preventDefault()}
       style={{ width: size, height: size, touchAction: 'none' }}
     >
-      <div className="absolute inset-0 liquid-glass-circle pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/10 to-transparent" />
         <div className="absolute inset-x-2 top-0.5 h-1/3 rounded-full bg-gradient-to-b from-white/20 to-transparent blur-[1px]" />
       </div>
@@ -157,6 +152,7 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
 };
 
 const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, updateHabitProgress }: any) => {
+  const { language } = useAppStore();
   const isCompleted = habit.completedDates.includes(selectedDate);
   const isSkipped = habit.skippedDates?.includes(selectedDate);
   const currentProgress = isCompleted ? habit.target_count : (habit.progress?.[selectedDate] || 0);
@@ -202,8 +198,10 @@ const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, 
           <h3 className={`font-semibold text-[17px] tracking-tight ${isSkipped ? 'line-through text-slate-500' : 'text-white'}`}>{habit.name}</h3>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-slate-500 text-xs font-medium">
-              {habit.target_count > 1 ? `Cel: ${habit.target_count} ${habit.unit || ''}` : 'Cel: 1'} 
-              {isSkipped && ' (Pominięto)'}
+              {habit.target_count > 1 
+                ? `${language === 'pl' ? 'Cel' : 'Goal'}: ${habit.target_count} ${habit.unit || ''}` 
+                : `${language === 'pl' ? 'Cel' : 'Goal'}: 1`} 
+              {isSkipped && ` (${language === 'pl' ? 'Pominięto' : 'Skipped'})`}
             </p>
           </div>
         </div>
@@ -218,7 +216,9 @@ const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, 
           onClick={(e) => { e.stopPropagation(); toggleHabit(habit.id, selectedDate); }}
           className="px-4 py-2 sm:hidden rounded-xl text-xs font-semibold bg-white/5 mr-4"
         >
-          {isCompleted ? 'Odznacz' : 'Wykonane'}
+          {isCompleted 
+            ? (language === 'pl' ? 'Odznacz' : 'Unmark') 
+            : (language === 'pl' ? 'Wykonane' : 'Done')}
         </button>
         <HoldableAction 
           isCompleted={isCompleted}
@@ -237,7 +237,7 @@ const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, 
 };
 
 export function Habits() {
-  const { habits, addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit } = useAppStore();
+  const { habits, addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit, t, language } = useAppStore();
   
   // Tabs
   const [activeTab, setActiveTab] = useState<'home' | 'history'>('home');
@@ -315,7 +315,7 @@ export function Habits() {
   };
 
   // Home View Calcs
-  const habitsForDate = habits; // In a real app we might filter by creation date or active status
+  const habitsForDate = habits; 
   const completedCountForDate = habitsForDate.filter(h => h.completedDates.includes(selectedDate)).length;
   const skippedCountForDate = habitsForDate.filter(h => h.skippedDates?.includes(selectedDate)).length;
   const activeCountForDate = habitsForDate.length - skippedCountForDate;
@@ -336,7 +336,7 @@ export function Habits() {
   }, [progressPercentage, selectedDate]);
 
   const renderHome = () => (
-    <div className="max-w-2xl mx-auto space-y-8 pb-20">
+    <div className="max-w-2xl mx-auto space-y-8 pb-20 font-sans">
       
       {/* Header / Week Selector */}
       <div className="flex flex-col items-center space-y-6 pt-4">
@@ -344,7 +344,7 @@ export function Habits() {
           {currentWeekDays.map(date => {
             const dateStr = getLocalDateStr(date);
             const isSel = selectedDate === dateStr;
-            const dayName = format(date, 'eeeee', { locale: pl }).toUpperCase(); 
+            const dayName = format(date, 'eeeee', { locale: language === 'pl' ? pl : undefined }).toUpperCase(); 
             
             // Calc mini progress for this day
             const dCompleted = habits.filter(h => h.completedDates.includes(dateStr)).length;
@@ -376,9 +376,9 @@ export function Habits() {
         </div>
 
         <h2 className="text-3xl font-display font-bold text-white tracking-tight">
-          {selectedDate === getLocalDateStr(new Date()) ? 'Dzisiaj' : 
-           selectedDate === getLocalDateStr(subDays(new Date(), 1)) ? 'Wczoraj' : 
-           format(new Date(selectedDate), 'd MMMM, yyyy', { locale: pl })}
+          {selectedDate === getLocalDateStr(new Date()) ? (language === 'pl' ? 'Dzisiaj' : 'Today') : 
+           selectedDate === getLocalDateStr(subDays(new Date(), 1)) ? (language === 'pl' ? 'Wczoraj' : 'Yesterday') : 
+           format(new Date(selectedDate), 'd MMMM, yyyy', { locale: language === 'pl' ? pl : undefined })}
         </h2>
 
         {/* Big Ring */}
@@ -410,13 +410,13 @@ export function Habits() {
           />
         ))}
         {habitsForDate.length === 0 && (
-          <div className="text-center py-12 text-slate-500 bg-white/5 backdrop-blur-md rounded-[24px] border border-dashed border-white/10">
-            <p className="mb-4">Brak nawyków.</p>
+          <div className="text-center py-12 text-slate-500 bg-white/5 backdrop-blur-md rounded-[24px] border border-dashed border-white/10 p-6">
+            <p className="mb-4">{language === 'pl' ? 'Brak nawyków.' : 'No habits tracked.'}</p>
             <button 
               onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add', { detail: { type: 'habit' } }))}
-              className="px-6 py-2 bg-white/10 rounded-full text-white font-medium hover:bg-white/20 transition-colors"
+              className="px-6 py-2 bg-white/10 rounded-full text-white font-medium hover:bg-white/20 transition-colors cursor-pointer"
             >
-              Stwórz swój pierwszy nawyk
+              {language === 'pl' ? 'Stwórz swój pierwszy nawyk' : 'Create your first habit'}
             </button>
           </div>
         )}
@@ -426,18 +426,18 @@ export function Habits() {
   );
 
   const renderHistory = () => (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20">
+    <div className="max-w-4xl mx-auto space-y-8 pb-20 font-sans">
       {/* Sub Tabs */}
       <div className="flex justify-center mb-8 pt-4">
         <div className="flex gap-6 border-b border-[#222222] px-8">
-          <button onClick={() => setHistorySubTab('trends')} className={`pb-3 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${historySubTab === 'trends' ? 'border-[#a855f7] text-[#a855f7]' : 'border-transparent text-slate-400'}`}>
-            <BarChart2 className="w-4 h-4" /> Trendy
+          <button onClick={() => setHistorySubTab('trends')} className={`pb-3 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors cursor-pointer ${historySubTab === 'trends' ? 'border-[#a855f7] text-[#a855f7]' : 'border-transparent text-slate-400'}`}>
+            <BarChart2 className="w-4 h-4" /> {language === 'pl' ? 'Trendy' : 'Trends'}
           </button>
-          <button onClick={() => setHistorySubTab('habits')} className={`pb-3 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${historySubTab === 'habits' ? 'border-[#a855f7] text-[#a855f7]' : 'border-transparent text-slate-400'}`}>
-            <List className="w-4 h-4" /> Nawyki
+          <button onClick={() => setHistorySubTab('habits')} className={`pb-3 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors cursor-pointer ${historySubTab === 'habits' ? 'border-[#a855f7] text-[#a855f7]' : 'border-transparent text-slate-400'}`}>
+            <List className="w-4 h-4" /> {language === 'pl' ? 'Nawyki' : 'Habits'}
           </button>
-          <button onClick={() => setHistorySubTab('archive')} className={`pb-3 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors ${historySubTab === 'archive' ? 'border-[#a855f7] text-[#a855f7]' : 'border-transparent text-slate-400'}`}>
-            <Archive className="w-4 h-4" /> Archiwum
+          <button onClick={() => setHistorySubTab('archive')} className={`pb-3 flex items-center gap-2 text-sm font-medium border-b-2 transition-colors cursor-pointer ${historySubTab === 'archive' ? 'border-[#a855f7] text-[#a855f7]' : 'border-transparent text-slate-400'}`}>
+            <Archive className="w-4 h-4" /> {language === 'pl' ? 'Archiwum' : 'Archive'}
           </button>
         </div>
       </div>
@@ -445,7 +445,7 @@ export function Habits() {
       {historySubTab === 'habits' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-display font-bold text-white tracking-tight">Dzienne cele</h2>
+            <h2 className="text-2xl font-display font-bold text-white tracking-tight">{language === 'pl' ? 'Dzienne cele' : 'Daily Goals'}</h2>
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-[#222] rounded-lg text-xs font-bold text-slate-400">14D</span>
             </div>
@@ -463,9 +463,9 @@ export function Habits() {
                     <div>
                       <h3 className="font-bold text-white tracking-tight">{habit.name}</h3>
                       <div className="flex items-center gap-3 text-[10px] text-slate-400 font-mono mt-1">
-                        <span>Seria: <span className="text-white font-bold">{stats.currentStreak}</span></span>
-                        <span>Najdł.: <span className="text-white font-bold">{stats.longestStreak}</span></span>
-                        <span>Ukończono: <span className="text-white font-bold">{habit.completedDates.length}</span></span>
+                        <span>{language === 'pl' ? 'Seria' : 'Streak'}: <span className="text-white font-bold">{stats.currentStreak}</span></span>
+                        <span>{language === 'pl' ? 'Najdł.' : 'Max'}: <span className="text-white font-bold">{stats.longestStreak}</span></span>
+                        <span>{language === 'pl' ? 'Ukończono' : 'Done'}: <span className="text-white font-bold">{habit.completedDates.length}</span></span>
                       </div>
                     </div>
                   </div>
@@ -495,7 +495,7 @@ export function Habits() {
                             )}
                           </div>
                           <span className="text-[9px] text-slate-600 font-medium h-3 truncate overflow-hidden max-w-[1.2rem]">
-                            {idx >= 9 ? format(new Date(dateStr), 'eeeee', { locale: pl }).toUpperCase() : format(new Date(dateStr), 'd/MM')}
+                            {idx >= 9 ? format(new Date(dateStr), 'eeeee', { locale: language === 'pl' ? pl : undefined }).toUpperCase() : format(new Date(dateStr), 'd/MM')}
                           </span>
                         </div>
                       );
@@ -504,11 +504,12 @@ export function Habits() {
                   
                   <button 
                     onClick={() => {
-                        if (window.confirm(`Usunąć nawyk: "${habit.name}"?`)) {
+                        const deleteConfirmMsg = language === 'pl' ? `Usunąć nawyk: "${habit.name}"?` : `Delete habit: "${habit.name}"?`;
+                        if (window.confirm(deleteConfirmMsg)) {
                           deleteHabit(habit.id);
                         }
                     }}
-                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-red-400 transition-opacity"
+                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-red-400 transition-opacity cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -525,23 +526,29 @@ export function Habits() {
              <div>
                <div className="w-10 h-10 mx-auto bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mb-2"><Check className="w-5 h-5"/></div>
                <div className="text-2xl font-bold text-white">{habits.reduce((acc, h) => acc + h.completedDates.length, 0)}</div>
-               <div className="text-xs text-slate-400 mt-1">Ukończono<br/>ogółem</div>
+               <div className="text-xs text-slate-400 mt-1">
+                 {language === 'pl' ? 'Ukończono ogółem' : 'Completed total'}
+               </div>
              </div>
              <div>
                <div className="w-10 h-10 mx-auto bg-purple-500/20 text-purple-400 rounded-full flex items-center justify-center mb-2"><Trophy className="w-5 h-5"/></div>
                <div className="text-2xl font-bold text-white">{habits.length > 0 ? Math.max(...habits.map(h => calculateHabitStats(h.completedDates).longestStreak), 0) : 0}</div>
-               <div className="text-xs text-slate-400 mt-1">Najdłuższa<br/>seria</div>
+               <div className="text-xs text-slate-400 mt-1">
+                 {language === 'pl' ? 'Najdłuższa seria' : 'Longest streak'}
+               </div>
              </div>
              <div>
                <div className="w-10 h-10 mx-auto bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mb-2"><Flame className="w-5 h-5"/></div>
                <div className="text-2xl font-bold text-white">{habits.length > 0 ? Math.max(...habits.map(h => calculateHabitStats(h.completedDates).currentStreak), 0) : 0}</div>
-               <div className="text-xs text-slate-400 mt-1">Obecna<br/>seria</div>
+               <div className="text-xs text-slate-400 mt-1">
+                 {language === 'pl' ? 'Obecna seria' : 'Current streak'}
+               </div>
              </div>
            </div>
            
-           <div className="p-12 text-center text-slate-500 border border-dashed border-[#333] rounded-3xl">
+           <div className="p-12 text-center text-slate-500 border border-dashed border-[#333] rounded-3xl p-6">
              <BarChart2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
-             <p>Szczegółowe wykresy wkrótce...</p>
+             <p>{language === 'pl' ? 'Szczegółowe wykresy wkrótce...' : 'Detailed analytics coming soon...'}</p>
            </div>
         </div>
       )}
@@ -549,7 +556,7 @@ export function Habits() {
       {historySubTab === 'archive' && (
         <div className="p-12 text-center text-slate-500">
            <Archive className="w-12 h-12 mx-auto mb-4 opacity-20" />
-           <p>Brak zarchiwizowanych nawyków.</p>
+           <p>{language === 'pl' ? 'Brak zarchiwizowanych nawyków.' : 'No archived habits.'}</p>
         </div>
       )}
     </div>
@@ -564,21 +571,21 @@ export function Habits() {
         <div className="flex liquid-glass-pill p-1 shadow-2xl">
           <button 
             onClick={() => setActiveTab('home')}
-            className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all duration-300 ${activeTab === 'home' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+            className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'home' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
           >
-            Główna
+            {language === 'pl' ? 'Główna' : 'Home'}
           </button>
           <button 
             onClick={() => setActiveTab('history')}
-            className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all duration-300 ${activeTab === 'history' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+            className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'history' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
           >
-            Historia
+            {language === 'pl' ? 'Historia' : 'History'}
           </button>
         </div>
         <button 
           onClick={() => setIsSettingsOpen(true)}
-          className="w-10 h-10 liquid-glass-circle flex items-center justify-center hover:border-[#a855f7]/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] active:scale-95 transition-all duration-300"
-          title="Ustawienia nawyków"
+          className="w-10 h-10 liquid-glass-circle flex items-center justify-center hover:border-[#a855f7]/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] active:scale-95 transition-all duration-300 cursor-pointer"
+          title={language === 'pl' ? 'Ustawienia nawyków' : 'Habit Settings'}
         >
           <Settings className="w-4 h-4 text-slate-300 hover:text-white transition-colors" />
         </button>
@@ -592,7 +599,7 @@ export function Habits() {
       {/* Interaction Bottom Sheet Modal */}
       <AnimatePresence>
         {interactionHabit && (
-          <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4 font-sans text-white">
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
@@ -613,7 +620,9 @@ export function Habits() {
               <div className="text-center mb-6">
                 <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl" style={{ backgroundColor: `${interactionHabit.habit.color}20` }}>{interactionHabit.habit.icon}</div>
                 <h2 className="text-2xl font-bold text-white tracking-tight">{interactionHabit.habit.name}</h2>
-                <p className="text-slate-400 text-sm mt-1">Cel dzienny: {interactionHabit.habit.target_count} {interactionHabit.habit.unit}</p>
+                <p className="text-slate-400 text-sm mt-1">
+                  {language === 'pl' ? 'Cel dzienny' : 'Daily Goal'}: {interactionHabit.habit.target_count} {interactionHabit.habit.unit}
+                </p>
               </div>
 
               {(() => {
@@ -622,22 +631,30 @@ export function Habits() {
                   <div className="grid grid-cols-3 gap-2 mb-6 text-center">
                     <div className="bg-[#2c2c2e] rounded-2xl p-3">
                       <div className="text-xl font-bold text-white leading-none">{stats.currentStreak}</div>
-                      <div className="text-[10px] uppercase tracking-wide text-slate-500 mt-2 font-semibold">Aktualna<br/>seria</div>
+                      <div className="text-[10px] uppercase tracking-wide text-slate-500 mt-2 font-semibold">
+                        {language === 'pl' ? 'Aktualna seria' : 'Current streak'}
+                      </div>
                     </div>
                     <div className="bg-[#2c2c2e] rounded-2xl p-3">
                       <div className="text-xl font-bold text-white leading-none">{stats.longestStreak}</div>
-                      <div className="text-[10px] uppercase tracking-wide text-slate-500 mt-2 font-semibold">Najlepsza<br/>seria</div>
+                      <div className="text-[10px] uppercase tracking-wide text-slate-500 mt-2 font-semibold">
+                        {language === 'pl' ? 'Najlepsza seria' : 'Best streak'}
+                      </div>
                     </div>
                     <div className="bg-[#2c2c2e] rounded-2xl p-3">
                       <div className="text-xl font-bold text-white leading-none">{stats.completionRate30Days}%</div>
-                      <div className="text-[10px] uppercase tracking-wide text-slate-500 mt-2 font-semibold">Wskaźnik<br/>(30 dni)</div>
+                      <div className="text-[10px] uppercase tracking-wide text-slate-500 mt-2 font-semibold">
+                        {language === 'pl' ? 'Wskaźnik (30 dni)' : 'Completion (30 days)'}
+                      </div>
                     </div>
                   </div>
                 );
               })()}
 
               <div className="mb-8">
-                <p className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide px-1">Ostatnie 30 dni</p>
+                <p className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide px-1">
+                  {language === 'pl' ? 'Ostatnie 30 dni' : 'Last 30 days'}
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {(() => {
                     const latestHabit = habits.find(h => h.id === interactionHabit.habit.id) || interactionHabit.habit;
@@ -681,7 +698,7 @@ export function Habits() {
                 <div className="flex items-center justify-center gap-8 mb-10">
                   <button 
                     onClick={() => setInteractionHabit((prev: any) => ({ ...prev, progressValue: Math.max(0, prev.progressValue - 1) }))}
-                    className="w-12 h-12 rounded-full bg-[#2c2c2e] flex items-center justify-center text-2xl font-bold active:scale-95 transition-transform hover:bg-[#3c3c3e]"
+                    className="w-12 h-12 rounded-full bg-[#2c2c2e] flex items-center justify-center text-2xl font-bold active:scale-95 transition-transform hover:bg-[#3c3c3e] cursor-pointer"
                   >-</button>
                   <div className="relative w-32 h-32 flex items-center justify-center">
                     <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle, ${interactionHabit.habit.color} 0%, transparent 70%)` }} />
@@ -702,28 +719,32 @@ export function Habits() {
                   </div>
                   <button 
                     onClick={() => setInteractionHabit((prev: any) => ({ ...prev, progressValue: Math.min(interactionHabit.habit.target_count, prev.progressValue + 1) }))}
-                    className="w-12 h-12 rounded-full bg-[#2c2c2e] flex items-center justify-center text-2xl font-bold active:scale-95 transition-transform hover:bg-[#3c3c3e]"
+                    className="w-12 h-12 rounded-full bg-[#2c2c2e] flex items-center justify-center text-2xl font-bold active:scale-95 transition-transform hover:bg-[#3c3c3e] cursor-pointer"
                   >+</button>
                 </div>
               ) : (
                 <div className="mb-10 text-center">
-                   <p className="text-slate-500 mb-6">Czy ten nawyk został wykonany?</p>
+                   <p className="text-slate-550 mb-6">
+                     {language === 'pl' ? 'Czy ten nawyk został wykonany?' : 'Was this habit completed?'}
+                   </p>
                 </div>
               )}
 
               <div className="space-y-3">
                 <button 
                   onClick={handleInteractionComplete}
-                  className="w-full py-4 rounded-2xl font-bold text-white text-[15px] shadow-lg active:scale-[0.98] transition-transform"
+                  className="w-full py-4 rounded-2xl font-bold text-white text-[15px] shadow-lg active:scale-[0.98] transition-transform cursor-pointer font-sans"
                   style={{ backgroundColor: interactionHabit.habit.color }}
                 >
-                  {interactionHabit.progressValue >= interactionHabit.habit.target_count || interactionHabit.habit.target_count === 1 ? 'Wykonany' : 'Zapisz postęp'}
+                  {interactionHabit.progressValue >= interactionHabit.habit.target_count || interactionHabit.habit.target_count === 1 
+                    ? (language === 'pl' ? 'Wykonany' : 'Completed') 
+                    : (language === 'pl' ? 'Zapisz postęp' : 'Save progress')}
                 </button>
                 <button 
                   onClick={handleInteractionSkip}
-                  className="w-full py-3 rounded-2xl font-bold text-slate-300 text-[15px] bg-[#2c2c2e] hover:bg-[#3c3c3e] active:scale-[0.98] transition-transform"
+                  className="w-full py-3 rounded-2xl font-bold text-slate-300 text-[15px] bg-[#2c2c2e] hover:bg-[#3c3c3e] active:scale-[0.98] transition-transform cursor-pointer font-sans"
                 >
-                  Pomiń
+                  {language === 'pl' ? 'Pomiń' : 'Skip'}
                 </button>
               </div>
             </motion.div>
@@ -732,7 +753,7 @@ export function Habits() {
 
         {/* Global Habits Settings & Editing Modal */}
         {isSettingsOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4 font-sans text-white">
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
@@ -756,10 +777,12 @@ export function Habits() {
               {!selectedEditingHabit ? (
                 <>
                   <div className="flex justify-between items-center mb-6 shrink-0">
-                    <h2 className="text-2xl font-bold text-white tracking-tight">Ustawienia nawyków</h2>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">
+                      {language === 'pl' ? 'Ustawienia nawyków' : 'Habit Settings'}
+                    </h2>
                     <button 
                       onClick={() => setIsSettingsOpen(false)}
-                      className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colorsOn"
+                      className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -768,7 +791,7 @@ export function Habits() {
                   <div className="flex-1 overflow-y-auto space-y-3 pr-1 pb-4">
                     {habits.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
-                        Brak nawyków do skonfigurowania.
+                        {language === 'pl' ? 'Brak nawyków do skonfigurowania.' : 'No habits to edit.'}
                       </div>
                     ) : (
                       habits.map(habit => (
@@ -781,7 +804,9 @@ export function Habits() {
                             <span className="text-2xl">{habit.icon}</span>
                             <div>
                               <h4 className="font-semibold text-white group-hover:text-[#a855f7] transition-colors">{habit.name}</h4>
-                              <p className="text-slate-500 text-xs">Cel: {habit.target_count} {habit.unit}</p>
+                              <p className="text-slate-500 text-xs">
+                                {language === 'pl' ? 'Cel' : 'Goal'}: {habit.target_count} {habit.unit}
+                              </p>
                             </div>
                           </div>
                           <ChevronRight className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform" />
@@ -793,10 +818,12 @@ export function Habits() {
               ) : (
                 <>
                   <div className="flex justify-between items-center mb-6 shrink-0">
-                    <h2 className="text-xl font-bold text-white tracking-tight">Edycja: {selectedEditingHabit.name}</h2>
+                    <h2 className="text-xl font-bold text-white tracking-tight">
+                      {language === 'pl' ? 'Edycja: ' : 'Edit: '}{selectedEditingHabit.name}
+                    </h2>
                     <button 
                       onClick={() => setSelectedEditingHabit(null)}
-                      className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -806,27 +833,31 @@ export function Habits() {
                     {/* Habit Name input */}
                     <div className="bg-[#161616]/50 rounded-2xl border border-white/10 overflow-hidden flex flex-col pl-4">
                       <div className="flex justify-between items-center pr-4 py-3 border-b border-white/5">
-                        <span className="text-[13px] font-medium text-slate-300">Nazwa</span>
+                        <span className="text-[13px] font-medium text-slate-300">
+                          {language === 'pl' ? 'Nazwa' : 'Name'}
+                        </span>
                         <input 
                           type="text" 
                           value={editName} 
                           onChange={e => setEditName(e.target.value)} 
                           required
-                          placeholder="Wpisz nazwę"
+                          placeholder={language === 'pl' ? 'Wpisz nazwę' : 'Enter name'}
                           className="bg-transparent text-[#a855f7] text-[13px] font-semibold text-right focus:outline-none w-1/2 placeholder:text-slate-500"
                         />
                       </div>
                       
                       {/* Emojis selection */}
                       <div className="flex flex-col pr-4 py-3 gap-2">
-                        <span className="text-[13px] font-medium text-slate-300">Ikona</span>
+                        <span className="text-[13px] font-medium text-slate-300">
+                          {language === 'pl' ? 'Ikona' : 'Icon'}
+                        </span>
                         <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                           {['🏃', '💧', '🧘', '📖', '🍎', '💤', '🧠', '✍️', '🦷', '💊', '🧗', '🚲', '🥗', '☕', '🚭'].map(emoji => (
                             <button
                               key={emoji}
                               type="button"
                               onClick={() => setEditIcon(emoji)}
-                              className={`w-8 h-8 flex items-center justify-center rounded-full text-base transition-colors ${editIcon === emoji ? 'bg-white/10 border border-white/10' : 'hover:bg-white/5'}`}
+                              className={`w-8 h-8 flex items-center justify-center rounded-full text-base transition-colors cursor-pointer ${editIcon === emoji ? 'bg-white/10 border border-white/10' : 'hover:bg-white/5'}`}
                             >
                               {emoji}
                             </button>
@@ -838,27 +869,31 @@ export function Habits() {
                     {/* Freq & details */}
                     <div className="bg-[#161616]/50 rounded-2xl border border-white/5 overflow-hidden flex flex-col pl-4">
                       <div className="flex justify-between items-center pr-4 py-3 border-b border-white/5">
-                        <span className="text-[13px] font-medium text-slate-300">Częstotliwość</span>
+                        <span className="text-[13px] font-medium text-slate-300">
+                          {language === 'pl' ? 'Częstotliwość' : 'Frequency'}
+                        </span>
                         <select 
                           value={editFrequency}
                           onChange={(e) => setEditFrequency(e.target.value as 'daily' | 'weekly')}
                           className="bg-transparent text-white text-[13px] font-semibold focus:outline-none outline-none appearance-none cursor-pointer"
                           dir="rtl"
                         >
-                          <option value="daily" className="bg-[#1c1c1e]">Cel dzienny</option>
-                          <option value="weekly" className="bg-[#1c1c1e]">Cel tygodniowy</option>
+                          <option value="daily" className="bg-[#1c1c1e]">{language === 'pl' ? 'Cel dzienny' : 'Daily Goal'}</option>
+                          <option value="weekly" className="bg-[#1c1c1e]">{language === 'pl' ? 'Cel tygodniowy' : 'Weekly Goal'}</option>
                         </select>
                       </div>
 
                       <div className="flex justify-between items-center pr-4 py-3 border-b border-white/5">
-                        <span className="text-[13px] font-medium text-slate-300">Kolor</span>
+                        <span className="text-[13px] font-medium text-slate-300">
+                          {language === 'pl' ? 'Kolor' : 'Color'}
+                        </span>
                         <div className="flex gap-1.5 flex-wrap justify-end">
                           {['#a855f7', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#06b6d4'].map(c => (
                             <button
                               key={c}
                               type="button"
                               onClick={() => setEditColor(c)}
-                              className="w-5 h-5 rounded-full border-2 transition-transform"
+                              className="w-5 h-5 rounded-full border-2 transition-transform cursor-pointer"
                               style={{ backgroundColor: c, borderColor: editColor === c ? 'white' : 'transparent' }}
                             />
                           ))}
@@ -869,20 +904,24 @@ export function Habits() {
                     {/* Target & Units */}
                     <div className="bg-[#161616]/50 rounded-2xl border border-white/5 overflow-hidden flex flex-col pl-4">
                       <div className="flex justify-between items-center pr-4 py-3 border-b border-white/5">
-                        <span className="text-[13px] font-medium text-slate-300">Cel</span>
+                        <span className="text-[13px] font-medium text-slate-300">
+                          {language === 'pl' ? 'Cel' : 'Goal'}
+                        </span>
                         <div className="flex items-center bg-[#222] rounded-lg border border-white/5 overflow-hidden">
-                          <button type="button" onClick={() => setEditTargetCount(Math.max(1, editTargetCount - 1))} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-lg">-</button>
+                          <button type="button" onClick={() => setEditTargetCount(Math.max(1, editTargetCount - 1))} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-lg cursor-pointer">-</button>
                           <span className="px-3 text-sm text-white font-semibold">{editTargetCount}</span>
-                          <button type="button" onClick={() => setEditTargetCount(editTargetCount + 1)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-lg">+</button>
+                          <button type="button" onClick={() => setEditTargetCount(editTargetCount + 1)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-lg cursor-pointer">+</button>
                         </div>
                       </div>
                       <div className="flex justify-between items-center pr-4 py-3">
-                        <span className="text-[13px] font-medium text-slate-300">Jednostka</span>
+                        <span className="text-[13px] font-medium text-slate-300">
+                          {language === 'pl' ? 'Jednostka' : 'Unit'}
+                        </span>
                         <input 
                           type="text" 
                           value={editUnit} 
                           onChange={e => setEditUnit(e.target.value)} 
-                          placeholder="np. porcje, kroki"
+                          placeholder={language === 'pl' ? 'np. porcje, kroki' : 'e.g. portions, steps'}
                           className="bg-transparent text-white text-[13px] font-semibold text-right focus:outline-none w-1/2 placeholder:text-slate-500"
                         />
                       </div>
@@ -891,21 +930,24 @@ export function Habits() {
                     <div className="pt-2 space-y-3 shrink-0">
                       <button 
                         onClick={handleSaveEdit}
-                        className="w-full py-4 rounded-2xl font-bold text-white text-[15px] shadow-lg active:scale-[0.98] transition-transform"
+                        className="w-full py-4 rounded-2xl font-bold text-white text-[15px] shadow-lg active:scale-[0.98] transition-transform cursor-pointer font-sans"
                         style={{ backgroundColor: editColor }}
                       >
-                        Zapisz zmiany
+                        {language === 'pl' ? 'Zapisz zmiany' : 'Save changes'}
                       </button>
                       <button 
                         onClick={() => {
-                          if (window.confirm(`Czy na pewno chcesz usunąć nawyk: "${selectedEditingHabit.name}"?`)) {
+                          const confirmDeleteMsg = language === 'pl' 
+                            ? `Czy na pewno chcesz usunąć nawyk: "${selectedEditingHabit.name}"?` 
+                            : `Are you sure you want to delete habit: "${selectedEditingHabit.name}"?`;
+                          if (window.confirm(confirmDeleteMsg)) {
                             deleteHabit(selectedEditingHabit.id);
                             setSelectedEditingHabit(null);
                           }
                         }}
-                        className="w-full py-3 rounded-2xl font-bold text-red-400 text-[15px] bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 active:scale-[0.98] transition-transform"
+                        className="w-full py-3 rounded-2xl font-bold text-red-400 text-[15px] bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 active:scale-[0.98] transition-transform cursor-pointer font-sans"
                       >
-                        Usuń nawyk
+                        {language === 'pl' ? 'Usuń nawyk' : 'Delete habit'}
                       </button>
                     </div>
                   </div>

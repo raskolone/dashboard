@@ -4,11 +4,14 @@ import {
   Maximize2, Square, Sparkles, Sliders, Volume2, VolumeX, EyeOff, Eye, Expand 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAppStore } from '../store/AppContext';
 import { GenieModal } from './GenieModal';
 
 type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak';
 
 export function PomodoroTimer() {
+  const { language } = useAppStore();
+
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('pomodoro_settings_m_v1');
@@ -175,11 +178,19 @@ export function PomodoroTimer() {
     }));
   };
 
-  const getModeLabelPl = (tMode: TimerMode) => {
-    switch (tMode) {
-      case 'pomodoro': return 'Praca Głęboka';
-      case 'shortBreak': return 'Krótka Przerwa';
-      case 'longBreak': return 'Długa Przerwa';
+  const getModeLabelSelected = (tMode: TimerMode) => {
+    if (language === 'pl') {
+      switch (tMode) {
+        case 'pomodoro': return 'Praca Głęboka';
+        case 'shortBreak': return 'Krótka Przerwa';
+        case 'longBreak': return 'Długa Przerwa';
+      }
+    } else {
+      switch (tMode) {
+        case 'pomodoro': return 'Deep Work';
+        case 'shortBreak': return 'Short Break';
+        case 'longBreak': return 'Long Break';
+      }
     }
   };
 
@@ -202,14 +213,17 @@ export function PomodoroTimer() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-wider font-mono text-slate-500 font-bold">Produktywność</span>
+              <span className="text-xs uppercase tracking-wider font-mono text-slate-500 font-bold">
+                {language === 'pl' ? 'Produktywność' : 'Productivity'}
+              </span>
               <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] animate-ping" />
             </div>
             <h3 className="text-lg font-display font-medium text-white truncate">
-              {getModeLabelPl(mode)}
+              {getModeLabelSelected(mode)}
             </h3>
             <p className="text-[11px] text-slate-400 font-mono">
-              Ukończono cykle: <span className="font-bold text-white">{sessionCount}</span>
+              {language === 'pl' ? 'Ukończono cykle: ' : 'Completed cycles: '}
+              <span className="font-bold text-white">{sessionCount}</span>
             </p>
           </div>
         </div>
@@ -221,7 +235,9 @@ export function PomodoroTimer() {
               {formatTime(timeLeft)}
             </div>
             <div className="text-[10px] text-slate-500 font-mono">
-              Cel: {settings.sessionsBeforeLongBreak} sesje
+              {language === 'pl' 
+                ? `Cel: ${settings.sessionsBeforeLongBreak} sesje` 
+                : `Goal: ${settings.sessionsBeforeLongBreak} sessions`}
             </div>
           </div>
 
@@ -229,7 +245,7 @@ export function PomodoroTimer() {
             {/* Start session / Pause primary buttons */}
             <button
               onClick={toggleTimer}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold font-display uppercase tracking-wider transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.97] flex items-center gap-2 ${
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold font-display uppercase tracking-wider transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.97] flex items-center gap-2 cursor-pointer ${
                 isActive 
                   ? 'bg-slate-800 text-white hover:bg-slate-700 hover:text-[#4ade80]' 
                   : 'bg-[#4ade80] text-black shadow-[0_0_24px_rgba(74,222,128,0.15)] hover:shadow-[0_0_35px_rgba(74,222,128,0.35)]'
@@ -237,11 +253,11 @@ export function PomodoroTimer() {
             >
               {isActive ? (
                 <>
-                  <PauseCircle className="w-4 h-4" /> Pauza
+                  <PauseCircle className="w-4 h-4" /> {language === 'pl' ? 'Pauza' : 'Pause'}
                 </>
               ) : (
                 <>
-                  <PlayCircle className="w-4 h-4" /> Start Sesji
+                  <PlayCircle className="w-4 h-4" /> {language === 'pl' ? 'Start Sesji' : 'Start Session'}
                 </>
               )}
             </button>
@@ -249,8 +265,8 @@ export function PomodoroTimer() {
             {/* Expand button (Launches GENIE EFFECT with full system screen) */}
             <button
               onClick={() => setIsExpanded(true)}
-              className="p-3 bg-white/5 hover:bg-white/10 hover:text-white text-slate-400 rounded-xl transition-colors border border-white/5"
-              title="Otwórz pełny ekran Pomodoro"
+              className="p-3 bg-white/5 hover:bg-white/10 hover:text-white text-slate-400 rounded-xl transition-colors border border-white/5 cursor-pointer"
+              title={language === 'pl' ? "Otwórz pełny ekran Pomodoro" : "Open full-screen Pomodoro"}
             >
               <Expand className="w-4 h-4" />
             </button>
@@ -320,10 +336,12 @@ export function PomodoroTimer() {
                 <Brain className="w-6 h-6 text-[#4ade80] animate-pulse" />
                 <div>
                   <h2 className="text-lg font-display font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    Skupienie Pomodoro
+                    {language === 'pl' ? 'Skupienie Pomodoro' : 'Pomodoro Focus'}
                     <Sparkles className="w-4 h-4 text-[#4ade80]" />
                   </h2>
-                  <p className="text-xs text-slate-400 font-mono">Moduł Głębokiej Synchronizacji Myśli</p>
+                  <p className="text-xs text-slate-400 font-mono">
+                    {language === 'pl' ? 'Moduł Głębokiej Synchronizacji Myśli' : 'Deep Cognitive Focus Module'}
+                  </p>
                 </div>
               </div>
 
@@ -332,8 +350,12 @@ export function PomodoroTimer() {
                 {/* Sound Toggle */}
                 <button
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                  title={soundEnabled ? "Wycisz powiadomienie dźwiękowe" : "Włącz powiadomienie dźwiękowe"}
+                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  title={
+                    soundEnabled 
+                      ? (language === 'pl' ? "Wycisz powiadomienie dźwiękowe" : "Mute chime notification")
+                      : (language === 'pl' ? "Włącz powiadomienie dźwiękowe" : "Unmute chime notification")
+                  }
                 >
                   {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5 text-red-400" />}
                 </button>
@@ -341,8 +363,8 @@ export function PomodoroTimer() {
                 {/* Settings Tab */}
                 <button
                   onClick={() => setIsSettingsOpen(true)}
-                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                  title="Dostosuj czasy"
+                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  title={language === 'pl' ? "Dostosuj czasy" : "Adjust intervals"}
                 >
                   <Sliders className="w-5 h-5" />
                 </button>
@@ -350,22 +372,24 @@ export function PomodoroTimer() {
                 {/* Focus Mode (Immersive View) Trigger */}
                 <button
                   onClick={() => setIsImmersiveFocus(!isImmersiveFocus)}
-                  className={`p-2.5 rounded-xl transition-all duration-300 flex items-center gap-2 ${
+                  className={`p-2.5 rounded-xl transition-all duration-300 flex items-center gap-2 cursor-pointer ${
                     isImmersiveFocus 
                       ? 'bg-[#4ade80]/15 text-[#4ade80] border border-[#4ade80]/30' 
                       : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
                   }`}
-                  title="Tryb bez rozpraszania (Zen Focus)"
+                  title={language === 'pl' ? "Tryb bez rozpraszania (Zen Focus)" : "Zen Focus Mode"}
                 >
                   {isImmersiveFocus ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-                  <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Tryb Zen</span>
+                  <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">
+                    {language === 'pl' ? 'Tryb Zen' : 'Zen Mode'}
+                  </span>
                 </button>
 
                 {/* Fullscreen actual screen trigger */}
                 <button
                   onClick={toggleBrowserFullscreen}
-                  className={`p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors ${isBrowserFullscreen && 'text-[#4ade80]'}`}
-                  title="Pełny ekran przeglądarki"
+                  className={`p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer ${isBrowserFullscreen && 'text-[#4ade80]'}`}
+                  title={language === 'pl' ? "Pełny ekran przeglądarki" : "Toggle browser fullscreen"}
                 >
                   <Minimize2 className="w-5 h-5" />
                 </button>
@@ -376,9 +400,9 @@ export function PomodoroTimer() {
                     setIsExpanded(false);
                     setIsImmersiveFocus(false);
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/30 font-bold tracking-wide transition-all border border-red-950/80"
+                  className="px-4 py-2.5 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/30 font-bold tracking-wide transition-all border border-red-950/80 cursor-pointer"
                 >
-                  Wróć do Pulpitu
+                  {language === 'pl' ? 'Wróć do Pulpitu' : 'Return to Dashboard'}
                 </button>
               </div>
             </header>
@@ -396,41 +420,47 @@ export function PomodoroTimer() {
                        exit={{ opacity: 0, y: -20 }}
                        className="text-center mb-10 pointer-events-none"
                      >
-                       <span className="text-[#4ade80] text-sm font-bold tracking-[0.3em] uppercase block mb-2">Trwa Sesja Skupienia</span>
-                       <h1 className="text-2xl font-serif italic text-slate-400">Wyłącz powiadomienia, weź głęboki oddech i myśl...</h1>
+                       <span className="text-[#4ade80] text-sm font-bold tracking-[0.3em] uppercase block mb-2">
+                         {language === 'pl' ? 'Trwa Sesja Skupienia' : 'Focus Session in Progress'}
+                       </span>
+                       <h1 className="text-2xl font-serif italic text-slate-400">
+                         {language === 'pl' 
+                           ? 'Wyłącz powiadomienia, weź głęboki oddech i myśl...' 
+                           : 'Turn off notifications, take a deep breath and clear your mind...'}
+                       </h1>
                      </motion.div>
                   ) : (
                      /* Mode switcher tab menu */
-                     <div className="flex gap-2 p-1.5 bg-[#141414]/90 backdrop-blur-xl border border-white/5 rounded-2xl mb-12 shadow-2xl">
+                     <div className="flex gap-2 p-1.5 bg-[#141414]/90 backdrop-blur-xl border border-white/5 rounded-2xl mb-12 shadow-2xl overflow-x-auto scrollbar-none">
                        <button
                          onClick={() => switchMode('pomodoro')}
-                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all ${
+                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all cursor-pointer whitespace-nowrap ${
                            mode === 'pomodoro' 
                              ? 'bg-[#4ade80] text-black shadow-lg shadow-[#4ade80]/20' 
                              : 'text-slate-400 hover:text-white hover:bg-white/5'
                          }`}
                        >
-                         Praca Głęboka (25m)
+                         {language === 'pl' ? 'Praca Głęboka (25m)' : 'Deep Work (25m)'}
                        </button>
                        <button
                          onClick={() => switchMode('shortBreak')}
-                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all ${
+                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all cursor-pointer whitespace-nowrap ${
                            mode === 'shortBreak' 
                              ? 'bg-[#4ade80] text-black shadow-lg' 
                              : 'text-slate-400 hover:text-white hover:bg-white/5'
                          }`}
                        >
-                         Krótka Przerwa (5m)
+                         {language === 'pl' ? 'Krótka Przerwa (5m)' : 'Short Break (5m)'}
                        </button>
                        <button
                          onClick={() => switchMode('longBreak')}
-                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all ${
+                         className={`px-6 py-2.5 rounded-xl font-bold font-display uppercase tracking-wider text-xs transition-all cursor-pointer whitespace-nowrap ${
                            mode === 'longBreak' 
                              ? 'bg-[#4ade80] text-black shadow-lg' 
                              : 'text-slate-400 hover:text-white hover:bg-white/5'
                          }`}
                        >
-                         Długa Przerwa (15m)
+                         {language === 'pl' ? 'Długa Przerwa (15m)' : 'Long Break (15m)'}
                        </button>
                      </div>
                   )}
@@ -472,7 +502,7 @@ export function PomodoroTimer() {
                         {formatTime(timeLeft)}
                       </motion.div>
                       <p className="text-xs font-mono text-slate-500 mt-3 uppercase tracking-widest font-bold">
-                        {getModeLabelPl(mode)}
+                        {getModeLabelSelected(mode)}
                       </p>
                     </div>
                   </div>
@@ -481,9 +511,17 @@ export function PomodoroTimer() {
                   {!isImmersiveFocus && (
                     <div className="mt-8 text-center bg-black/40 border border-white/5 px-4 py-2 rounded-xl text-xs text-slate-400 font-mono flex items-center gap-1.5">
                       <Target className="w-3.5 h-3.5 text-[#4ade80]" />
-                      <span>Sesja: <b className="text-white">{(sessionCount % settings.sessionsBeforeLongBreak) + 1}</b> z <b className="text-white">{settings.sessionsBeforeLongBreak}</b></span>
+                      <span>
+                        {language === 'pl' ? 'Sesja: ' : 'Session: '}
+                        <b className="text-white">{(sessionCount % settings.sessionsBeforeLongBreak) + 1}</b> 
+                        {language === 'pl' ? ' z ' : ' of '}
+                        <b className="text-white">{settings.sessionsBeforeLongBreak}</b>
+                      </span>
                       <span className="text-slate-600">|</span>
-                      <span>Ogółem: <b className="text-[#4ade80]">{sessionCount}</b></span>
+                      <span>
+                        {language === 'pl' ? 'Ogółem: ' : 'Total: '}
+                        <b className="text-[#4ade80]">{sessionCount}</b>
+                      </span>
                     </div>
                   )}
 
@@ -495,8 +533,8 @@ export function PomodoroTimer() {
                   {!isImmersiveFocus && (
                     <button
                       onClick={resetTimer}
-                      className="p-4 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all hover:scale-[1.03] active:scale-[0.97]"
-                      title="Od nowa"
+                      className="p-4 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all hover:scale-[1.03] active:scale-[0.97] cursor-pointer"
+                      title={language === 'pl' ? "Od nowa" : "Reset"}
                     >
                       <RotateCcw className="w-5 h-5" />
                     </button>
@@ -505,7 +543,7 @@ export function PomodoroTimer() {
                   {/* Play & Pause Action */}
                   <button
                     onClick={toggleTimer}
-                    className={`px-12 py-4.5 rounded-2xl font-bold font-display uppercase tracking-widest transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.97] flex items-center gap-3 text-sm flex-row shrink-0 ${
+                    className={`px-12 py-4.5 rounded-2xl font-bold font-display uppercase tracking-widest transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.97] flex items-center gap-3 text-sm flex-row shrink-0 cursor-pointer ${
                       isActive 
                         ? 'bg-white/15 text-white hover:bg-white/20 border border-white/20 shadow-xl' 
                         : 'bg-[#4ade80] text-black shadow-[0_0_40px_rgba(74,222,128,0.25)] hover:shadow-[0_0_60px_rgba(74,222,128,0.45)]'
@@ -513,11 +551,11 @@ export function PomodoroTimer() {
                   >
                     {isActive ? (
                       <>
-                        <PauseCircle className="w-5 h-5 text-current animate-spin-slow" /> Pauza
+                        <PauseCircle className="w-5 h-5 text-current animate-spin-slow" /> {language === 'pl' ? 'Pauza' : 'Pause'}
                       </>
                     ) : (
                       <>
-                        <PlayCircle className="w-5 h-5 text-current" /> Rozpocznij
+                        <PlayCircle className="w-5 h-5 text-current" /> {language === 'pl' ? 'Rozpocznij' : 'Start'}
                       </>
                     )}
                   </button>
@@ -529,8 +567,8 @@ export function PomodoroTimer() {
                         setIsActive(false);
                         setTimeLeft(settings[mode] * 60);
                       }}
-                      className="p-4 rounded-xl bg-white/5 border border-white/10 text-red-400 hover:text-red-300 hover:border-red-500/20 transition-all hover:scale-[1.03] active:scale-[0.97]"
-                      title="Zatrzymaj"
+                      className="p-4 rounded-xl bg-white/5 border border-white/10 text-red-400 hover:text-red-300 hover:border-red-500/20 transition-all hover:scale-[1.03] active:scale-[0.97] cursor-pointer"
+                      title={language === 'pl' ? "Zatrzymaj" : "Stop"}
                     >
                       <Square className="w-5 h-5" />
                     </button>
@@ -545,12 +583,25 @@ export function PomodoroTimer() {
               <footer className="relative z-20 px-8 py-6 border-t border-white/5 bg-[#0a0a0a]/30 backdrop-blur-md flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-4">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#4ade80]" />
-                  <span>Szyfrowany System Głębokiej Organizacji Czasowej.</span>
+                  <span>
+                    {language === 'pl' 
+                      ? 'Szyfrowany System Głębokiej Organizacji Czasowej.' 
+                      : 'Secure Temporal Focus Infrastructure System.'}
+                  </span>
                 </div>
                 <div className="flex gap-6">
-                  <span>Długość Pracy: <b className="text-slate-400">{settings.pomodoro} min</b></span>
-                  <span>Przerwy: <b className="text-slate-400">{settings.shortBreak} / {settings.longBreak} min</b></span>
-                  <span>Cel: <b className="text-slate-400">{settings.sessionsBeforeLongBreak} cykle</b></span>
+                  <span>
+                    {language === 'pl' ? 'Długość Pracy: ' : 'Work Block: '}
+                    <b className="text-slate-400">{settings.pomodoro} min</b>
+                  </span>
+                  <span>
+                    {language === 'pl' ? 'Przerwy: ' : 'Breaks: '}
+                    <b className="text-slate-400">{settings.shortBreak} / {settings.longBreak} min</b>
+                  </span>
+                  <span>
+                    {language === 'pl' ? 'Cel: ' : 'Goal: '}
+                    <b className="text-slate-400">{settings.sessionsBeforeLongBreak} {language === 'pl' ? 'cykle' : 'cycles'}</b>
+                  </span>
                 </div>
               </footer>
             )}
@@ -562,62 +613,74 @@ export function PomodoroTimer() {
       <GenieModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        title="Konfigurowanie czasów Focus"
+        title={language === 'pl' ? "Konfigurowanie czasów Focus" : "Configure Focus Intervals"}
       >
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 font-sans text-white">
           <p className="text-slate-400 text-sm leading-relaxed">
-            Dostosuj bloki czasowe do swojego rytmu pracy (np. technika Ultra-Skupienia 50/10). Zmiany zostaną zaaplikowane do kolejnych sesji.
+            {language === 'pl' 
+              ? 'Dostosuj bloki czasowe do swojego rytmu pracy (np. technika Ultra-Skupienia 50/10). Zmiany zostaną zaaplikowane do kolejnych sesji.'
+              : 'Customize temporal blocks for your cognitive rhythm (e.g., Ultra-focus technique 50/10). Changes apply to new sessions.'}
           </p>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-[#161616] border border-white/5 p-4 rounded-2xl">
-              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">Czas Pracy (min)</label>
+              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">
+                {language === 'pl' ? 'Czas Pracy (min)' : 'Work Duration (min)'}
+              </label>
               <input 
                 type="number" min="1" max="180"
                 value={settings.pomodoro}
                 onChange={e => handleSettingChange('pomodoro', e.target.value)}
-                className="w-full bg-transparent text-xl text-white font-bold focus:outline-none"
+                className="w-full bg-transparent text-xl text-white font-bold focus:outline-none border-none outline-none"
               />
             </div>
             <div className="bg-[#161616] border border-white/5 p-4 rounded-2xl">
-              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">Krótka Przerwa (min)</label>
+              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">
+                {language === 'pl' ? 'Krótka Przerwa (min)' : 'Short Break (min)'}
+              </label>
               <input 
                 type="number" min="1" max="60"
                 value={settings.shortBreak}
                 onChange={e => handleSettingChange('shortBreak', e.target.value)}
-                className="w-full bg-transparent text-xl text-white font-bold focus:outline-none"
+                className="w-full bg-transparent text-xl text-white font-bold focus:outline-none border-none outline-none"
               />
             </div>
             <div className="bg-[#161616] border border-white/5 p-4 rounded-2xl">
-              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">Długa Przerwa (min)</label>
+              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">
+                {language === 'pl' ? 'Długa Przerwa (min)' : 'Long Break (min)'}
+              </label>
               <input 
                 type="number" min="1" max="120"
                 value={settings.longBreak}
                 onChange={e => handleSettingChange('longBreak', e.target.value)}
-                className="w-full bg-transparent text-xl text-white font-bold focus:outline-none"
+                className="w-full bg-transparent text-xl text-white font-bold focus:outline-none border-none outline-none"
               />
             </div>
             <div className="bg-[#161616] border border-white/5 p-4 rounded-2xl">
-              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">Liczba cykli do długiej</label>
+              <label className="block text-[10px] font-mono font-bold uppercase text-slate-500 mb-2">
+                {language === 'pl' ? 'Liczba cykli do długiej' : 'Cycles before long break'}
+              </label>
               <input 
                 type="number" min="1" max="20"
                 value={settings.sessionsBeforeLongBreak}
                 onChange={e => handleSettingChange('sessionsBeforeLongBreak', e.target.value)}
-                className="w-full bg-transparent text-xl text-white font-bold focus:outline-none"
+                className="w-full bg-transparent text-xl text-white font-bold focus:outline-none border-none outline-none"
               />
             </div>
           </div>
           
-          <div className="pt-4 border-t border-white/5 flex justify-between items-center">
-            <span className="text-[11px] text-slate-500 font-mono">Dane zapisane lokalnie.</span>
+          <div className="pt-4 border-t border-white/5 flex justify-between items-center bg-transparent">
+            <span className="text-[11px] text-slate-500 font-mono">
+              {language === 'pl' ? 'Dane zapisane lokalnie.' : 'Data stored locally.'}
+            </span>
             <button 
               onClick={() => {
                 setIsSettingsOpen(false);
                 resetTimer();
               }}
-              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-black font-bold font-display uppercase tracking-wider text-xs transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-black font-bold font-display uppercase tracking-wider text-xs transition-colors cursor-pointer"
             >
-              Zapisz i Zresetuj
+              {language === 'pl' ? 'Zapisz i Zresetuj' : 'Save & Reset'}
             </button>
           </div>
         </div>

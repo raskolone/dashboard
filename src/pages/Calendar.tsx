@@ -36,7 +36,9 @@ export function Calendar() {
     syncCalendar,
     addEvent,
     updateEvent,
-    deleteEvent 
+    deleteEvent,
+    t,
+    language
   } = useAppStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -86,7 +88,7 @@ export function Calendar() {
         end_time: endTime,
         type,
         description,
-        location: 'Wydarzenie Google'
+        location: language === 'pl' ? 'Wydarzenie Google' : 'Google Event'
       });
       setIsModalOpen(false);
       setTitle('');
@@ -99,7 +101,10 @@ export function Calendar() {
   };
 
   const handleDeleteEvent = async (id: string, eventTitle: string) => {
-    if (window.confirm(`Czy na pewno chcesz usunąć wydarzenie: "${eventTitle}"?`)) {
+    const confirmMsg = language === 'pl' 
+      ? `Czy na pewno chcesz usunąć wydarzenie: "${eventTitle}"?` 
+      : `Are you sure you want to delete event: "${eventTitle}"?`;
+    if (window.confirm(confirmMsg)) {
       await deleteEvent(id);
     }
   };
@@ -172,8 +177,9 @@ export function Calendar() {
 
   // Format active timeframe header label
   const getHeaderDateString = () => {
+    const localeStr = language === 'pl' ? 'pl-PL' : 'en-US';
     if (calViewMode === 'monthly') {
-      return currentDateState.toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' });
+      return currentDateState.toLocaleDateString(localeStr, { month: 'long', year: 'numeric' });
     } else if (calViewMode === 'weekly') {
       const startOfWeek = new Date(currentDateState);
       const currentDay = currentDateState.getDay();
@@ -184,13 +190,13 @@ export function Calendar() {
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       
       if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
-        return `${startOfWeek.getDate()} - ${endOfWeek.getDate()} ${startOfWeek.toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' })}`;
+        return `${startOfWeek.getDate()} - ${endOfWeek.getDate()} ${startOfWeek.toLocaleDateString(localeStr, { month: 'long', year: 'numeric' })}`;
       }
-      return `${startOfWeek.getDate()} ${startOfWeek.toLocaleDateString('pl-PL', { month: 'short' })} - ${endOfWeek.getDate()} ${endOfWeek.toLocaleDateString('pl-PL', { month: 'short', year: 'numeric' })}`;
+      return `${startOfWeek.getDate()} ${startOfWeek.toLocaleDateString(localeStr, { month: 'short' })} - ${endOfWeek.getDate()} ${endOfWeek.toLocaleDateString(localeStr, { month: 'short', year: 'numeric' })}`;
     } else if (calViewMode === 'daily') {
-      return currentDateState.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      return currentDateState.toLocaleDateString(localeStr, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     }
-    return 'Agenda i wszystkie nadchodzące wydarzenia';
+    return language === 'pl' ? 'Agenda i wszystkie nadchodzące wydarzenia' : 'Agenda and all upcoming events';
   };
 
   // Drag and drop events handlers
@@ -227,9 +233,9 @@ export function Calendar() {
   const getEventColors = (type: EventType) => {
     switch (type) {
       case 'meeting':
-        return 'bg-blue-500/10 text-blue-300 border border-blue-500/20 hover:bg-blue-500/20';
+        return 'bg-blue-500/10 text-blue-355 border border-blue-500/20 hover:bg-blue-500/20';
       case 'lesson':
-        return 'bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/20';
+        return 'bg-purple-500/10 text-purple-305 border border-purple-500/20 hover:bg-purple-500/20';
       case 'personal':
         return 'bg-emerald-500/10 text-[#4ade80] border border-[#4ade80]/20 hover:bg-emerald-500/20';
       case 'deadline':
@@ -284,7 +290,7 @@ export function Calendar() {
     return days;
   }, [currentDateState]);
 
-  // Daily miniweek list generation (for rescheduling from Daily view header day capsules)
+  // Daily miniweek list generation
   const miniWeekDays = useMemo(() => {
     const startOfWeekFD = new Date(currentDateState);
     const currentDayFD = currentDateState.getDay();
@@ -303,16 +309,18 @@ export function Calendar() {
   const hourSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
 
   const polishWeekdays = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
+  const englishWeekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  const currentWeekdays = language === 'pl' ? polishWeekdays : englishWeekdays;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12 font-sans text-white">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white">Kalendarz</h1>
+          <h1 className="text-3xl font-display font-bold text-white">{t('sidebar.calendar')}</h1>
           <p className="text-slate-400 mt-1">
             {isGoogleConnected 
-              ? 'Twój połączony Google Kalendarz zsynchronizowany w czasie rzeczywistym.' 
-              : 'Zarządzaj wydarzeniami i integruj swój harmonogram.'}
+              ? (language === 'pl' ? 'Twój połączony Google Kalendarz zsynchronizowany w czasie rzeczywistym.' : 'Your connected Google Calendar synchronized in real time.') 
+              : (language === 'pl' ? 'Zarządzaj wydarzeniami i integruj swój harmonogram.' : 'Manage events and integrate your active schedule.')}
           </p>
         </div>
         
@@ -322,7 +330,7 @@ export function Calendar() {
               onClick={() => syncCalendar()}
               disabled={isSyncingCalendar}
               className="p-2.5 rounded-xl border border-[#222222] bg-[#111111] text-slate-300 hover:text-white transition-colors disabled:opacity-40"
-              title="Synchronizuj teraz"
+              title={language === 'pl' ? 'Synchronizuj teraz' : 'Sync now'}
             >
               <RefreshCw className={`w-5 h-5 ${isSyncingCalendar ? 'animate-spin text-[#4ade80]' : ''}`} />
             </button>
@@ -332,7 +340,7 @@ export function Calendar() {
             className="flex items-center gap-2 bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2.5 rounded-xl font-bold transition-transform cursor-pointer"
           >
             <Plus className="w-5 h-5" />
-            Dodaj spotkanie
+            {language === 'pl' ? 'Dodaj spotkanie' : 'Add meeting'}
           </button>
         </div>
       </header>
@@ -342,14 +350,16 @@ export function Calendar() {
         <div className="glass-card rounded-3xl p-8 flex items-center justify-center">
           <div className="text-center space-y-3">
             <Loader2 className="w-8 h-8 animate-spin text-[#4ade80] mx-auto" />
-            <p className="text-slate-400 text-sm">Inicjalizacja i sprawdzanie sesji Google...</p>
+            <p className="text-slate-400 text-sm">
+              {language === 'pl' ? 'Inicjalizacja i sprawdzanie sesji Google...' : 'Checking Google Authorization session...'}
+            </p>
           </div>
         </div>
       ) : !isGoogleConnected ? (
         <div className="p-5 rounded-2xl glass-card flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-slate-400 border border-[#222222]">
           <div className="space-y-1">
-            <span className="text-white font-semibold block">Wypróbuj Google Calendar integration</span>
-            <span className="text-xs">Zsynchronizuj terminówki i planuj spotkania w czasie rzeczywistym bezpośrednio ze swoim kontem Google.</span>
+            <span className="text-white font-semibold block">{language === 'pl' ? 'Wypróbuj integrację z Google Calendar' : 'Try Google Calendar integration'}</span>
+            <span className="text-xs">{language === 'pl' ? 'Zsynchronizuj terminówki i planuj spotkania w czasie rzeczywistym bezpośrednio ze swoim kontem Google.' : 'Sync appointments and schedule meetings in real-time directly with your Google account.'}</span>
           </div>
           <button 
             onClick={loginGoogle}
@@ -361,7 +371,7 @@ export function Calendar() {
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
             </svg>
-            Połącz z Google
+            {language === 'pl' ? 'Połącz z Google' : 'Connect with Google'}
           </button>
         </div>
       ) : (
@@ -378,21 +388,21 @@ export function Calendar() {
               <span className="text-white font-medium">{user?.displayName || user?.email}</span>
               <span className="mx-2 text-slate-700">•</span>
               <span className="inline-flex items-center gap-1 font-mono px-1.5 py-0.5 rounded bg-[#4ade80]/10 text-[#4ade80] text-[10px]">
-                <Check className="w-3 h-3" /> Synchronizacja Google aktywna
+                <Check className="w-3 h-3" /> {language === 'pl' ? 'Synchronizacja Google aktywna' : 'Google Sync Active'}
               </span>
             </div>
           </div>
           <button 
             onClick={logoutGoogle}
-            className="flex items-center gap-1.5 hover:text-red-400 transition-colors font-semibold cursor-pointer"
+            className="flex items-center gap-1.5 hover:text-red-400 transition-colors font-semibold cursor-pointer text-xs"
           >
             <LogOut className="w-4 h-4" />
-            Rozłącz Google Calendar
+            {language === 'pl' ? 'Rozłącz Google Calendar' : 'Disconnect Google Calendar'}
           </button>
         </div>
       )}
 
-      {/* Main interactive Toolbar (Toggles and Navigators) */}
+      {/* Main interactive Toolbar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#141414] p-3 rounded-2xl border border-[#222222]">
         
         {/* Navigation arrow buttons */}
@@ -402,7 +412,7 @@ export function Calendar() {
               <button 
                 onClick={handlePrevDate} 
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-                title="Wstecz"
+                title={language === 'pl' ? 'Wstecz' : 'Back'}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -410,12 +420,12 @@ export function Calendar() {
                 onClick={handleSetToday} 
                 className="text-xs px-3 py-1.5 text-slate-350 hover:text-white hover:bg-white/5 rounded-lg font-semibold transition-all cursor-pointer"
               >
-                Dzisiaj
+                {language === 'pl' ? 'Dzisiaj' : 'Today'}
               </button>
               <button 
                 onClick={handleNextDate} 
                 className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-                title="Dalej"
+                title={language === 'pl' ? 'Dalej' : 'Next'}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -436,7 +446,7 @@ export function Calendar() {
               calViewMode === 'daily' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
             )}
           >
-            Dzień
+            {language === 'pl' ? 'Dzień' : 'Day'}
           </button>
           <button 
             onClick={() => setCalViewMode('weekly')}
@@ -445,7 +455,7 @@ export function Calendar() {
               calViewMode === 'weekly' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
             )}
           >
-            Tydzień
+            {language === 'pl' ? 'Tydzień' : 'Week'}
           </button>
           <button 
             onClick={() => setCalViewMode('monthly')}
@@ -454,7 +464,7 @@ export function Calendar() {
               calViewMode === 'monthly' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
             )}
           >
-            Miesiąc
+            {language === 'pl' ? 'Miesiąc' : 'Month'}
           </button>
           <button 
             onClick={() => setCalViewMode('agenda')}
@@ -463,7 +473,7 @@ export function Calendar() {
               calViewMode === 'agenda' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
             )}
           >
-            Agenda
+            {language === 'pl' ? 'Agenda' : 'Agenda'}
           </button>
         </div>
       </div>
@@ -471,7 +481,11 @@ export function Calendar() {
       {/* Drag & Drop Hint Ribbon */}
       <div className="flex items-center gap-2 bg-[#4ade80]/5 border border-[#4ade80]/20 p-3 rounded-xl text-xs text-[#4ade80] font-mono select-none">
         <span className="animate-pulse flex h-2 w-2 rounded-full bg-[#4ade80]" />
-        <span>Przeciągnij wydarzenie na inny dzień lub godzinę, aby natychmiast przenieść termin (D&D)!</span>
+        <span>
+          {language === 'pl' 
+            ? 'Przeciągnij wydarzenie na inny dzień lub godzinę, aby natychmiast przenieść termin (D&D)!' 
+            : 'Drag and drop events to reschedule them instantly on other days or times (D&D)!'}
+        </span>
       </div>
 
       {/* Rendering calendar widgets */}
@@ -482,7 +496,7 @@ export function Calendar() {
           <div className="glass-card p-5 rounded-3xl border border-[#222222]">
             {/* Weekday headers row */}
             <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              {polishWeekdays.map(wd => <div key={wd} className="py-1">{wd}</div>)}
+              {currentWeekdays.map(wd => <div key={wd} className="py-1">{wd}</div>)}
             </div>
 
             {/* Cells grid */}
@@ -490,7 +504,6 @@ export function Calendar() {
               {monthlyDaysList.map(({ date: dayDate, isCurrentMonth, keyStr }) => {
                 const dayEvents = activeEvents.filter(ev => ev.date === keyStr);
                 const isToday = keyStr === todayStr;
-                const isSelectedMonth = dayDate.getMonth() === currentDateState.getMonth();
 
                 return (
                   <div 
@@ -502,7 +515,7 @@ export function Calendar() {
                       "min-h-[110px] p-2 bg-[#121212]/40 rounded-xl border transition-all duration-150 flex flex-col justify-between group cursor-pointer",
                       isCurrentMonth ? "border-white/5 hover:border-[#4ade80]/40" : "border-transparent opacity-30 hover:opacity-75",
                       isToday ? "bg-[#4ade80]/5 border-[#4ade80]/40 shadow-[0_0_15px_rgba(117,211,110,0.05)]" : "",
-                      isDraggingEventId ? "border-dashed border-white/20 hover:bg-[#4ade80]/10" : ""
+                      isDraggingEventId ? "border-dashed border-[#4ade80]/30 hover:bg-[#4ade80]/10" : ""
                     )}
                   >
                     {/* Header cell */}
@@ -549,7 +562,7 @@ export function Calendar() {
             {weeklyDaysList.map(({ date: dayDate, keyStr }, index) => {
               const dayEvents = activeEvents.filter(ev => ev.date === keyStr);
               const isToday = keyStr === todayStr;
-              const weekdayLabel = polishWeekdays[index];
+              const weekdayLabel = currentWeekdays[index];
 
               return (
                 <div 
@@ -560,7 +573,7 @@ export function Calendar() {
                   className={cn(
                     "glass-card p-3 rounded-2xl flex flex-col min-h-[400px] border border-[#222222] transition-colors cursor-pointer",
                     isToday ? "border-[#4ade80]/40 bg-[#4ade80]/5 shadow-[0_0_15px_rgba(117,211,110,0.05)]" : "",
-                    isDraggingEventId ? "border-dashed border-white/20 hover:bg-[#4ade80]/10" : "hover:border-[#333333]"
+                    isDraggingEventId ? "border-dashed border-[#4ade80]/30 hover:bg-[#4ade80]/10" : "hover:border-[#333333]"
                   )}
                 >
                   <div className="text-center pb-2 border-b border-[#222222] mb-3 select-none">
@@ -574,10 +587,10 @@ export function Calendar() {
                   </div>
 
                   {/* Day Events Stack */}
-                  <div className="flex-1 space-y-2 overflow-y-auto max-h-[350px] pr-1 scrollbar-none">
+                  <div className="flex-1 space-y-2 overflow-y-auto max-h-[350px] pr-1 scrollbar-none text-white">
                     {dayEvents.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-[10px] text-slate-600 border border-dashed border-[#222222] rounded-xl p-3 text-center">
-                        Brak spotkań
+                        {language === 'pl' ? 'Brak spotkań' : 'No meetings'}
                       </div>
                     ) : (
                       dayEvents.map(ev => (
@@ -598,7 +611,7 @@ export function Calendar() {
                             <button 
                               onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id, ev.title); }}
                               className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-red-400 transition-opacity"
-                              title="Usuń"
+                              title={language === 'pl' ? 'Usuń' : 'Delete'}
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -626,7 +639,7 @@ export function Calendar() {
               {miniWeekDays.map(({ date: miniDate, keyStr }, index) => {
                 const isSelectedDate = keyStr === currentDateState.toISOString().split('T')[0];
                 const isToday = keyStr === todayStr;
-                const weekday = polishWeekdays[index];
+                const weekday = currentWeekdays[index];
 
                 return (
                   <div 
@@ -676,7 +689,7 @@ export function Calendar() {
                       <div className="flex flex-wrap items-center gap-2 pl-4">
                         {hourEvents.length === 0 ? (
                           <span className="text-[10px] text-slate-650 opacity-0 group-hover:opacity-100 transition-opacity select-none italic">
-                            Kliknij, aby zaplanować slot...
+                            {language === 'pl' ? 'Kliknij, aby zaplanować slot...' : 'Click to schedule slot...'}
                           </span>
                         ) : (
                           hourEvents.map(ev => (
@@ -702,7 +715,7 @@ export function Calendar() {
                               <button 
                                 onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id, ev.title); }}
                                 className="text-slate-400 hover:text-red-400 transition-colors cursor-pointer leading-none"
-                                title="Usuń"
+                                title={language === 'pl' ? 'Usuń' : 'Delete'}
                               >
                                 <X className="w-3 h-3" />
                               </button>
@@ -718,20 +731,24 @@ export function Calendar() {
           </div>
         )}
 
-        {/* 4. AGENDA / FULL SEQUENCE VIEW */}
+        {/* 4. AGENDA */}
         {calViewMode === 'agenda' && (
           <div className="space-y-6">
             {sortedDates.length === 0 ? (
               <div className="glass-card rounded-3xl p-16 text-center text-slate-500 border border-[#222222]">
                 <CalendarRange className="w-12 h-12 mx-auto stroke-[1.5] opacity-40 mb-3" />
-                <p>Brak zaplanowanych wydarzeń w wybranym przedziale czasowym.</p>
+                <p>
+                  {language === 'pl' 
+                    ? 'Brak zaplanowanych wydarzeń w wybranym przedziale czasowym.' 
+                    : 'No scheduled meetings or events in this timeframe.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
                 {sortedDates.map(dateStr => (
                   <div key={dateStr} className="space-y-2">
                     <h3 className="text-sm font-mono font-semibold text-[#4ade80] uppercase tracking-wider px-1">
-                      {new Date(dateStr).toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                      {new Date(dateStr).toLocaleDateString(language === 'pl' ? 'pl-PL' : 'en-US', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
                     </h3>
                     <div className="grid grid-cols-1 gap-2">
                       {eventsByDate[dateStr].map(ev => (
@@ -743,13 +760,18 @@ export function Calendar() {
                             <div>
                               <div className="font-medium text-white flex items-center gap-2">
                                 {ev.title}
-                                <span className={cn("text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full", getEventColors(ev.type))}>
+                                <span className={cn("text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full select-none", getEventColors(ev.type))}>
                                   {ev.type}
                                 </span>
                               </div>
                               <div className="text-xs text-slate-500 mt-1 flex items-center gap-3">
                                 <span className="flex items-center gap-1 font-semibold"><Clock className="w-3" /> {ev.start_time} - {ev.end_time}</span>
-                                <span className="flex items-center gap-1"><MapPin className="w-3" /> {ev.location || 'Brak lokacji'}</span>
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3" /> 
+                                  {ev.location === 'Wydarzenie Google' 
+                                    ? (language === 'pl' ? 'Wydarzenie Google' : 'Google Event') 
+                                    : (ev.location || (language === 'pl' ? 'Brak lokacji' : 'No Location'))}
+                                </span>
                               </div>
                               {ev.description && (
                                 <p className="text-xs text-slate-450 mt-2 line-clamp-1 max-w-xl">{ev.description}</p>
@@ -759,7 +781,7 @@ export function Calendar() {
                           <button
                             onClick={() => handleDeleteEvent(ev.id, ev.title)}
                             className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all md:opacity-0 group-hover:opacity-100 cursor-pointer"
-                            title="Usuń wydarzenie"
+                            title={language === 'pl' ? 'Usuń wydarzenie' : 'Delete event'}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -779,17 +801,19 @@ export function Calendar() {
       <GenieModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title={isGoogleConnected ? 'Dodaj do Google Calendar' : 'Dodaj termin lokalny'}
+        title={isGoogleConnected ? (language === 'pl' ? 'Dodaj do Google Calendar' : 'Add to Google Calendar') : (language === 'pl' ? 'Dodaj termin lokalny' : 'Add local event')}
       >
-        <form onSubmit={handleAddEventSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleAddEventSubmit} className="p-6 space-y-4 font-sans text-white">
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Tytuł spotkania</label>
+            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
+              {language === 'pl' ? 'Tytuł spotkania' : 'Meeting Title'}
+            </label>
             <input 
               type="text" 
               value={title} 
               onChange={e => setTitle(e.target.value)} 
               required
-              placeholder="np. Sync z zespołem"
+              placeholder={language === 'pl' ? "np. Sync z zespołem" : "e.g. Sync with team"}
               className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
               disabled={isSubmitting}
             />
@@ -797,22 +821,26 @@ export function Calendar() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Typ spotkania</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
+                {language === 'pl' ? 'Typ spotkania' : 'Event Type'}
+              </label>
               <select 
                 value={type} 
                 onChange={e => setType(e.target.value as EventType)}
                 className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
                 disabled={isSubmitting}
               >
-                <option value="meeting">Spotkanie (Meeting)</option>
-                <option value="lesson">Lekcja (Lesson)</option>
-                <option value="personal">Prywatne (Personal)</option>
-                <option value="deadline">Termin końcowy (Deadline)</option>
-                <option value="reminder">Przemas (Reminder)</option>
+                <option value="meeting">{language === 'pl' ? 'Spotkanie' : 'Meeting'}</option>
+                <option value="lesson">{language === 'pl' ? 'Lekcja' : 'Lesson'}</option>
+                <option value="personal">{language === 'pl' ? 'Prywatne' : 'Personal'}</option>
+                <option value="deadline">{language === 'pl' ? 'Termin końcowy' : 'Deadline'}</option>
+                <option value="reminder">{language === 'pl' ? 'Przypomnienie' : 'Reminder'}</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Data</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
+                {language === 'pl' ? 'Data' : 'Date'}
+              </label>
               <input 
                 type="date" 
                 value={date} 
@@ -825,7 +853,9 @@ export function Calendar() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Godzina rozpoczęcia</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
+                {language === 'pl' ? 'Godzina rozpoczęcia' : 'Start Time'}
+              </label>
               <input 
                 type="time" 
                 value={startTime} 
@@ -835,7 +865,9 @@ export function Calendar() {
               />
             </div>
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Godzina zakończenia</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
+                {language === 'pl' ? 'Godzina zakończenia' : 'End Time'}
+              </label>
               <input 
                 type="time" 
                 value={endTime} 
@@ -847,11 +879,13 @@ export function Calendar() {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">Opis i szczegóły (opcjonalnie)</label>
+            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
+              {language === 'pl' ? 'Opis i szczegóły (opcjonalnie)' : 'Description & details (optional)'}
+            </label>
             <textarea 
               value={description} 
               onChange={e => setDescription(e.target.value)} 
-              placeholder="np. Omówienie postępów kwartalnych i kroki milowe."
+              placeholder={language === 'pl' ? "np. Omówienie postępów kwartalnych i kroki milowe." : "e.g. Discuss quarterly objectives and roadmap."}
               rows={3}
               className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors resize-none"
               disabled={isSubmitting}
@@ -865,7 +899,7 @@ export function Calendar() {
               className="px-4 py-2.5 rounded-xl border border-[#262626] text-slate-300 hover:text-white hover:bg-white/5 font-semibold transition-colors text-sm cursor-pointer"
               disabled={isSubmitting}
             >
-              Anuluj
+              {t('common.cancel')}
             </button>
             <button 
               type="submit"
@@ -873,7 +907,9 @@ export function Calendar() {
               disabled={isSubmitting}
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isGoogleConnected ? 'Dodaj do Google' : 'Dodaj lokalnie'}
+              {isGoogleConnected 
+                ? (language === 'pl' ? 'Dodaj do Google' : 'Add to Google') 
+                : (language === 'pl' ? 'Dodaj lokalnie' : 'Add locally')}
             </button>
           </div>
         </form>
