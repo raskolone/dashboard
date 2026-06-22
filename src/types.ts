@@ -30,8 +30,11 @@ export interface Habit {
   icon: string;
   frequency: 'daily' | 'weekly';
   target_count: number;
+  unit?: string;
   color: string;
   completedDates: string[]; // ISO formats YYYY-MM-DD
+  skippedDates?: string[]; // ISO formats YYYY-MM-DD
+  progress?: Record<string, number>; // Maps date to numerical progress
   createdAt?: string;
   updatedAt?: string;
   tags: string[];

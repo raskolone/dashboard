@@ -1,9 +1,10 @@
 import React from 'react';
 import { useAppStore } from '../store/AppContext';
-import { CheckCircle2, Clock, CalendarIcon, Target, Activity, Brain } from 'lucide-react';
+import { CheckCircle2, Clock, CalendarIcon, Target, Activity, Brain, Flame } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ProductivityChart } from '../components/ProductivityChart';
 import { PomodoroTimer } from '../components/PomodoroTimer';
+import { calculateHabitStats } from '../lib/utils';
 
 export function Dashboard() {
   const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit } = useAppStore();
@@ -14,7 +15,14 @@ export function Dashboard() {
   const filteredHabits = activeFilterTag ? habits.filter(h => h.tags?.includes(activeFilterTag)) : habits;
 
   const activeTasks = tasks.filter(t => t.status !== 'done');
-  const todayStr = new Date().toISOString().split('T')[0];
+  
+  const getLocalDateStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const todayStr = getLocalDateStr(new Date());
   
   const isGoogleConnected = !!googleToken;
   const activeEvents = isGoogleConnected ? googleEvents : events;
@@ -30,6 +38,7 @@ export function Dashboard() {
       score: number;
       color?: string;
       icon?: string;
+      streak?: number;
     }> = [];
 
     // 1. Add tasks
@@ -79,6 +88,9 @@ export function Dashboard() {
         score -= 50; // push completed to bottom
       }
 
+      // Calculate streak using shared utility
+      const { currentStreak } = calculateHabitStats(h.completedDates);
+
       items.push({
         id: h.id,
         type: 'habit',
@@ -88,6 +100,7 @@ export function Dashboard() {
         score,
         icon: h.icon,
         color: h.color || '#4ade80',
+        streak: currentStreak,
       });
     });
 
@@ -235,9 +248,20 @@ export function Dashboard() {
                     {item.icon && <span className="mr-1.5">{item.icon}</span>}
                     {item.title}
                   </span>
-                  <span className="block truncate text-[10px] text-slate-500 font-mono mt-0.5">
-                    {item.subtitle}
-                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="block truncate text-[10px] text-slate-500 font-mono">
+                      {item.subtitle}
+                    </span>
+                    {item.type === 'habit' && item.streak !== undefined && item.streak > 0 && (
+                      <span 
+                        className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full border border-current bg-current/10"
+                        style={{ color: item.color || '#4ade80' }}
+                      >
+                        <Flame className="w-3 h-3 fill-current" />
+                        {item.streak}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

@@ -33,8 +33,10 @@ interface AppState {
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   
-  addHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt'>) => void;
+  addHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates'>) => void;
   toggleHabit: (id: string, date: string) => void;
+  updateHabitProgress: (id: string, date: string, progress: number, completed: boolean) => void;
+  skipHabit: (id: string, date: string) => void;
   deleteHabit: (id: string) => void;
   
   addEvent: (event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -273,8 +275,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   // Habits actions
-  const addHabit = (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt'>) => {
-    const newHabit = { ...habit, completedDates: [] as string[] };
+  const addHabit = (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates'>) => {
+    const newHabit = { ...habit, completedDates: [] as string[], progress: {}, skippedDates: [] as string[] };
     if (user && user.uid !== 'demo_user') {
       createDocument(`users/${user.uid}/habits`, generateId(), newHabit);
     } else {
@@ -285,15 +287,76 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const habit = habits.find(h => h.id === id);
     if (!habit) return;
     
-    const isCompleted = habit.completedDates.includes(date);
-    const newDates = isCompleted ? habit.completedDates.filter(d => d !== date) : [...habit.completedDates, date];
+    // Toggle completed state
+    let newDates = [...habit.completedDates];
+    let newSkipped = [...(habit.skippedDates || [])];
+    const isCompleted = newDates.includes(date);
+    
+    if (isCompleted) {
+      newDates = newDates.filter(d => d !== date);
+    } else {
+      newDates.push(date);
+      newSkipped = newSkipped.filter(d => d !== date); // Remove skip if completing
+    }
+
+    // Set max progress if completing, 0 if un-completing
+    const newProgress = { ...(habit.progress || {}) };
+    if (isCompleted) {
+      newProgress[date] = 0;
+    } else {
+      newProgress[date] = habit.target_count;
+    }
     
     if (user && user.uid !== 'demo_user') {
-      updateDocument(`users/${user.uid}/habits`, id, { completedDates: newDates });
+      updateDocument(`users/${user.uid}/habits`, id, { completedDates: newDates, skippedDates: newSkipped, progress: newProgress });
     } else {
-      setHabits(prev => prev.map(h => h.id === id ? { ...h, completedDates: newDates } : h));
+      setHabits(prev => prev.map(h => h.id === id ? { ...h, completedDates: newDates, skippedDates: newSkipped, progress: newProgress } : h));
     }
   };
+
+  const updateHabitProgress = (id: string, date: string, value: number, completed: boolean) => {
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return;
+
+    let newDates = [...habit.completedDates];
+    let newSkipped = [...(habit.skippedDates || [])];
+    
+    if (completed && !newDates.includes(date)) {
+      newDates.push(date);
+      newSkipped = newSkipped.filter(d => d !== date);
+    } else if (!completed && newDates.includes(date)) {
+      newDates = newDates.filter(d => d !== date);
+    }
+
+    const newProgress = { ...(habit.progress || {}), [date]: value };
+    
+    if (user && user.uid !== 'demo_user') {
+      updateDocument(`users/${user.uid}/habits`, id, { completedDates: newDates, skippedDates: newSkipped, progress: newProgress });
+    } else {
+      setHabits(prev => prev.map(h => h.id === id ? { ...h, completedDates: newDates, skippedDates: newSkipped, progress: newProgress } : h));
+    }
+  };
+
+  const skipHabit = (id: string, date: string) => {
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return;
+
+    let newDates = [...habit.completedDates].filter(d => d !== date);
+    let newSkipped = [...(habit.skippedDates || [])];
+    
+    if (!newSkipped.includes(date)) {
+      newSkipped.push(date);
+    } else {
+      newSkipped = newSkipped.filter(d => d !== date);
+    }
+
+    if (user && user.uid !== 'demo_user') {
+      updateDocument(`users/${user.uid}/habits`, id, { completedDates: newDates, skippedDates: newSkipped });
+    } else {
+      setHabits(prev => prev.map(h => h.id === id ? { ...h, completedDates: newDates, skippedDates: newSkipped } : h));
+    }
+  };
+
   const deleteHabit = (id: string) => {
     if (user && user.uid !== 'demo_user') {
       deleteDocument(`users/${user.uid}/habits`, id);
@@ -403,7 +466,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       user, googleToken, isAuthLoading, isSyncingCalendar,
       loginGoogle, logoutGoogle, loginDemo, syncCalendar,
       addTask, updateTask, deleteTask,
-      addHabit, toggleHabit, deleteHabit,
+      addHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit,
       addEvent, updateEvent, deleteEvent,
       addKnowledge, updateKnowledge, deleteKnowledge
     }}>
