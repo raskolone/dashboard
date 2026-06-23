@@ -28,6 +28,7 @@ export interface Habit {
   id: string;
   name: string;
   icon: string;
+  status?: 'active' | 'archived';
   frequency: 'daily' | 'weekly';
   target_count: number;
   unit?: string;
@@ -38,6 +39,7 @@ export interface Habit {
   createdAt?: string;
   updatedAt?: string;
   tags: string[];
+  order?: number;
 }
 
 export type EventType = 'meeting' | 'lesson' | 'personal' | 'deadline' | 'reminder';

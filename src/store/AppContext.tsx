@@ -39,12 +39,13 @@ interface AppState {
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   
-  addHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates'>) => void;
+  addHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates' | 'status' | 'order'>) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   toggleHabit: (id: string, date: string) => void;
   updateHabitProgress: (id: string, date: string, progress: number, completed: boolean) => void;
   skipHabit: (id: string, date: string) => void;
   deleteHabit: (id: string) => void;
+  reorderHabits: (orderedIds: string[]) => void;
   
   addEvent: (event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateEvent: (id: string, updates: Partial<CalendarEvent>) => Promise<void>;
@@ -306,8 +307,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   // Habits actions
-  const addHabit = (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates'>) => {
-    const newHabit = { ...habit, completedDates: [] as string[], progress: {}, skippedDates: [] as string[] };
+  const addHabit = (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates' | 'status' | 'order'>) => {
+    const newHabit = { 
+      ...habit, 
+      completedDates: [] as string[], 
+      progress: {}, 
+      skippedDates: [] as string[],
+      status: 'active' as const,
+      order: habits.length 
+    };
     if (user && user.uid !== 'demo_user') {
       createDocument(`users/${user.uid}/habits`, generateId(), newHabit);
     } else {
@@ -401,6 +409,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateDocument(`users/${user.uid}/habits`, id, updates);
     } else {
       setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates, updatedAt: new Date().toISOString() } : h));
+    }
+  }
+
+  const reorderHabits = (orderedIds: string[]) => {
+    // In local state, we just update all matches
+    setHabits(prev => {
+      const copy = [...prev];
+      return copy.map(h => {
+        const orderIndex = orderedIds.indexOf(h.id);
+        if (orderIndex !== -1) {
+          return { ...h, order: orderIndex };
+        }
+        return h;
+      });
+    });
+
+    if (user && user.uid !== 'demo_user') {
+      // Fire-and-forget individual updates to Firestore to avoid batch complexity here
+      orderedIds.forEach((id, index) => {
+        updateDocument(`users/${user.uid}/habits`, id, { order: index });
+      });
     }
   }
 
@@ -506,7 +535,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       user, googleToken, isAuthLoading, isSyncingCalendar,
       loginGoogle, logoutGoogle, loginDemo, syncCalendar,
       addTask, updateTask, deleteTask,
-      addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit,
+      addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit, reorderHabits,
       addEvent, updateEvent, deleteEvent,
       addKnowledge, updateKnowledge, deleteKnowledge
     }}>

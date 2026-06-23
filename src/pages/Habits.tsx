@@ -8,6 +8,9 @@ import { calculateHabitStats, getLocalDateStr } from '../lib/utils';
 import { useLongPress } from '../hooks/useLongPress';
 import { GenieModal } from '../components/GenieModal';
 import { motion, AnimatePresence } from 'motion/react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Circle Progress Component
 const CircleProgress = ({ percentage, size, strokeWidth, color, text }: { percentage: number, size: number, strokeWidth: number, color: string, text?: React.ReactNode }) => {
@@ -151,18 +154,29 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
   );
 };
 
-const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, updateHabitProgress }: any) => {
+const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, updateHabitProgress, isEditMode, onArchive }: any) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const { language } = useAppStore();
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
   const isCompleted = habit.completedDates.includes(selectedDate);
   const isSkipped = habit.skippedDates?.includes(selectedDate);
   const currentProgress = isCompleted ? habit.target_count : (habit.progress?.[selectedDate] || 0);
   const percentage = (currentProgress / habit.target_count) * 100;
 
   const handleCompleteLongPress = () => {
+    if (isEditMode) return;
     updateHabitProgress(habit.id, selectedDate, habit.target_count, true);
   };
 
   const handleCompleteClick = () => {
+    if (isEditMode) return;
     if (habit.target_count === 1) {
       toggleHabit(habit.id, selectedDate);
     } else {
@@ -179,15 +193,24 @@ const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, 
 
   return (
     <div 
+      ref={setNodeRef}
+      style={style}
       onClick={() => {
-        setInteractionHabit({
-          habit,
-          progressValue: currentProgress
-        });
+        if (!isEditMode) {
+          setInteractionHabit({
+            habit,
+            progressValue: currentProgress
+          });
+        }
       }}
-      className={`glass-card hover:border-[#a855f7]/30 transition-colors rounded-[24px] p-4 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer group ${isSkipped ? 'opacity-50' : ''}`}
+      className={`glass-card hover:border-[#a855f7]/30 transition-colors rounded-[24px] p-4 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer group ${isSkipped && !isEditMode ? 'opacity-50' : ''} ${isEditMode ? 'border-dashed border-white/20' : ''}`}
     >
       <div className="flex items-center gap-4 mb-3 sm:mb-0">
+        {isEditMode && (
+          <div {...attributes} {...listeners} className="p-2 -ml-2 cursor-grab text-slate-500 hover:text-white shrink-0 active:cursor-grabbing">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+          </div>
+        )}
         <div 
           className="w-12 h-12 flex items-center justify-center rounded-full text-2xl shadow-inner shrink-0"
           style={{ backgroundColor: `${habit.color}15` }}
@@ -195,49 +218,65 @@ const HabitListItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, 
           {habit.icon}
         </div>
         <div>
-          <h3 className={`font-semibold text-[17px] tracking-tight ${isSkipped ? 'line-through text-slate-500' : 'text-white'}`}>{habit.name}</h3>
+          <h3 className={`font-semibold text-[17px] tracking-tight ${(isSkipped && !isEditMode) ? 'line-through text-slate-500' : 'text-white'}`}>{habit.name}</h3>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-slate-500 text-xs font-medium">
               {habit.target_count > 1 
                 ? `${language === 'pl' ? 'Cel' : 'Goal'}: ${habit.target_count} ${habit.unit || ''}` 
                 : `${language === 'pl' ? 'Cel' : 'Goal'}: 1`} 
-              {isSkipped && ` (${language === 'pl' ? 'Pominięto' : 'Skipped'})`}
+              {(isSkipped && !isEditMode) && ` (${language === 'pl' ? 'Pominięto' : 'Skipped'})`}
             </p>
           </div>
         </div>
       </div>
       
       <div className="shrink-0 flex items-center justify-between sm:justify-start gap-3">
-        <div className="flex items-center justify-center gap-1.5 min-w-[36px] bg-[#222]/80 px-2 py-1 rounded-lg">
-          <Flame className="w-3.5 h-3.5" style={{ color: habit.color }} />
-          <span className="text-xs font-bold" style={{ color: habit.color }}>{stats.currentStreak}</span>
-        </div>
-        <button 
-          onClick={(e) => { e.stopPropagation(); toggleHabit(habit.id, selectedDate); }}
-          className="px-4 py-2 sm:hidden rounded-xl text-xs font-semibold bg-white/5 mr-4"
-        >
-          {isCompleted 
-            ? (language === 'pl' ? 'Odznacz' : 'Unmark') 
-            : (language === 'pl' ? 'Wykonane' : 'Done')}
-        </button>
-        <HoldableAction 
-          isCompleted={isCompleted}
-          isSkipped={isSkipped}
-          currentProgress={currentProgress}
-          targetCount={habit.target_count}
-          percentage={percentage}
-          color={habit.color}
-          onLongPressComplete={handleCompleteLongPress}
-          onShortClick={handleCompleteClick}
-          streakValue={stats.currentStreak}
-        />
+        {!isEditMode && (
+          <>
+            <div className="flex items-center justify-center gap-1.5 min-w-[36px] bg-[#222]/80 px-2 py-1 rounded-lg">
+              <Flame className="w-3.5 h-3.5" style={{ color: habit.color }} />
+              <span className="text-xs font-bold" style={{ color: habit.color }}>{stats.currentStreak}</span>
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); toggleHabit(habit.id, selectedDate); }}
+              className="px-4 py-2 sm:hidden rounded-xl text-xs font-semibold bg-white/5 mr-4"
+            >
+              {isCompleted 
+                ? (language === 'pl' ? 'Odznacz' : 'Unmark') 
+                : (language === 'pl' ? 'Wykonane' : 'Done')}
+            </button>
+            <HoldableAction 
+              isCompleted={isCompleted}
+              isSkipped={isSkipped}
+              currentProgress={currentProgress}
+              targetCount={habit.target_count}
+              percentage={percentage}
+              color={habit.color}
+              onLongPressComplete={handleCompleteLongPress}
+              onShortClick={handleCompleteClick}
+              streakValue={stats.currentStreak}
+            />
+          </>
+        )}
+        {isEditMode && (
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onArchive(habit);
+            }}
+            className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors shrink-0"
+            title={language === 'pl' ? 'Archiwizuj' : 'Archive'}
+          >
+            <Archive className="w-5 h-5" />
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
 export function Habits() {
-  const { habits, addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit, t, language } = useAppStore();
+  const { habits, addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit, reorderHabits, t, language } = useAppStore();
   
   // Tabs
   const [activeTab, setActiveTab] = useState<'home' | 'history'>('home');
@@ -314,8 +353,53 @@ export function Habits() {
     setInteractionHabit(null);
   };
 
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const activeHabit = habitsForDate.find(h => h.id === active.id);
+      const overHabit = habitsForDate.find(h => h.id === over.id);
+      if (!activeHabit || !overHabit) return;
+
+      const activeIndex = habitsForDate.findIndex(h => h.id === active.id);
+      const overIndex = habitsForDate.findIndex(h => h.id === over.id);
+
+      const newHabitsForDate = [...habitsForDate];
+      newHabitsForDate.splice(activeIndex, 1);
+      newHabitsForDate.splice(overIndex, 0, activeHabit);
+
+      // Save order
+      reorderHabits(newHabitsForDate.map(h => h.id));
+    }
+  };
+
+  const handleArchiveHabit = (habit: any) => {
+    const confirmMsg = language === 'pl' ? `Czy na pewno chcesz zarchiwizować nawyk "${habit.name}"? Będzie dostępny w zakładce Historia > Archiwum.` : `Are you sure you want to archive "${habit.name}"? It will be available in History > Archive.`;
+    if (window.confirm(confirmMsg)) {
+      updateHabit(habit.id, { status: 'archived' });
+    }
+  };
+
+  const handleRestoreHabit = (habit: any) => {
+    updateHabit(habit.id, { status: 'active' });
+  };
+
   // Home View Calcs
-  const habitsForDate = habits; 
+  const activeHabits = habits.filter(h => h.status !== 'archived').sort((a, b) => (a.order || 0) - (b.order || 0));
+  const archivedHabits = habits.filter(h => h.status === 'archived');
+  const habitsForDate = activeHabits; 
   const completedCountForDate = habitsForDate.filter(h => h.completedDates.includes(selectedDate)).length;
   const skippedCountForDate = habitsForDate.filter(h => h.skippedDates?.includes(selectedDate)).length;
   const activeCountForDate = habitsForDate.length - skippedCountForDate;
@@ -382,7 +466,7 @@ export function Habits() {
         </h2>
 
         {/* Big Ring */}
-        <div className="relative flex items-center justify-center my-6">
+        <div className="relative flex items-center justify-center my-6 w-full">
           <div className="relative rounded-full p-6 liquid-glass-circle shadow-[0_0_40px_rgba(147,51,234,0.4)] overflow-hidden">
             <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
             <div className="absolute inset-x-8 top-2 h-1/3 rounded-full bg-gradient-to-b from-white/20 to-transparent blur-md pointer-events-none" />
@@ -398,17 +482,32 @@ export function Habits() {
       </div>
 
       {/* Habit List */}
+      <div className="flex justify-end mb-2 px-1">
+        <button
+          onClick={() => setIsEditMode(!isEditMode)}
+          className={`p-2 rounded-xl transition-all cursor-pointer ${isEditMode ? 'bg-[#a855f7]/20 text-[#a855f7]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+          title={isEditMode ? (language === 'pl' ? 'Gotowe' : 'Done') : (language === 'pl' ? 'Edytuj' : 'Edit')}
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+      </div>
       <div className="space-y-3">
-        {habitsForDate.map(habit => (
-          <HabitListItem
-            key={habit.id}
-            habit={habit}
-            selectedDate={selectedDate}
-            setInteractionHabit={setInteractionHabit}
-            toggleHabit={toggleHabit}
-            updateHabitProgress={updateHabitProgress}
-          />
-        ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={habitsForDate.map(h => h.id)} strategy={verticalListSortingStrategy}>
+            {habitsForDate.map(habit => (
+              <SortableHabitItem
+                key={habit.id}
+                habit={habit}
+                selectedDate={selectedDate}
+                setInteractionHabit={setInteractionHabit}
+                toggleHabit={toggleHabit}
+                updateHabitProgress={updateHabitProgress}
+                isEditMode={isEditMode}
+                onArchive={handleArchiveHabit}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
         {habitsForDate.length === 0 && (
           <div className="text-center py-12 text-slate-500 bg-white/5 backdrop-blur-md rounded-[24px] border border-dashed border-white/10 p-6">
             <p className="mb-4">{language === 'pl' ? 'Brak nawyków.' : 'No habits tracked.'}</p>
@@ -452,7 +551,7 @@ export function Habits() {
           </div>
           
           <div className="space-y-4">
-            {habits.map(habit => {
+            {activeHabits.map(habit => {
               const stats = calculateHabitStats(habit.completedDates);
               const last14Days = Array.from({ length: 14 }).map((_, i) => getLocalDateStr(subDays(new Date(), 13 - i))).reverse();
               
@@ -503,15 +602,11 @@ export function Habits() {
                   </div>
                   
                   <button 
-                    onClick={() => {
-                        const deleteConfirmMsg = language === 'pl' ? `Usunąć nawyk: "${habit.name}"?` : `Delete habit: "${habit.name}"?`;
-                        if (window.confirm(deleteConfirmMsg)) {
-                          deleteHabit(habit.id);
-                        }
-                    }}
-                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-red-400 transition-opacity cursor-pointer"
+                    onClick={() => handleArchiveHabit(habit)}
+                    className="absolute top-4 right-4 p-2 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                    title={language === 'pl' ? 'Archiwizuj' : 'Archive'}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Archive className="w-4 h-4" />
                   </button>
                 </div>
               );
@@ -554,9 +649,48 @@ export function Habits() {
       )}
       
       {historySubTab === 'archive' && (
-        <div className="p-12 text-center text-slate-500">
-           <Archive className="w-12 h-12 mx-auto mb-4 opacity-20" />
-           <p>{language === 'pl' ? 'Brak zarchiwizowanych nawyków.' : 'No archived habits.'}</p>
+        <div className="space-y-4">
+          <h2 className="text-2xl font-display font-bold text-white tracking-tight mb-6">{language === 'pl' ? 'Zarchiwizowane' : 'Archived'}</h2>
+          
+          {archivedHabits.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 border border-dashed border-[#333] rounded-3xl p-6">
+              <Archive className="w-12 h-12 mx-auto mb-4 opacity-20" />
+              <p>{language === 'pl' ? 'Brak zarchiwizowanych nawyków.' : 'No archived habits.'}</p>
+            </div>
+          ) : (
+            archivedHabits.map(habit => (
+              <div key={habit.id} className="bg-white/5 backdrop-blur-md rounded-[24px] p-5 border border-white/10 relative overflow-hidden group opacity-75">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-xl">{habit.icon}</div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-slate-300 tracking-tight">{habit.name}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{language === 'pl' ? 'Zarchiwizowany' : 'Archived'}</p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleRestoreHabit(habit)}
+                      className="px-4 py-2 bg-[#a855f7]/20 text-[#c084fc] hover:bg-[#a855f7]/30 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      {language === 'pl' ? 'Przywróć' : 'Restore'}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const deleteConfirmMsg = language === 'pl' ? `Trwale usunąć nawyk: "${habit.name}"? Tej operacji nie można cofnąć.` : `Permanently delete habit: "${habit.name}"? This cannot be undone.`;
+                        if (window.confirm(deleteConfirmMsg)) {
+                          deleteHabit(habit.id);
+                        }
+                      }}
+                      className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition-colors cursor-pointer"
+                      title={language === 'pl' ? 'Usuń trwale' : 'Delete permanently'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -566,30 +700,32 @@ export function Habits() {
     <div className="relative min-h-[calc(100vh-8rem)] text-white overflow-x-hidden">
       
       {/* App Header (Top Nav) */}
-      <header className="flex items-center justify-between py-6 sticky top-0 z-20 bg-[#0A0A0A]/50 backdrop-blur-xl px-4 h-[88px] max-w-2xl mx-auto w-full">
-        <div className="w-10 opacity-0 pointer-events-none" />
-        <div className="flex liquid-glass-pill p-1 shadow-2xl">
+      <div className="sticky top-4 z-20 px-4 max-w-2xl mx-auto w-full mb-6 pt-2">
+        <header className="flex items-center justify-between py-2 px-4 liquid-glass-card rounded-[24px]">
+          <div className="w-10 opacity-0 pointer-events-none" />
+          <div className="flex bg-black/40 backdrop-blur-md rounded-[18px] p-1 shadow-inner border border-white/5">
+            <button 
+              onClick={() => setActiveTab('home')}
+              className={`px-6 py-2 rounded-[14px] text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'home' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+            >
+              {language === 'pl' ? 'Główna' : 'Home'}
+            </button>
+            <button 
+              onClick={() => setActiveTab('history')}
+              className={`px-6 py-2 rounded-[14px] text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'history' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+            >
+              {language === 'pl' ? 'Historia' : 'History'}
+            </button>
+          </div>
           <button 
-            onClick={() => setActiveTab('home')}
-            className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'home' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-10 h-10 liquid-glass-circle flex items-center justify-center hover:border-[#a855f7]/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] active:scale-95 transition-all duration-300 cursor-pointer"
+            title={language === 'pl' ? 'Ustawienia nawyków' : 'Habit Settings'}
           >
-            {language === 'pl' ? 'Główna' : 'Home'}
+            <Settings className="w-4 h-4 text-slate-300 hover:text-white transition-colors" />
           </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'history' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-          >
-            {language === 'pl' ? 'Historia' : 'History'}
-          </button>
-        </div>
-        <button 
-          onClick={() => setIsSettingsOpen(true)}
-          className="w-10 h-10 liquid-glass-circle flex items-center justify-center hover:border-[#a855f7]/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] active:scale-95 transition-all duration-300 cursor-pointer"
-          title={language === 'pl' ? 'Ustawienia nawyków' : 'Habit Settings'}
-        >
-          <Settings className="w-4 h-4 text-slate-300 hover:text-white transition-colors" />
-        </button>
-      </header>
+        </header>
+      </div>
 
       {/* Main Content Area */}
       <main className="py-4">
@@ -789,12 +925,12 @@ export function Habits() {
                   </div>
                   
                   <div className="flex-1 overflow-y-auto space-y-3 pr-1 pb-4">
-                    {habits.length === 0 ? (
+                    {activeHabits.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
                         {language === 'pl' ? 'Brak nawyków do skonfigurowania.' : 'No habits to edit.'}
                       </div>
                     ) : (
-                      habits.map(habit => (
+                      activeHabits.map(habit => (
                         <div 
                           key={habit.id}
                           onClick={() => startEditingHabit(habit)}
@@ -938,10 +1074,10 @@ export function Habits() {
                       <button 
                         onClick={() => {
                           const confirmDeleteMsg = language === 'pl' 
-                            ? `Czy na pewno chcesz usunąć nawyk: "${selectedEditingHabit.name}"?` 
-                            : `Are you sure you want to delete habit: "${selectedEditingHabit.name}"?`;
+                            ? `Czy na pewno chcesz usunąć nawyk: "${selectedEditingHabit.name}"? Zostanie on przeniesiony do Archiwum.` 
+                            : `Are you sure you want to delete habit: "${selectedEditingHabit.name}"? It will be moved to the Archive.`;
                           if (window.confirm(confirmDeleteMsg)) {
-                            deleteHabit(selectedEditingHabit.id);
+                            updateHabit(selectedEditingHabit.id, { status: 'archived' });
                             setSelectedEditingHabit(null);
                           }
                         }}
