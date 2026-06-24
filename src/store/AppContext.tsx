@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from 'firebase/auth';
-import { Task, Habit, CalendarEvent, KnowledgeEntry, TaskStatus, TaskPriority, TaskCategory, EventType, KnowledgeCategory } from '../types';
+import { Task, TaskList, Habit, CalendarEvent, KnowledgeEntry, TaskStatus, TaskPriority, TaskCategory, EventType, KnowledgeCategory } from '../types';
 import { mockTasks, mockHabits, mockEvents, mockKnowledge } from '../lib/mockData';
 import { initAuth, googleSignIn, logout as firebaseLogout } from '../lib/auth';
 import { fetchCalendarEvents, createGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../lib/calendar';
@@ -11,6 +11,7 @@ export type AppTheme = 'dark' | 'light';
 
 interface AppState {
   tasks: Task[];
+  taskLists: TaskList[];
   habits: Habit[];
   events: CalendarEvent[];
   googleEvents: CalendarEvent[];
@@ -39,6 +40,10 @@ interface AppState {
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   
+  addTaskList: (name: string) => void;
+  updateTaskList: (id: string, updates: Partial<TaskList>) => void;
+  deleteTaskList: (id: string) => void;
+  
   addHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates' | 'status' | 'order'>) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   toggleHabit: (id: string, date: string) => void;
@@ -64,6 +69,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>([]);
+  const [taskLists, setTaskLists] = useState<TaskList[]>([
+    { id: 'default', name: 'Zadania', createdAt: new Date().toISOString() }
+  ]);
 
   const [theme, setTheme] = useState<AppTheme>('dark');
   const [language, setLanguageState] = useState<'pl' | 'en'>(() => {
@@ -169,6 +177,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (user && user.uid !== 'demo_user') {
       const uId = user.uid;
       const unsubs = [
+        subscribeToCollection<TaskList>(`users/${uId}/taskLists`, (data) => {
+          if (data.length === 0) {
+            setTaskLists([{ id: 'default', name: 'Zadania', createdAt: new Date().toISOString() }]);
+          } else {
+            setTaskLists(data.sort((a,b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()));
+          }
+        }),
         subscribeToCollection<Task>(`users/${uId}/tasks`, (data) => setTasks(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
         subscribeToCollection<Habit>(`users/${uId}/habits`, (data) => setHabits(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
         subscribeToCollection<CalendarEvent>(`users/${uId}/events`, (data) => setEvents(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
@@ -181,6 +196,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       // Fallback to offline/mock data storage for guest/demo users
       setTasks(mockTasks);
+      setTaskLists([{ id: 'default', name: 'Zadania', createdAt: new Date().toISOString() }]);
       setHabits(mockHabits);
       setEvents(mockEvents);
       setKnowledge(mockKnowledge);
@@ -283,28 +299,94 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [googleToken]);
 
   // Tasks actions
-  const addTask = (task: Omit<Task, 'id'>) => {
+  const addTask = async (task: Omit<Task, 'id'>) => {
+    let googleEventId;
+    if (googleToken) {
+      try {
+        const res = await createGoogleCalendarEvent({
+          title: task.title,
+          description: task.description,
+          date: task.due_date,
+        });
+        googleEventId = res.id;
+        syncCalendar();
+      } catch (err) {
+        console.error('Failed to sync task to Google Calendar', err);
+      }
+    }
+
+    const newTask = { ...task, googleEventId };
+
     if (user && user.uid !== 'demo_user') {
       const id = generateId();
-      createDocument(`users/${user.uid}/tasks`, id, task);
+      createDocument(`users/${user.uid}/tasks`, id, newTask);
     } else {
-      setTasks(prev => [{ ...task, id: generateId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...prev]);
+      setTasks(prev => [{ ...newTask, id: generateId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...prev]);
     }
   };
-  const updateTask = (id: string, updates: Partial<Task>) => {
+  const updateTask = async (id: string, updates: Partial<Task>) => {
+    const task = tasks.find(t => t.id === id);
+    if (task?.googleEventId && googleToken) {
+      try {
+        const { updateGoogleCalendarEvent } = await import('../lib/calendar');
+        await updateGoogleCalendarEvent(task.googleEventId, {
+          title: updates.title || task.title,
+          description: updates.description || task.description,
+          date: updates.due_date || task.due_date,
+        });
+        syncCalendar();
+      } catch (err) {
+        console.error('Failed to update task in Google Calendar', err);
+      }
+    }
+
     if (user && user.uid !== 'demo_user') {
       updateDocument(`users/${user.uid}/tasks`, id, updates);
     } else {
       setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
     }
   };
-  const deleteTask = (id: string) => {
+  const deleteTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (task?.googleEventId && googleToken) {
+      try {
+        await deleteGoogleCalendarEvent(task.googleEventId);
+        syncCalendar();
+      } catch (err) {
+        console.error('Failed to delete task from Google Calendar', err);
+      }
+    }
+
     if (user && user.uid !== 'demo_user') {
       deleteDocument(`users/${user.uid}/tasks`, id);
     } else {
       setTasks(prev => prev.filter(t => t.id !== id));
     }
   }
+
+  // TaskList actions
+  const addTaskList = (name: string) => {
+    const newList = { name, createdAt: new Date().toISOString() };
+    if (user && user.uid !== 'demo_user') {
+      createDocument(`users/${user.uid}/taskLists`, generateId(), newList);
+    } else {
+      setTaskLists(prev => [...prev, { ...newList, id: generateId() }]);
+    }
+  };
+  const updateTaskList = (id: string, updates: Partial<TaskList>) => {
+    if (user && user.uid !== 'demo_user') {
+      updateDocument(`users/${user.uid}/taskLists`, id, updates);
+    } else {
+      setTaskLists(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+    }
+  };
+  const deleteTaskList = (id: string) => {
+    if (user && user.uid !== 'demo_user') {
+      deleteDocument(`users/${user.uid}/taskLists`, id);
+    } else {
+      setTaskLists(prev => prev.filter(l => l.id !== id));
+    }
+  };
 
   // Habits actions
   const addHabit = (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt' | 'updatedAt' | 'progress' | 'skippedDates' | 'status' | 'order'>) => {
@@ -529,12 +611,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      tasks, habits, events, googleEvents, knowledge,
+      tasks, taskLists, habits, events, googleEvents, knowledge,
       theme, toggleTheme,
       language, setLanguage, t,
       user, googleToken, isAuthLoading, isSyncingCalendar,
       loginGoogle, logoutGoogle, loginDemo, syncCalendar,
       addTask, updateTask, deleteTask,
+      addTaskList, updateTaskList, deleteTaskList,
       addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit, reorderHabits,
       addEvent, updateEvent, deleteEvent,
       addKnowledge, updateKnowledge, deleteKnowledge

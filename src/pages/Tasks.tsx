@@ -7,13 +7,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
 export function Tasks() {
-  const { tasks, addTask, updateTask, deleteTask, t, language } = useAppStore();
+  const { tasks, taskLists, addTaskList, updateTaskList, deleteTaskList, addTask, updateTask, deleteTask, t, language } = useAppStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [activeListId, setActiveListId] = useState<string>('default');
+
+  // List management states
+  const [isListModalOpen, setIsListModalOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
 
   // Form states
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<TaskCategory>('personal');
+  const [listId, setListId] = useState<string>('default');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -68,7 +73,7 @@ export function Tasks() {
   const openAddModal = () => {
     setEditingTask(null);
     setTitle('');
-    setCategory('personal');
+    setListId(activeListId);
     setPriority('medium');
     setStatus('todo');
     setDueDate(new Date().toISOString().split('T')[0]);
@@ -82,7 +87,7 @@ export function Tasks() {
   const openEditModal = (task: Task) => {
     setEditingTask(task);
     setTitle(task.title);
-    setCategory(task.category);
+    setListId(task.listId || 'default');
     setPriority(task.priority);
     setStatus(task.status);
     setDueDate(task.due_date);
@@ -100,7 +105,7 @@ export function Tasks() {
     const taskData = {
       title,
       description,
-      category,
+      listId,
       priority,
       status,
       due_date: dueDate,
@@ -114,6 +119,14 @@ export function Tasks() {
       addTask(taskData);
     }
     setIsModalOpen(false);
+  };
+
+  const handleCreateList = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newListName.trim()) return;
+    addTaskList(newListName);
+    setNewListName('');
+    setIsListModalOpen(false);
   };
 
   const handleDelete = (id: string, taskTitle: string) => {
@@ -162,6 +175,9 @@ export function Tasks() {
   const nextWeekStr = nextWeekDate.toISOString().split('T')[0];
 
   const filteredTasks = tasks.filter(tCode => {
+    // List filter
+    if (activeListId !== 'all' && (tCode.listId || 'default') !== activeListId) return false;
+
     // Status filter
     if (filterStatus === 'active' && tCode.status === 'done') return false;
     if (filterStatus === 'done' && tCode.status !== 'done') return false;
@@ -177,6 +193,9 @@ export function Tasks() {
   });
 
   const boardTasks = tasks.filter(tCode => {
+    // List filter
+    if (activeListId !== 'all' && (tCode.listId || 'default') !== activeListId) return false;
+
     if (viewMode === 'today') {
       return tCode.due_date === todayStr;
     } else if (viewMode === 'week') {
@@ -220,14 +239,76 @@ export function Tasks() {
             {language === 'pl' ? 'Zarządzaj swoimi priorytetami.' : 'Manage your priorities.'}
           </p>
         </div>
-        <button 
-          onClick={openAddModal}
-          className="flex justify-center items-center gap-2 bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] px-4 py-2 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <Plus className="w-5 h-5" />
-          {t('tasks.addBtn')}
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsListModalOpen(true)}
+            className="glass-card !rounded-2xl flex justify-center items-center gap-2 px-5 py-2.5 text-white font-bold transition-all hover:scale-[1.02] active:scale-[0.98] border border-white/10 hover:border-white/20 hover:bg-white/5"
+          >
+            <Plus className="w-4 h-4 text-slate-400" />
+            {language === 'pl' ? 'Nowa Lista' : 'New List'}
+          </button>
+          <button 
+            onClick={openAddModal}
+            className="glass-card !rounded-2xl flex justify-center items-center gap-2 px-5 py-2.5 font-bold transition-all hover:scale-[1.02] active:scale-[0.98] bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30 hover:border-[#4ade80]/50 hover:bg-[#4ade80]/20 hover:shadow-[0_0_20px_rgba(74,222,128,0.2)]"
+          >
+            <Plus className="w-5 h-5" />
+            {t('tasks.addBtn')}
+          </button>
+        </div>
       </header>
+
+      {/* Task Lists Tabs */}
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none relative z-10">
+        <button
+          onClick={() => setActiveListId('all')}
+          className={cn(
+            "glass-card px-5 py-2.5 whitespace-nowrap font-semibold transition-all flex items-center justify-center !rounded-2xl border",
+            activeListId === 'all' 
+              ? "bg-white/10 text-white border-white/20 shadow-[inset_0_0_15px_rgba(255,255,255,0.05)]" 
+              : "text-slate-400 border-white/5 hover:text-white hover:bg-white/5 hover:border-white/10"
+          )}
+        >
+          {language === 'pl' ? 'Wszystkie zadania' : 'All Tasks'}
+        </button>
+        {taskLists.map(list => (
+          <div key={list.id} className="flex group relative">
+            <div
+              className={cn(
+                "glass-card whitespace-nowrap font-semibold transition-all flex items-center justify-center !rounded-2xl border",
+                activeListId === list.id 
+                  ? "bg-white/10 text-white border-white/20 shadow-[inset_0_0_15px_rgba(255,255,255,0.05)]" 
+                  : "text-slate-400 border-white/5 hover:text-white hover:bg-white/5 hover:border-white/10"
+              )}
+            >
+              <button
+                onClick={() => setActiveListId(list.id)}
+                className="px-5 py-2.5 h-full w-full outline-none"
+              >
+                {list.name}
+              </button>
+              <div className="flex items-center -ml-2 overflow-hidden transition-all duration-200 w-0 group-hover:w-8 group-hover:pr-2 opacity-0 group-hover:opacity-100">
+                <button
+                  onClick={() => {
+                    if(window.confirm(language === 'pl' ? `Usunąć listę "${list.name}"?` : `Delete list "${list.name}"?`)) {
+                      deleteTaskList(list.id);
+                      if (activeListId === list.id) setActiveListId('all');
+                    }
+                  }}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-all flex items-center justify-center",
+                    activeListId === list.id 
+                      ? "text-red-400 hover:bg-red-500/20" 
+                      : "text-slate-500 hover:text-red-400 hover:bg-red-500/20"
+                  )}
+                  title={language === 'pl' ? 'Usuń listę' : 'Delete List'}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Sleek Animated Progress tracking card */}
       {totalCount > 0 && (
@@ -263,38 +344,38 @@ export function Tasks() {
       {/* Filters */}
       <div className="flex flex-col lg:flex-row justify-between gap-4 relative z-10">
         <div className="flex gap-4 items-center">
-          <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto">
             <button 
               onClick={() => setViewMode('today')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'today' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${viewMode === 'today' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
             >
               {language === 'pl' ? 'Dzisiaj' : 'Today'}
             </button>
             <button 
               onClick={() => setViewMode('week')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'week' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${viewMode === 'week' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
             >
               {language === 'pl' ? 'Ten tydzień' : 'This week'}
             </button>
             <button 
               onClick={() => setViewMode('all')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${viewMode === 'all' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${viewMode === 'all' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
             >
               {language === 'pl' ? 'Wszystkie' : 'All'}
             </button>
           </div>
 
-          <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto">
             <button 
               onClick={() => setLayoutMode('list')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${layoutMode === 'list' ? 'bg-[#2D2D2D] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`glass-card !rounded-2xl px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 border ${layoutMode === 'list' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
             >
               <List className="w-4 h-4 text-[#4ade80]" />
               {language === 'pl' ? 'Lista' : 'List'}
             </button>
             <button 
               onClick={() => setLayoutMode('board')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1.5 ${layoutMode === 'board' ? 'bg-[#2D2D2D] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`glass-card !rounded-2xl px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 border ${layoutMode === 'board' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
             >
               <LayoutGrid className="w-4 h-4 text-[#4ade80]" />
               {language === 'pl' ? 'Tablica (D&D)' : 'Board (D&D)'}
@@ -303,22 +384,22 @@ export function Tasks() {
         </div>
 
         {layoutMode === 'list' && (
-          <div className="flex bg-[#161616] p-1 rounded-xl border border-[#262626] overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto">
              <button 
               onClick={() => setFilterStatus('active')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'active' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'active' ? 'bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_15px_rgba(74,222,128,0.1)] border-[#4ade80]/30' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
             >
               {language === 'pl' ? 'Aktywne' : 'Active'}
             </button>
             <button 
               onClick={() => setFilterStatus('done')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'done' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'done' ? 'bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_15px_rgba(74,222,128,0.1)] border-[#4ade80]/30' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
             >
               {language === 'pl' ? 'Ukończone' : 'Completed'}
             </button>
             <button 
               onClick={() => setFilterStatus('all')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${filterStatus === 'all' ? 'bg-[#2a2a2a] text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-[#222222]'}`}
+              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'all' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
             >
               {language === 'pl' ? 'Zarówno' : 'Both'}
             </button>
@@ -376,7 +457,7 @@ export function Tasks() {
                           onDragStart={(e: any) => handleDragStart(e, task.id)}
                           onDragEnd={handleDragEnd as any}
                           className={cn(
-                            "group p-3.5 rounded-xl bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-all relative overflow-hidden",
+                            "glass-card !rounded-2xl group p-3.5 transition-all relative overflow-hidden",
                             isDragging === task.id ? "opacity-30" : "opacity-100"
                           )}
                         >
@@ -454,107 +535,118 @@ export function Tasks() {
         </div>
       ) : (
         <div className="glass-card p-6 relative z-10">
-          <motion.div layout className="space-y-2">
+          <motion.div layout className="space-y-8">
             <AnimatePresence mode="popLayout">
-              {filteredTasks.length === 0 ? (
-                <motion.div 
-                  key="empty"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="text-center py-12 text-slate-500 font-sans"
-                >
-                  <Target className="w-12 h-12 mx-auto stroke-[1.5] opacity-40 mb-3" />
-                  <p>{language === 'pl' ? 'Brak zadań w wybranym widoku.' : 'No tasks in the selected view.'}</p>
-                </motion.div>
-              ) : (
-                filteredTasks.map(task => (
-                  <motion.div 
-                    layout
-                    draggable
-                    onDragStart={(e: any) => handleDragStart(e, task.id)}
-                    onDragEnd={handleDragEnd as any}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
-                    key={task.id} 
-                    className="flex flex-col p-4 rounded-xl bg-[#141414]/90 border border-[#222222] hover:border-[#333333] transition-colors group relative overflow-hidden"
-                  >
-                    {task.color && (
-                      <div 
-                        className="absolute left-0 top-0 bottom-0 w-1" 
-                        style={{ backgroundColor: task.color }}
-                      />
-                    )}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer" onClick={() => openEditModal(task)}>
-                      <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
-                        <div className="shrink-0 flex items-center gap-1">
-                          <span className="p-1 cursor-grab active:cursor-grabbing text-slate-600 opacity-40 group-hover:opacity-100 transition-opacity" onPointerDown={(e) => {
-                            e.stopPropagation();
-                          }}>
-                            <GripVertical className="w-3.5 h-3.5" />
-                          </span>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleStatusChange(task.id, task.status); }} 
-                            className="shrink-0 hover:scale-110 transition-transform pl-1"
-                            title={language === 'pl' ? "Zmień status" : "Change status"}
-                          >
-                            {getStatusIcon(task.status)}
-                          </button>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className={cn(
-                            "truncate",
-                            task.status === 'done' ? 'text-slate-500 line-through font-medium' : 'text-white font-medium'
-                          )}>
-                            {task.title}
-                          </div>
-                          <div className="text-xs text-slate-500 mt-0.5 font-mono flex items-center gap-3">
-                            <span>{language === 'pl' ? 'Termin:' : 'Due:'} {task.due_date}</span>
-                            {task.checklist && task.checklist.length > 0 && (
-                              <span className="flex items-center gap-1 text-[#4ade80]">
-                                <ListChecks className="w-3 h-3" />
-                                {task.checklist.filter(c => c.isCompleted).length}/{task.checklist.length}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
-                        <div className="flex gap-2 font-mono">
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
-                            {translateCategory(task.category)}
-                          </span>
-                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                            task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
-                            task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
-                            task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
-                            'bg-slate-800 text-slate-300'
-                          }`}>
-                            {translatePriority(task.priority)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors"
-                            title={language === 'pl' ? 'Szczegóły' : 'Details'}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleDelete(task.id, task.title); }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title={language === 'pl' ? "Usuń" : "Delete"}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
+              {taskLists.map(list => {
+                if (activeListId !== 'all' && list.id !== activeListId) return null;
+                const listTasks = filteredTasks.filter(t => (t.listId || 'default') === list.id);
+                
+                return (
+                  <motion.div key={list.id} layout className="space-y-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="flex items-center justify-between px-1">
+                      <h3 className="font-display font-bold text-white text-lg flex items-center gap-2">
+                        {list.name}
+                        <span className="text-xs font-mono font-semibold text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-lg border border-[#222222]">
+                          {listTasks.length}
+                        </span>
+                      </h3>
                     </div>
+                    
+                    {listTasks.length === 0 ? (
+                      <div className="p-6 rounded-xl border border-dashed border-[#222222] flex flex-col items-center justify-center text-center text-slate-500">
+                        <Target className="w-8 h-8 mb-2 stroke-[1.5] opacity-20" />
+                        <p className="text-sm">{language === 'pl' ? 'Pusta lista. Brak zadań.' : 'Empty list. No tasks.'}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {listTasks.map(task => (
+                          <motion.div 
+                            layout
+                            draggable
+                            onDragStart={(e: any) => handleDragStart(e, task.id)}
+                            onDragEnd={handleDragEnd as any}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                            key={task.id} 
+                            className="glass-card !rounded-2xl flex flex-col p-4 transition-colors group relative overflow-hidden"
+                          >
+                            {task.color && (
+                              <div 
+                                className="absolute left-0 top-0 bottom-0 w-1" 
+                                style={{ backgroundColor: task.color }}
+                              />
+                            )}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer" onClick={() => openEditModal(task)}>
+                              <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+                                <div className="shrink-0 flex items-center gap-1">
+                                  <span className="p-1 cursor-grab active:cursor-grabbing text-slate-600 opacity-40 group-hover:opacity-100 transition-opacity" onPointerDown={(e) => {
+                                    e.stopPropagation();
+                                  }}>
+                                    <GripVertical className="w-3.5 h-3.5" />
+                                  </span>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleStatusChange(task.id, task.status); }} 
+                                    className="shrink-0 hover:scale-110 transition-transform pl-1"
+                                    title={language === 'pl' ? "Zmień status" : "Change status"}
+                                  >
+                                    {getStatusIcon(task.status)}
+                                  </button>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className={cn(
+                                    "truncate",
+                                    task.status === 'done' ? 'text-slate-500 line-through font-medium' : 'text-white font-medium'
+                                  )}>
+                                    {task.title}
+                                  </div>
+                                  <div className="text-xs text-slate-500 mt-0.5 font-mono flex items-center gap-3">
+                                    <span>{language === 'pl' ? 'Termin:' : 'Due:'} {task.due_date}</span>
+                                    {task.checklist && task.checklist.length > 0 && (
+                                      <span className="flex items-center gap-1 text-[#4ade80]">
+                                        <ListChecks className="w-3 h-3" />
+                                        {task.checklist.filter(c => c.isCompleted).length}/{task.checklist.length}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
+                                <div className="flex gap-2 font-mono">
+                                  <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                                    task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
+                                    task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
+                                    task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
+                                    'bg-slate-800 text-slate-300'
+                                  }`}>
+                                    {translatePriority(task.priority)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors"
+                                    title={language === 'pl' ? 'Szczegóły' : 'Details'}
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(task.id, task.title); }}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                    title={language === 'pl' ? "Usuń" : "Delete"}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
                   </motion.div>
-                ))
-              )}
+                );
+              })}
             </AnimatePresence>
           </motion.div>
         </div>
@@ -593,14 +685,14 @@ export function Tasks() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">{t('tasks.category')}</label>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">{language === 'pl' ? 'Lista' : 'List'}</label>
               <select 
-                value={category} 
-                onChange={e => setCategory(e.target.value as TaskCategory)}
-                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors capitalize"
+                value={listId} 
+                onChange={e => setListId(e.target.value)}
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
               >
-                {categories.map(c => (
-                  <option key={c} value={c}>{translateCategory(c)}</option>
+                {taskLists.map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
               </select>
             </div>
@@ -784,6 +876,54 @@ export function Tasks() {
               className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
             >
               {editingTask ? t('common.saveChanges') : t('tasks.addBtn')}
+            </button>
+          </div>
+        </form>
+      </GenieModal>
+
+      <GenieModal isOpen={isListModalOpen} onClose={() => setIsListModalOpen(false)} title={language === 'pl' ? 'Nowa Lista' : 'New List'}>
+        <form onSubmit={handleCreateList} className="flex flex-col h-full">
+          <div className="p-6 pb-4 border-b border-[#222222] bg-[#111111] sticky top-0 z-10">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-display font-bold text-white">
+                {language === 'pl' ? 'Nowa Lista' : 'New List'}
+              </h2>
+              <button type="button" onClick={() => setIsListModalOpen(false)} className="text-slate-400 hover:text-white p-2">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6 overflow-y-auto">
+            <div>
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-2">
+                {language === 'pl' ? 'Nazwa listy' : 'List Name'}
+              </label>
+              <input 
+                type="text" 
+                value={newListName} 
+                onChange={e => setNewListName(e.target.value)} 
+                required
+                placeholder={language === 'pl' ? "np. Praca" : "e.g. Work"}
+                className="w-full bg-[#161616] border border-[#262626] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#4ade80] transition-colors"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="p-6 pt-4 border-t border-[#222222] bg-[#111111] sticky bottom-0 z-10 flex justify-end gap-3 mt-auto">
+            <button 
+              type="button"
+              onClick={() => setIsListModalOpen(false)}
+              className="px-4 py-2.5 rounded-xl border border-[#262626] text-slate-300 hover:text-white hover:bg-white/5 font-semibold transition-colors text-sm"
+            >
+              {t('common.cancel')}
+            </button>
+            <button 
+              type="submit"
+              className="px-5 py-2.5 rounded-xl bg-[#4ade80] hover:bg-[#5bb255] text-[#1a1a1a] font-bold transition-colors text-sm"
+            >
+              {language === 'pl' ? 'Utwórz' : 'Create'}
             </button>
           </div>
         </form>

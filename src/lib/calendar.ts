@@ -38,14 +38,19 @@ export async function createGoogleCalendarEvent(event: {
   title: string;
   description?: string;
   date: string;
-  start_time: string;
-  end_time: string;
-}): Promise<any> {
+  start_time?: string;
+  end_time?: string;
+}): Promise<{ id: string }> {
   const token = await getAccessToken();
   if (!token) throw new Error('Not authenticated');
 
-  const startIso = new Date(`${event.date}T${event.start_time}:00`).toISOString();
-  const endIso = new Date(`${event.date}T${event.end_time}:00`).toISOString();
+  const start = event.start_time 
+    ? { dateTime: new Date(`${event.date}T${event.start_time}:00`).toISOString() }
+    : { date: event.date };
+
+  const end = event.end_time 
+    ? { dateTime: new Date(`${event.date}T${event.end_time}:00`).toISOString() }
+    : { date: event.date };
 
   const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
   const res = await fetch(url, {
@@ -57,8 +62,8 @@ export async function createGoogleCalendarEvent(event: {
     body: JSON.stringify({
       summary: event.title,
       description: event.description,
-      start: { dateTime: startIso },
-      end: { dateTime: endIso },
+      start,
+      end,
     }),
   });
 
@@ -72,6 +77,47 @@ export async function createGoogleCalendarEvent(event: {
   }
 
   return await res.json();
+}
+
+export async function updateGoogleCalendarEvent(eventId: string, event: {
+  title: string;
+  description?: string;
+  date: string;
+  start_time?: string;
+  end_time?: string;
+}): Promise<void> {
+  const token = await getAccessToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const start = event.start_time 
+    ? { dateTime: new Date(`${event.date}T${event.start_time}:00`).toISOString() }
+    : { date: event.date };
+
+  const end = event.end_time 
+    ? { dateTime: new Date(`${event.date}T${event.end_time}:00`).toISOString() }
+    : { date: event.date };
+
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      summary: event.title,
+      description: event.description,
+      start,
+      end,
+    }),
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('UNAUTHORIZED_OR_EXPIRED');
+    }
+    throw new Error('Failed to update calendar event in Google Calendar');
+  }
 }
 
 export async function deleteGoogleCalendarEvent(eventId: string): Promise<void> {

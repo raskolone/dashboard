@@ -10,16 +10,24 @@ export interface ChecklistItem {
   dueDate?: string;
 }
 
+export interface TaskList {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
-  category: TaskCategory;
+  category?: TaskCategory;
+  listId?: string; // Replaces tags/categories for grouping
   due_date: string; // ISO format YYYY-MM-DD
   color?: string; // Hex color for categorization/tagging
   checklist?: ChecklistItem[];
+  googleEventId?: string; // Reference to Google Calendar event
   createdAt?: string;
   updatedAt?: string;
 }

@@ -99,14 +99,14 @@ html.light .bg-white\/5 { background-color: rgba(0,0,0,0.03) !important; }
 }
 
 .glass-card {
-  background: rgba(15, 18, 22, 0.6) !important;
+  background: rgba(15, 18, 22, 0.6);
   backdrop-filter: blur(24px) saturate(190%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   box-shadow: 
     0 4px 30px rgba(0, 0, 0, 0.35),
     inset 0 1px 1px rgba(255, 255, 255, 0.15),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.4) !important;
+    inset 0 -1px 2px rgba(0, 0, 0, 0.4);
   border-radius: 1.5rem; /* rounded-3xl */
   position: relative;
   overflow: hidden;
@@ -140,15 +140,15 @@ html.light .bg-white\/5 { background-color: rgba(0,0,0,0.03) !important; }
     135deg, 
     rgba(25, 30, 36, 0.75) 0%, 
     rgba(12, 15, 18, 0.85) 100%
-  ) !important;
+  );
   backdrop-filter: blur(32px) saturate(220%) !important;
   -webkit-backdrop-filter: blur(32px) saturate(220%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 
     0 24px 60px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
     inset 0 -1px 3px rgba(0, 0, 0, 0.5),
-    0 0 40px rgba(74, 222, 128, 0.05) !important;
+    0 0 40px rgba(74, 222, 128, 0.05);
   border-radius: 2rem;
   transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -175,14 +175,14 @@ html.light .bg-white\/5 { background-color: rgba(0,0,0,0.03) !important; }
     135deg, 
     rgba(25, 30, 36, 0.7) 0%, 
     rgba(12, 15, 18, 0.8) 100%
-  ) !important;
+  );
   backdrop-filter: blur(32px) saturate(220%) !important;
   -webkit-backdrop-filter: blur(32px) saturate(220%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 1px rgba(255, 255, 255, 0.2),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.5) !important;
+    inset 0 -1px 2px rgba(0, 0, 0, 0.5);
   border-radius: 9999px !important;
   transition: all 0.3s ease;
 }

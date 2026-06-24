@@ -29,9 +29,10 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'w-stat-progress', type: 'stat-progress', size: 'small', visible: true, order: 3 },
   { id: 'w-focus', type: 'focus', size: 'large', visible: true, order: 4 },
   { id: 'w-tasks', type: 'tasks-list', size: 'medium', visible: true, order: 5 },
-  { id: 'w-agenda', type: 'agenda', size: 'medium', visible: true, order: 6 },
-  { id: 'w-pomodoro', type: 'pomodoro', size: 'large', visible: true, order: 7 },
-  { id: 'w-chart', type: 'chart', size: 'large', visible: true, order: 8 },
+  { id: 'w-habit-streak', type: 'habit-streak', size: 'large', visible: true, order: 6 },
+  { id: 'w-agenda', type: 'agenda', size: 'medium', visible: true, order: 7 },
+  { id: 'w-pomodoro', type: 'pomodoro', size: 'large', visible: true, order: 8 },
+  { id: 'w-chart', type: 'chart', size: 'large', visible: true, order: 9 },
 ];
 
 const SortableWidget = ({ widget, children, onChangeSize, onRemove, language }: { widget: WidgetConfig, children: React.ReactNode, onChangeSize: (w: WidgetConfig, s: WidgetSize) => void, onRemove: (w: WidgetConfig) => void, language: string }) => {
@@ -115,12 +116,12 @@ export function Dashboard() {
   const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit, t, language } = useAppStore();
   const [activeFilterTag, setActiveFilterTag] = React.useState<string | null>(null);
   const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
-    const saved = localStorage.getItem('dashboard_widgets');
+    const saved = localStorage.getItem('dashboard_widgets_v2');
     return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
   });
 
   useEffect(() => {
-    localStorage.setItem('dashboard_widgets', JSON.stringify(widgets));
+    localStorage.setItem('dashboard_widgets_v2', JSON.stringify(widgets));
   }, [widgets]);
 
   const predefinedTags = ['Health', 'Work', 'Personal', 'Learning', 'Fitness'];
@@ -312,30 +313,40 @@ export function Dashboard() {
     }
 
     if (widget.type === 'tasks-list') {
-      const completedCount = tasks.filter(t => t.status === 'done').length;
-      const totalCount = tasks.length;
-      const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+      const todaysActiveTasks = tasks.filter(t => t.status !== 'done' && t.due_date === todayStr);
+      const todaysCompletedTasks = tasks.filter(t => t.status === 'done' && t.due_date === todayStr);
+      const totalTodaysTasks = todaysActiveTasks.length + todaysCompletedTasks.length;
+      const progressPercent = totalTodaysTasks > 0 ? (todaysCompletedTasks.length / totalTodaysTasks) * 100 : 0;
       return (
         <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[160px]`}>
-          <h2 
-            className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#4ade80] transition-colors w-fit`}
-            onClick={() => navigate('/tasks')}
-          >
-            <Target className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />
-            {language === 'pl' ? 'Dzisiejsze Zadania' : "Today's Tasks"}
-          </h2>
-          {widget.size === 'large' && tasks.length > 0 && (
+          <div className="flex items-center gap-2 mb-4 sm:mb-6 w-fit">
+            <div 
+              className={`shrink-0 flex items-center justify-center rounded-xl bg-[#4ade80]/10 text-[#4ade80] hover:bg-[#4ade80]/20 transition-colors cursor-pointer ${widget.size === 'small' ? 'w-8 h-8' : 'w-10 h-10'}`}
+              onClick={() => navigate('/tasks')}
+              title={language === 'pl' ? 'Przejdź do zadań' : 'Go to tasks'}
+            >
+              <Target className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'}`} />
+            </div>
+            <h2 
+              className={`${widget.size === 'small' ? 'text-base sm:text-lg' : 'text-xl cursor-pointer hover:text-[#4ade80] transition-colors'} font-display font-bold text-white`}
+              onClick={() => widget.size !== 'small' ? navigate('/tasks') : undefined}
+            >
+              {widget.size !== 'small' && (language === 'pl' ? 'Zadania na dziś' : "Today's Tasks")}
+              {widget.size === 'small' && <span className="ml-1">{language === 'pl' ? 'Zadania' : 'Tasks'}</span>}
+            </h2>
+          </div>
+          {widget.size === 'large' && totalTodaysTasks > 0 && (
             <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md relative overflow-hidden shrink-0">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs text-slate-400 font-medium font-mono uppercase tracking-wider">{language === 'pl' ? 'Postęp ogólny zadań' : 'Overall Task Progress'}</span>
-                <span className="text-xs text-[#4ade80] font-bold font-mono">{Math.round(progressPercent)}% ({completedCount}/{totalCount})</span>
+                <span className="text-xs text-slate-400 font-medium font-mono uppercase tracking-wider">{language === 'pl' ? 'Postęp dzisiejszych zadań' : 'Today\'s Progress'}</span>
+                <span className="text-xs text-[#4ade80] font-bold font-mono">{Math.round(progressPercent)}% ({todaysCompletedTasks.length}/{totalTodaysTasks})</span>
               </div>
               <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden"><div style={{ width: `${progressPercent}%` }} className="h-full bg-[#4ade80] rounded-full shadow-[0_0_10px_rgba(74,222,128,0.2)] transition-all duration-1000" /></div>
             </div>
           )}
           <div className="space-y-2 sm:space-y-3 flex-1 overflow-y-auto pr-1">
-            {activeTasks.length === 0 ? <p className={`text-slate-500 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>{language === 'pl' ? 'Masz czysto! Żadnych zadań.' : 'All clear! No tasks.'}</p> : activeTasks.slice(0, widget.size === 'small' ? 3 : widget.size === 'medium' ? 5 : 8).map(task => (
-              <div key={task.id} className={`${widget.size === 'small' ? 'p-3' : 'p-4'} rounded-xl bg-[#141414] border border-[#222222] hover:border-[#333333] transition-colors relative overflow-hidden`}>
+            {todaysActiveTasks.length === 0 ? <p className={`text-slate-500 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>{language === 'pl' ? 'Masz czysto! Żadnych zadań na dziś.' : 'All clear! No tasks for today.'}</p> : todaysActiveTasks.slice(0, widget.size === 'small' ? 3 : widget.size === 'medium' ? 5 : 8).map(task => (
+              <div key={task.id} className={`${widget.size === 'small' ? 'p-3' : 'p-4'} rounded-xl bg-[#141414] border border-[#222222] hover:border-[#333333] transition-colors relative overflow-hidden flex flex-col justify-center`}>
                 {task.color && <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: task.color }} />}
                 <div className={`font-medium text-white ${widget.size === 'small' ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} truncate`}>{task.title}</div>
                 {widget.size !== 'small' && (
@@ -384,6 +395,70 @@ export function Dashboard() {
       );
     }
 
+    if (widget.type === 'habit-streak') {
+      const activeHabits = filteredHabits;
+      
+      return (
+        <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[160px]`}>
+          <h2 
+            className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#a855f7] transition-colors w-fit`}
+            onClick={() => navigate('/habits')}
+          >
+            <Flame className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#a855f7]`} />
+            {language === 'pl' ? 'Analiza procesów (Nawyki)' : 'Habit Street Tracker'}
+          </h2>
+          
+          <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+            {activeHabits.length === 0 ? (
+              <p className={`text-slate-500 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>
+                {language === 'pl' ? 'Brak nawyków.' : 'No habits.'}
+              </p>
+            ) : (
+              activeHabits.slice(0, widget.size === 'small' ? 2 : widget.size === 'medium' ? 4 : 8).map(habit => {
+                const daysToShow = widget.size === 'small' ? 7 : 14;
+                const lastDays = Array.from({ length: daysToShow }).map((_, i) => getLocalDateStr(new Date(Date.now() - ((daysToShow - 1) - i) * 86400000))).reverse();
+                return (
+                  <div key={habit.id} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-lg">{habit.icon}</span>
+                        <span className="font-bold text-sm text-white truncate">{habit.name}</span>
+                      </div>
+                      <span className="text-xs font-bold text-slate-400 bg-black/40 px-2 py-0.5 rounded-full">
+                        <Flame className="inline w-3 h-3 text-[#a855f7] mr-1" />
+                        {calculateHabitStats(habit.completedDates).currentStreak}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-end h-8 w-full gap-1">
+                      {lastDays.map((dateStr) => {
+                        const isComp = habit.completedDates.includes(dateStr);
+                        const isSkip = habit.skippedDates?.includes(dateStr);
+                        const currentProgress = isComp ? habit.target_count : (habit.progress?.[dateStr] || 0);
+                        const heightPerc = habit.target_count > 1 ? (currentProgress / habit.target_count) * 100 : (isComp ? 100 : 0);
+                        return (
+                          <div key={dateStr} className="flex-1 bg-[#1a1a1a] rounded overflow-hidden relative h-full">
+                             {(heightPerc > 0 || isComp) && (
+                                <div 
+                                  className="absolute bottom-0 left-0 right-0" 
+                                  style={{ height: `${Math.max(10, heightPerc)}%`, backgroundColor: habit.color }} 
+                                />
+                             )}
+                             {isSkip && !isComp && (
+                                <div className="absolute bottom-0 left-0 right-0 h-[20%] bg-slate-600" />
+                             )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (widget.type === 'chart') {
       return (
         <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[220px]`}>
@@ -412,6 +487,7 @@ export function Dashboard() {
       case 'stat-progress': return language === 'pl' ? 'Statystyka: W toku' : 'Progress Stat';
       case 'focus': return language === 'pl' ? 'Cel na dziś' : 'Daily Focus';
       case 'tasks-list': return language === 'pl' ? 'Lista zadań' : 'Tasks List';
+      case 'habit-streak': return language === 'pl' ? 'Analiza nawyków' : 'Habit Streak';
       case 'agenda': return language === 'pl' ? 'Agenda (Kalendarz)' : 'Agenda';
       case 'pomodoro': return 'Pomodoro Timer';
       case 'chart': return language === 'pl' ? 'Wykres produktywności' : 'Productivity Chart';
