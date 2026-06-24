@@ -203,24 +203,24 @@ const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHab
           });
         }
       }}
-      className={`glass-card hover:border-[#a855f7]/30 transition-colors rounded-[24px] p-4 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer group ${isSkipped && !isEditMode ? 'opacity-50' : ''} ${isEditMode ? 'border-dashed border-white/20' : ''}`}
+      className={`glass-card hover:border-[#a855f7]/30 transition-colors rounded-[16px] p-2.5 flex flex-row items-center justify-between cursor-pointer group ${isSkipped && !isEditMode ? 'opacity-50' : ''} ${isEditMode ? 'border-dashed border-white/20' : ''}`}
     >
-      <div className="flex items-center gap-4 mb-3 sm:mb-0">
+      <div className="flex items-center gap-3">
         {isEditMode && (
           <div {...attributes} {...listeners} className="p-2 -ml-2 cursor-grab text-slate-500 hover:text-white shrink-0 active:cursor-grabbing">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
           </div>
         )}
         <div 
-          className="w-12 h-12 flex items-center justify-center rounded-full text-2xl shadow-inner shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-full text-lg shadow-inner shrink-0"
           style={{ backgroundColor: `${habit.color}15` }}
         >
           {habit.icon}
         </div>
         <div>
-          <h3 className={`font-semibold text-[17px] tracking-tight ${(isSkipped && !isEditMode) ? 'line-through text-slate-500' : 'text-white'}`}>{habit.name}</h3>
+          <h3 className={`font-semibold text-[14px] leading-tight tracking-tight ${(isSkipped && !isEditMode) ? 'line-through text-slate-500' : 'text-white'}`}>{habit.name}</h3>
           <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-slate-500 text-xs font-medium">
+            <p className="text-slate-500 text-[11px] font-medium">
               {habit.target_count > 1 
                 ? `${language === 'pl' ? 'Cel' : 'Goal'}: ${habit.target_count} ${habit.unit || ''}` 
                 : `${language === 'pl' ? 'Cel' : 'Goal'}: 1`} 
@@ -230,21 +230,13 @@ const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHab
         </div>
       </div>
       
-      <div className="shrink-0 flex items-center justify-between sm:justify-start gap-3">
+      <div className="shrink-0 flex items-center gap-2.5">
         {!isEditMode && (
           <>
-            <div className="flex items-center justify-center gap-1.5 min-w-[36px] bg-[#222]/80 px-2 py-1 rounded-lg">
-              <Flame className="w-3.5 h-3.5" style={{ color: habit.color }} />
-              <span className="text-xs font-bold" style={{ color: habit.color }}>{stats.currentStreak}</span>
+            <div className={`flex items-center justify-center gap-1.5 min-w-[36px] px-2 py-1 rounded-xl border ${stats.currentStreak > 0 ? 'bg-gradient-to-tr from-orange-500/20 to-red-500/20 border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.2)]' : 'bg-white/5 border-white/10'}`}>
+              <Flame className={`w-3.5 h-3.5 ${stats.currentStreak > 0 ? 'text-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,1)]' : 'text-slate-500'}`} fill={stats.currentStreak > 0 ? 'currentColor' : 'none'} />
+              <span className={`text-[13px] font-black ${stats.currentStreak > 0 ? 'text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]' : 'text-slate-500'}`}>{stats.currentStreak}</span>
             </div>
-            <button 
-              onClick={(e) => { e.stopPropagation(); toggleHabit(habit.id, selectedDate); }}
-              className="px-4 py-2 sm:hidden rounded-xl text-xs font-semibold bg-white/5 mr-4"
-            >
-              {isCompleted 
-                ? (language === 'pl' ? 'Odznacz' : 'Unmark') 
-                : (language === 'pl' ? 'Wykonane' : 'Done')}
-            </button>
             <HoldableAction 
               isCompleted={isCompleted}
               isSkipped={isSkipped}
@@ -264,10 +256,10 @@ const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHab
               e.stopPropagation();
               onArchive(habit);
             }}
-            className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors shrink-0"
+            className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors shrink-0"
             title={language === 'pl' ? 'Archiwizuj' : 'Archive'}
           >
-            <Archive className="w-5 h-5" />
+            <Archive className="w-4 h-4" />
           </button>
         )}
       </div>
@@ -276,7 +268,7 @@ const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHab
 };
 
 export function Habits() {
-  const { habits, addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit, reorderHabits, t, language } = useAppStore();
+  const { habits, addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit, reorderHabits, t, language, stackHabits } = useAppStore();
   
   // Tabs
   const [activeTab, setActiveTab] = useState<'home' | 'history'>('home');
@@ -397,6 +389,8 @@ export function Habits() {
   };
 
   // Home View Calcs
+  const [isStackExpanded, setIsStackExpanded] = useState(false);
+
   const activeHabits = habits.filter(h => h.status !== 'archived').sort((a, b) => (a.order || 0) - (b.order || 0));
   const archivedHabits = habits.filter(h => h.status === 'archived');
   const habitsForDate = activeHabits; 
@@ -404,6 +398,20 @@ export function Habits() {
   const skippedCountForDate = habitsForDate.filter(h => h.skippedDates?.includes(selectedDate)).length;
   const activeCountForDate = habitsForDate.length - skippedCountForDate;
   const progressPercentage = activeCountForDate > 0 ? (completedCountForDate / activeCountForDate) * 100 : 0;
+
+  const visibleHabits = useMemo(() => {
+    if (stackHabits && !isEditMode && !isStackExpanded) {
+      return habitsForDate.filter(h => !h.completedDates.includes(selectedDate) && !h.skippedDates?.includes(selectedDate));
+    }
+    return habitsForDate;
+  }, [habitsForDate, selectedDate, stackHabits, isEditMode, isStackExpanded]);
+
+  const stackedHabits = useMemo(() => {
+    if (stackHabits && !isEditMode) {
+      return habitsForDate.filter(h => h.completedDates.includes(selectedDate) || h.skippedDates?.includes(selectedDate));
+    }
+    return [];
+  }, [habitsForDate, selectedDate, stackHabits, isEditMode]);
 
   const prevProgressRef = useRef(progressPercentage);
   React.useEffect(() => {
@@ -423,8 +431,8 @@ export function Habits() {
     <div className="max-w-2xl mx-auto space-y-8 pb-20 font-sans">
       
       {/* Header / Week Selector */}
-      <div className="flex flex-col items-center space-y-6 pt-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col items-center space-y-6 pt-4 w-full">
+        <div className="flex justify-between items-center w-full max-w-[360px] sm:max-w-md px-2 sm:px-4">
           {currentWeekDays.map(date => {
             const dateStr = getLocalDateStr(date);
             const isSel = selectedDate === dateStr;
@@ -493,8 +501,8 @@ export function Habits() {
       </div>
       <div className="space-y-3">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={habitsForDate.map(h => h.id)} strategy={verticalListSortingStrategy}>
-            {habitsForDate.map(habit => (
+          <SortableContext items={visibleHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+            {visibleHabits.map(habit => (
               <SortableHabitItem
                 key={habit.id}
                 habit={habit}
@@ -517,6 +525,68 @@ export function Habits() {
             >
               {language === 'pl' ? 'Stwórz swój pierwszy nawyk' : 'Create your first habit'}
             </button>
+          </div>
+        )}
+
+        {/* Stack UI */}
+        {stackHabits && !isEditMode && stackedHabits.length > 0 && (
+          <div className="mt-8">
+            <div className="flex justify-end mb-3">
+              <button 
+                onClick={() => setIsStackExpanded(!isStackExpanded)}
+                className="text-xs text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg"
+              >
+                {isStackExpanded 
+                  ? (language === 'pl' ? 'Zwiń' : 'Collapse') 
+                  : (language === 'pl' ? 'Pokaż więcej' : 'Show more')}
+              </button>
+            </div>
+
+            {!isStackExpanded ? (
+              <div className="relative cursor-pointer group" onClick={() => setIsStackExpanded(true)}>
+                {/* Background cards for stack effect */}
+                {stackedHabits.length > 2 && (
+                  <div className="absolute top-0 left-6 right-6 h-full glass-card translate-y-4 -z-20 opacity-30 rounded-[20px] transition-transform group-hover:translate-y-5" />
+                )}
+                {stackedHabits.length > 1 && (
+                  <div className="absolute top-0 left-3 right-3 h-full glass-card translate-y-2 -z-10 opacity-60 rounded-[20px] transition-transform group-hover:translate-y-3" />
+                )}
+                
+                {/* Top Card (Last Completed) */}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={[stackedHabits[stackedHabits.length - 1].id]} strategy={verticalListSortingStrategy}>
+                    <SortableHabitItem
+                      habit={stackedHabits[stackedHabits.length - 1]}
+                      selectedDate={selectedDate}
+                      setInteractionHabit={setInteractionHabit}
+                      toggleHabit={toggleHabit}
+                      updateHabitProgress={updateHabitProgress}
+                      isEditMode={isEditMode}
+                      onArchive={handleArchiveHabit}
+                    />
+                  </SortableContext>
+                </DndContext>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={stackedHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+                    {stackedHabits.map(habit => (
+                      <SortableHabitItem
+                        key={habit.id}
+                        habit={habit}
+                        selectedDate={selectedDate}
+                        setInteractionHabit={setInteractionHabit}
+                        toggleHabit={toggleHabit}
+                        updateHabitProgress={updateHabitProgress}
+                        isEditMode={isEditMode}
+                        onArchive={handleArchiveHabit}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </div>
+            )}
           </div>
         )}
       </div>

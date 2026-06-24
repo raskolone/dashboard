@@ -26,6 +26,10 @@ interface AppState {
   setLanguage: (lang: 'pl' | 'en') => void;
   t: (key: string) => any;
   
+  // Habits settings
+  stackHabits: boolean;
+  setStackHabits: (stack: boolean) => void;
+
   // Google Auth & Sync Info
   user: User | null;
   googleToken: string | null;
@@ -86,6 +90,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setLanguage = (lang: 'pl' | 'en') => {
     setLanguageState(lang);
     localStorage.setItem('app_language', lang);
+  };
+
+  const [stackHabits, setStackHabitsState] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('app_stack_habits');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const setStackHabits = (stack: boolean) => {
+    setStackHabitsState(stack);
+    localStorage.setItem('app_stack_habits', JSON.stringify(stack));
   };
 
   const t = (path: string): any => {
@@ -614,6 +632,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tasks, taskLists, habits, events, googleEvents, knowledge,
       theme, toggleTheme,
       language, setLanguage, t,
+      stackHabits, setStackHabits,
       user, googleToken, isAuthLoading, isSyncingCalendar,
       loginGoogle, logoutGoogle, loginDemo, syncCalendar,
       addTask, updateTask, deleteTask,

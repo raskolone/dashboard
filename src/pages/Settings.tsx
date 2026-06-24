@@ -3,7 +3,7 @@ import { useAppStore } from '../store/AppContext';
 import { User, Shield, Key, Bell, Palette, HardDrive, Globe } from 'lucide-react';
 
 export function SettingsPage() {
-  const { user, t, language, setLanguage } = useAppStore();
+  const { user, t, language, setLanguage, stackHabits, setStackHabits } = useAppStore();
   const [activeTab, setActiveTab] = useState('profile');
 
   if (!user) return null;
@@ -118,6 +118,20 @@ export function SettingsPage() {
                         EN ({t('settings.langEnglish')})
                       </button>
                     </div>
+                 </div>
+
+                 {/* Habits Settings */}
+                 <div className="p-5 bg-[#161616] border border-[#222222] rounded-xl flex justify-between items-center">
+                    <div>
+                      <div className="font-bold text-white mb-1">{language === 'pl' ? 'Stosowanie wykonanych nawyków' : 'Stack completed habits'}</div>
+                      <div className="text-sm text-slate-400">{language === 'pl' ? 'Zamienia wykonane nawyki w jeden stos na dole listy.' : 'Turns completed habits into a single stack at the bottom.'}</div>
+                    </div>
+                    <button 
+                      onClick={() => setStackHabits(!stackHabits)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${stackHabits ? 'bg-[#4ade80]' : 'bg-slate-700'}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${stackHabits ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
                  </div>
 
                  {/* Forced dark theme info card */}
