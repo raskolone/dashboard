@@ -9,7 +9,7 @@ import { GenieModal } from './GenieModal';
 
 type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak';
 
-export function PomodoroTimer() {
+export function PomodoroTimer({ size = 'large' }: { size?: 'small' | 'medium' | 'large' }) {
   const { language } = useAppStore();
 
   const [settings, setSettings] = useState(() => {
@@ -197,7 +197,7 @@ export function PomodoroTimer() {
   return (
     <>
       {/* 1. COMPACT TILE MODULE MATCHING DASHBOARD DESIGN CEILING */}
-      <div className="glass-card hover:border-[#4ade80]/30 transition-all duration-300 p-5 rounded-3xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className={`glass-card hover:border-[#4ade80]/30 transition-all duration-300 ${size === 'small' ? 'p-4' : 'p-5 sm:p-6'} rounded-3xl relative overflow-hidden flex ${size === 'small' ? 'flex-col justify-center text-center items-center' : 'flex-col md:flex-row justify-between items-center'} gap-4 w-full h-full min-h-[160px]`}>
         {/* Subtle Liquid Highlight Line */}
         <div 
           className="absolute bottom-0 left-0 h-[3px] bg-gradient-to-r from-[#4ade80] to-[#5bb255] transition-all duration-1000"
@@ -207,45 +207,51 @@ export function PomodoroTimer() {
         {/* Small Ambient Glow behind the tile */}
         <div className="absolute right-0 top-0 w-32 h-32 bg-[#4ade80]/5 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="p-3 bg-[#4ade80]/10 rounded-2xl shrink-0 text-[#4ade80]">
-            <Brain className="w-6 h-6 animate-pulse" />
+        <div className={`flex ${size === 'small' ? 'flex-col items-center gap-2' : 'items-center gap-4'} w-full md:w-auto`}>
+          <div className={`${size === 'small' ? 'p-2' : 'p-3'} bg-[#4ade80]/10 rounded-2xl shrink-0 text-[#4ade80]`}>
+            <Brain className={`${size === 'small' ? 'w-5 h-5' : 'w-6 h-6'} animate-pulse`} />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-wider font-mono text-slate-500 font-bold">
-                {language === 'pl' ? 'Produktywność' : 'Productivity'}
-              </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] animate-ping" />
-            </div>
-            <h3 className="text-lg font-display font-medium text-white truncate">
+            {size !== 'small' && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs uppercase tracking-wider font-mono text-slate-500 font-bold">
+                  {language === 'pl' ? 'Produktywność' : 'Productivity'}
+                </span>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] animate-ping" />
+              </div>
+            )}
+            <h3 className={`${size === 'small' ? 'text-sm font-bold' : 'text-lg font-display font-medium'} text-white truncate`}>
               {getModeLabelSelected(mode)}
             </h3>
-            <p className="text-[11px] text-slate-400 font-mono">
-              {language === 'pl' ? 'Ukończono cykle: ' : 'Completed cycles: '}
-              <span className="font-bold text-white">{sessionCount}</span>
-            </p>
+            {size !== 'small' && (
+              <p className="text-[11px] text-slate-400 font-mono">
+                {language === 'pl' ? 'Ukończono cykle: ' : 'Completed cycles: '}
+                <span className="font-bold text-white">{sessionCount}</span>
+              </p>
+            )}
           </div>
         </div>
 
         {/* Big visual time inside mini tile */}
-        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-          <div className="text-right">
-            <div className="text-3xl font-display font-bold text-white tracking-widest font-variant-numeric">
+        <div className={`flex ${size === 'small' ? 'flex-col items-center gap-3' : 'items-center gap-4'} w-full md:w-auto justify-between md:justify-end`}>
+          <div className={size === 'small' ? 'text-center' : 'text-right'}>
+            <div className={`${size === 'small' ? 'text-3xl' : 'text-4xl'} font-display font-bold text-white tracking-widest font-variant-numeric leading-none`}>
               {formatTime(timeLeft)}
             </div>
-            <div className="text-[10px] text-slate-500 font-mono">
-              {language === 'pl' 
-                ? `Cel: ${settings.sessionsBeforeLongBreak} sesje` 
-                : `Goal: ${settings.sessionsBeforeLongBreak} sessions`}
-            </div>
+            {size !== 'small' && (
+              <div className="text-[10px] text-slate-500 font-mono mt-1">
+                {language === 'pl' 
+                  ? `Cel: ${settings.sessionsBeforeLongBreak} sesje` 
+                  : `Goal: ${settings.sessionsBeforeLongBreak} sessions`}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             {/* Start session / Pause primary buttons */}
             <button
               onClick={toggleTimer}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold font-display uppercase tracking-wider transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.97] flex items-center gap-2 cursor-pointer ${
+              className={`${size === 'small' ? 'px-3 py-1.5 text-[10px]' : 'px-5 py-2.5 text-xs'} rounded-xl font-bold font-display uppercase tracking-wider transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.97] flex items-center gap-2 cursor-pointer ${
                 isActive 
                   ? 'bg-slate-800 text-white hover:bg-slate-700 hover:text-[#4ade80]' 
                   : 'bg-[#4ade80] text-black shadow-[0_0_24px_rgba(74,222,128,0.15)] hover:shadow-[0_0_35px_rgba(74,222,128,0.35)]'
@@ -253,23 +259,25 @@ export function PomodoroTimer() {
             >
               {isActive ? (
                 <>
-                  <PauseCircle className="w-4 h-4" /> {language === 'pl' ? 'Pauza' : 'Pause'}
+                  <PauseCircle className={size === 'small' ? 'w-3 h-3' : 'w-4 h-4'} /> {language === 'pl' ? 'Pauza' : 'Pause'}
                 </>
               ) : (
                 <>
-                  <PlayCircle className="w-4 h-4" /> {language === 'pl' ? 'Start Sesji' : 'Start Session'}
+                  <PlayCircle className={size === 'small' ? 'w-3 h-3' : 'w-4 h-4'} /> {language === 'pl' ? (size === 'small' ? 'Start' : 'Start Sesji') : 'Start'}
                 </>
               )}
             </button>
 
             {/* Expand button (Launches GENIE EFFECT with full system screen) */}
-            <button
-              onClick={() => setIsExpanded(true)}
-              className="p-3 bg-white/5 hover:bg-white/10 hover:text-white text-slate-400 rounded-xl transition-colors border border-white/5 cursor-pointer"
-              title={language === 'pl' ? "Otwórz pełny ekran Pomodoro" : "Open full-screen Pomodoro"}
-            >
-              <Expand className="w-4 h-4" />
-            </button>
+            {size !== 'small' && (
+              <button
+                onClick={() => setIsExpanded(true)}
+                className="p-3 bg-white/5 hover:bg-white/10 hover:text-white text-slate-400 rounded-xl transition-colors border border-white/5 cursor-pointer"
+                title={language === 'pl' ? "Otwórz pełny ekran Pomodoro" : "Open full-screen Pomodoro"}
+              >
+                <Expand className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>

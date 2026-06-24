@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/AppContext';
 import { CheckCircle2, Clock, CalendarIcon, Target, Activity, Brain, Flame, Plus, MoreVertical, LayoutGrid, X, Filter, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -110,6 +111,7 @@ const SortableWidget = ({ widget, children, onChangeSize, onRemove, language }: 
 };
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit, t, language } = useAppStore();
   const [activeFilterTag, setActiveFilterTag] = React.useState<string | null>(null);
   const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
@@ -222,15 +224,18 @@ export function Dashboard() {
   const renderWidgetContent = (widget: WidgetConfig) => {
     if (widget.type.startsWith('stat-')) {
       let stat = null;
-      if (widget.type === 'stat-tasks') stat = { title: t('dashboard.tasksTodo'), value: activeTasks.length, icon: CheckCircle2, color: "text-blue-400", bg: "bg-blue-400/10" };
-      else if (widget.type === 'stat-events') stat = { title: t('dashboard.todaysEvents'), value: todaysEvents.length, icon: CalendarIcon, color: "text-purple-400", bg: "bg-purple-400/10" };
-      else if (widget.type === 'stat-habits') stat = { title: t('dashboard.habitsCompleted'), value: filteredHabits.filter(h => h.completedDates.includes(todayStr)).length, icon: Target, color: "text-[#4ade80]", bg: "bg-[#4ade80]/10" };
-      else if (widget.type === 'stat-progress') stat = { title: t('dashboard.inProgress'), value: tasks.filter(t => t.status === 'in_progress').length, icon: Clock, color: "text-orange-400", bg: "bg-orange-400/10" };
+      if (widget.type === 'stat-tasks') stat = { title: t('dashboard.tasksTodo'), value: activeTasks.length, icon: CheckCircle2, color: "text-blue-400", bg: "bg-blue-400/10", path: '/tasks' };
+      else if (widget.type === 'stat-events') stat = { title: t('dashboard.todaysEvents'), value: todaysEvents.length, icon: CalendarIcon, color: "text-purple-400", bg: "bg-purple-400/10", path: '/calendar' };
+      else if (widget.type === 'stat-habits') stat = { title: t('dashboard.habitsCompleted'), value: filteredHabits.filter(h => h.completedDates.includes(todayStr)).length, icon: Target, color: "text-[#4ade80]", bg: "bg-[#4ade80]/10", path: '/habits' };
+      else if (widget.type === 'stat-progress') stat = { title: t('dashboard.inProgress'), value: tasks.filter(t => t.status === 'in_progress').length, icon: Clock, color: "text-orange-400", bg: "bg-orange-400/10", path: '/tasks' };
       
       if (!stat) return null;
 
       return (
-        <div className={`glass-card ${widget.size === 'small' ? 'p-4' : 'p-6'} rounded-3xl flex ${widget.size === 'small' ? 'flex-col justify-center text-center' : 'items-center justify-between'} h-full group hover:border-[#4ade80]/30 transition-colors duration-300`}>
+        <div 
+          onClick={() => navigate(stat.path)}
+          className={`glass-card ${widget.size === 'small' ? 'p-4' : 'p-6'} rounded-3xl flex ${widget.size === 'small' ? 'flex-col justify-center text-center' : 'items-center justify-between'} h-full group hover:border-[#4ade80]/30 transition-colors duration-300 cursor-pointer`}
+        >
           {widget.size === 'small' ? (
              <div className="flex flex-col items-center gap-2">
                <div className={`p-3 rounded-xl ${stat.bg}`}><stat.icon className={`w-5 h-5 ${stat.color}`} /></div>
@@ -262,7 +267,13 @@ export function Dashboard() {
         <div className={`glass-card ${widget.size === 'small' ? 'p-4' : 'p-6'} rounded-3xl h-full flex flex-col min-h-[160px]`}>
           <div className={`flex flex-col ${widget.size === 'small' ? 'gap-2 mb-4' : 'sm:flex-row sm:items-center gap-4 mb-6'} justify-between`}>
             <div>
-              <h2 className={`${widget.size === 'small' ? 'text-base sm:text-lg' : 'text-xl'} font-display font-bold text-white flex items-center gap-2`}><Brain className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />{t('dashboard.focusForToday')}</h2>
+              <h2 
+                className={`${widget.size === 'small' ? 'text-base sm:text-lg' : 'text-xl'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#4ade80] transition-colors w-fit`}
+                onClick={() => navigate('/tasks')}
+              >
+                <Brain className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />
+                {t('dashboard.focusForToday')}
+              </h2>
               {widget.size !== 'small' && <p className="text-sm text-slate-400 mt-1">{t('dashboard.focusDescription')}</p>}
             </div>
             {focusItems.length > 0 && widget.size === 'large' && (
@@ -306,7 +317,13 @@ export function Dashboard() {
       const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
       return (
         <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[160px]`}>
-          <h2 className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2`}><Target className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />{language === 'pl' ? 'Dzisiejsze Zadania' : "Today's Tasks"}</h2>
+          <h2 
+            className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#4ade80] transition-colors w-fit`}
+            onClick={() => navigate('/tasks')}
+          >
+            <Target className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />
+            {language === 'pl' ? 'Dzisiejsze Zadania' : "Today's Tasks"}
+          </h2>
           {widget.size === 'large' && tasks.length > 0 && (
             <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md relative overflow-hidden shrink-0">
               <div className="flex justify-between items-center mb-2">
@@ -337,7 +354,13 @@ export function Dashboard() {
     if (widget.type === 'agenda') {
       return (
         <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[160px]`}>
-          <h2 className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2`}><CalendarIcon className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-purple-400`} />{language === 'pl' ? 'Agenda (Dzisiaj)' : "Agenda (Today)"}</h2>
+          <h2 
+            className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-purple-400 transition-colors w-fit`}
+            onClick={() => navigate('/calendar')}
+          >
+            <CalendarIcon className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-purple-400`} />
+            {language === 'pl' ? 'Agenda (Dzisiaj)' : "Agenda (Today)"}
+          </h2>
           <div className="space-y-2 sm:space-y-3 flex-1 overflow-y-auto pr-1">
              {todaysEvents.length === 0 ? <p className={`text-slate-500 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>{language === 'pl' ? 'Brak spotkań.' : 'No meetings.'}</p> : todaysEvents.slice(0, widget.size === 'small' ? 3 : widget.size === 'medium' ? 4 : 10).map(ev => (
                <div key={ev.id} className={`${widget.size === 'small' ? 'p-3' : 'p-4'} rounded-xl bg-[#141414] border border-[#222222] flex items-start gap-3 sm:gap-4`}>
@@ -355,12 +378,8 @@ export function Dashboard() {
 
     if (widget.type === 'pomodoro') {
       return (
-        <div className="h-full relative z-0 flex items-center justify-center glass-card rounded-3xl p-4 sm:p-6 overflow-hidden min-h-[160px]">
-          <div className={`origin-center transition-transform duration-300 ${widget.size === 'small' ? 'scale-50 sm:scale-75' : widget.size === 'medium' ? 'scale-75 sm:scale-90 md:scale-100' : 'scale-90 sm:scale-100'}`}>
-            <div className="pointer-events-auto">
-              <PomodoroTimer />
-            </div>
-          </div>
+        <div className="h-full relative z-0 w-full min-h-[160px] pointer-events-auto">
+          <PomodoroTimer size={widget.size} />
         </div>
       );
     }
@@ -368,7 +387,13 @@ export function Dashboard() {
     if (widget.type === 'chart') {
       return (
         <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[220px]`}>
-          <h2 className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2`}><Activity className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />{language === 'pl' ? 'Produktywność' : 'Productivity'}</h2>
+          <h2 
+            className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#4ade80] transition-colors w-fit`}
+            onClick={() => navigate('/habits')}
+          >
+            <Activity className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />
+            {language === 'pl' ? 'Produktywność' : 'Productivity'}
+          </h2>
           <div className={`flex-1 ${widget.size === 'small' ? 'min-h-[100px] -mx-2' : 'min-h-[150px]'}`}>
             <ProductivityChart tasks={tasks} habits={filteredHabits} />
           </div>
@@ -377,6 +402,21 @@ export function Dashboard() {
     }
 
     return null;
+  };
+
+  const getWidgetName = (type: string) => {
+    switch(type) {
+      case 'stat-tasks': return language === 'pl' ? 'Statystyka: Zadania' : 'Tasks Stat';
+      case 'stat-events': return language === 'pl' ? 'Statystyka: Spotkania' : 'Events Stat';
+      case 'stat-habits': return language === 'pl' ? 'Statystyka: Nawyki' : 'Habits Stat';
+      case 'stat-progress': return language === 'pl' ? 'Statystyka: W toku' : 'Progress Stat';
+      case 'focus': return language === 'pl' ? 'Cel na dziś' : 'Daily Focus';
+      case 'tasks-list': return language === 'pl' ? 'Lista zadań' : 'Tasks List';
+      case 'agenda': return language === 'pl' ? 'Agenda (Kalendarz)' : 'Agenda';
+      case 'pomodoro': return 'Pomodoro Timer';
+      case 'chart': return language === 'pl' ? 'Wykres produktywności' : 'Productivity Chart';
+      default: return type.replace('stat-', '').replace('-', ' ');
+    }
   };
 
   return (
@@ -407,10 +447,10 @@ export function Dashboard() {
                   hiddenWidgets.map(w => (
                     <DropdownMenu.Item 
                       key={w.id}
-                      onClick={() => addWidget(w.id)}
+                      onSelect={() => addWidget(w.id)}
                       className="px-3 py-2 text-sm text-white hover:bg-white/10 outline-none rounded-xl cursor-pointer flex justify-between items-center"
                     >
-                      <span>{w.type.replace('stat-', '').replace('-', ' ')}</span>
+                      <span>{getWidgetName(w.type)}</span>
                       <Plus className="w-4 h-4 text-slate-400" />
                     </DropdownMenu.Item>
                   ))
