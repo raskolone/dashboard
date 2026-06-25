@@ -154,9 +154,9 @@ const HoldableAction = ({ isCompleted, isSkipped, currentProgress, targetCount, 
   );
 };
 
-const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, updateHabitProgress, isEditMode, onArchive }: any) => {
+const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHabit, updateHabitProgress, isEditMode, onArchive, disableDetails }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
-  const { language } = useAppStore();
+  const { language, stackHabits } = useAppStore();
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -192,11 +192,17 @@ const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHab
   const stats = calculateHabitStats(habit.completedDates);
 
   return (
-    <div 
+    <motion.div 
       ref={setNodeRef}
       style={style}
+      layoutId={!isEditMode ? `habit-card-${habit.id}` : undefined}
+      layout={!isEditMode ? "position" : undefined}
+      initial={!isEditMode ? { opacity: 0, y: 20, scale: 0.95 } : undefined}
+      animate={!isEditMode ? { opacity: 1, y: 0, scale: 1 } : undefined}
+      exit={!isEditMode ? { opacity: 0, y: -20, scale: 0.95 } : undefined}
+      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
       onClick={() => {
-        if (!isEditMode) {
+        if (!isEditMode && !disableDetails) {
           setInteractionHabit({
             habit,
             progressValue: currentProgress
@@ -263,7 +269,7 @@ const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHab
           </button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -390,6 +396,7 @@ export function Habits() {
 
   // Home View Calcs
   const [isStackExpanded, setIsStackExpanded] = useState(false);
+  const [isStackHovered, setIsStackHovered] = useState(false);
 
   const activeHabits = habits.filter(h => h.status !== 'archived').sort((a, b) => (a.order || 0) - (b.order || 0));
   const archivedHabits = habits.filter(h => h.status === 'archived');
@@ -400,11 +407,11 @@ export function Habits() {
   const progressPercentage = activeCountForDate > 0 ? (completedCountForDate / activeCountForDate) * 100 : 0;
 
   const visibleHabits = useMemo(() => {
-    if (stackHabits && !isEditMode && !isStackExpanded) {
+    if (stackHabits && !isEditMode) {
       return habitsForDate.filter(h => !h.completedDates.includes(selectedDate) && !h.skippedDates?.includes(selectedDate));
     }
     return habitsForDate;
-  }, [habitsForDate, selectedDate, stackHabits, isEditMode, isStackExpanded]);
+  }, [habitsForDate, selectedDate, stackHabits, isEditMode]);
 
   const stackedHabits = useMemo(() => {
     if (stackHabits && !isEditMode) {
@@ -502,18 +509,20 @@ export function Habits() {
       <div className="space-y-3">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={visibleHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
-            {visibleHabits.map(habit => (
-              <SortableHabitItem
-                key={habit.id}
-                habit={habit}
-                selectedDate={selectedDate}
-                setInteractionHabit={setInteractionHabit}
-                toggleHabit={toggleHabit}
-                updateHabitProgress={updateHabitProgress}
-                isEditMode={isEditMode}
-                onArchive={handleArchiveHabit}
-              />
-            ))}
+            <AnimatePresence mode="popLayout">
+              {visibleHabits.map(habit => (
+                <SortableHabitItem
+                  key={habit.id}
+                  habit={habit}
+                  selectedDate={selectedDate}
+                  setInteractionHabit={setInteractionHabit}
+                  toggleHabit={toggleHabit}
+                  updateHabitProgress={updateHabitProgress}
+                  isEditMode={isEditMode}
+                  onArchive={handleArchiveHabit}
+                />
+              ))}
+            </AnimatePresence>
           </SortableContext>
         </DndContext>
         {habitsForDate.length === 0 && (
@@ -531,62 +540,103 @@ export function Habits() {
         {/* Stack UI */}
         {stackHabits && !isEditMode && stackedHabits.length > 0 && (
           <div className="mt-8">
-            <div className="flex justify-end mb-3">
-              <button 
-                onClick={() => setIsStackExpanded(!isStackExpanded)}
-                className="text-xs text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg"
-              >
-                {isStackExpanded 
-                  ? (language === 'pl' ? 'Zwiń' : 'Collapse') 
-                  : (language === 'pl' ? 'Pokaż więcej' : 'Show more')}
-              </button>
-            </div>
-
-            {!isStackExpanded ? (
-              <div className="relative cursor-pointer group" onClick={() => setIsStackExpanded(true)}>
-                {/* Background cards for stack effect */}
-                {stackedHabits.length > 2 && (
-                  <div className="absolute top-0 left-6 right-6 h-full glass-card translate-y-4 -z-20 opacity-30 rounded-[20px] transition-transform group-hover:translate-y-5" />
-                )}
-                {stackedHabits.length > 1 && (
-                  <div className="absolute top-0 left-3 right-3 h-full glass-card translate-y-2 -z-10 opacity-60 rounded-[20px] transition-transform group-hover:translate-y-3" />
-                )}
-                
-                {/* Top Card (Last Completed) */}
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={[stackedHabits[stackedHabits.length - 1].id]} strategy={verticalListSortingStrategy}>
-                    <SortableHabitItem
-                      habit={stackedHabits[stackedHabits.length - 1]}
-                      selectedDate={selectedDate}
-                      setInteractionHabit={setInteractionHabit}
-                      toggleHabit={toggleHabit}
-                      updateHabitProgress={updateHabitProgress}
-                      isEditMode={isEditMode}
-                      onArchive={handleArchiveHabit}
-                    />
-                  </SortableContext>
-                </DndContext>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={stackedHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
-                    {stackedHabits.map(habit => (
-                      <SortableHabitItem
-                        key={habit.id}
-                        habit={habit}
-                        selectedDate={selectedDate}
-                        setInteractionHabit={setInteractionHabit}
-                        toggleHabit={toggleHabit}
-                        updateHabitProgress={updateHabitProgress}
-                        isEditMode={isEditMode}
-                        onArchive={handleArchiveHabit}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
+            {isStackExpanded && (
+              <div className="flex justify-end mb-3">
+                <button 
+                  onClick={() => setIsStackExpanded(false)}
+                  className="text-xs text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg"
+                >
+                  {language === 'pl' ? 'Zwiń' : 'Collapse'}
+                </button>
               </div>
             )}
+
+            <AnimatePresence mode="wait">
+              {!isStackExpanded ? (
+                <motion.div 
+                  key="collapsed-stack"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="relative cursor-pointer group" 
+                  style={{ 
+                    height: `${58 + (stackedHabits.length - 1) * (isStackHovered ? 36 : 30)}px`,
+                  }}
+                  onClick={() => setIsStackExpanded(true)}
+                  onMouseEnter={() => setIsStackHovered(true)}
+                  onMouseLeave={() => setIsStackHovered(false)}
+                  transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+                >
+                  <AnimatePresence mode="popLayout">
+                    {stackedHabits.map((habit, idx) => {
+                      return (
+                        <motion.div
+                          key={`stacked-collapsed-${habit.id}`}
+                          layoutId={`stacked-card-${habit.id}`}
+                          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                          className="absolute left-0 right-0 origin-top"
+                          style={{
+                            zIndex: 50 - idx,
+                            transform: `translateY(${idx * (isStackHovered ? 36 : 30)}px)`,
+                          }}
+                          transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+                        >
+                          <SortableHabitItem
+                            habit={habit}
+                            selectedDate={selectedDate}
+                            setInteractionHabit={setInteractionHabit}
+                            toggleHabit={toggleHabit}
+                            updateHabitProgress={updateHabitProgress}
+                            isEditMode={isEditMode}
+                            onArchive={handleArchiveHabit}
+                            disableDetails={true}
+                          />
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="expanded-stack"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-3"
+                >
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={stackedHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+                      <AnimatePresence mode="popLayout">
+                        {stackedHabits.map(habit => (
+                          <motion.div
+                            key={`stacked-expanded-${habit.id}`}
+                            layoutId={`stacked-card-${habit.id}`}
+                            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                            transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+                          >
+                            <SortableHabitItem
+                              habit={habit}
+                              selectedDate={selectedDate}
+                              setInteractionHabit={setInteractionHabit}
+                              toggleHabit={toggleHabit}
+                              updateHabitProgress={updateHabitProgress}
+                              isEditMode={isEditMode}
+                              onArchive={handleArchiveHabit}
+                              disableDetails={true}
+                            />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </SortableContext>
+                  </DndContext>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>

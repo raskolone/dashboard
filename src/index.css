@@ -235,5 +235,32 @@ html.light .bg-white\/5 { background-color: rgba(0,0,0,0.03) !important; }
   }
 }
 
+@keyframes glassEntrance {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.glass-card, .liquid-glass-card {
+  opacity: 0;
+  animation: glassEntrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.glass-card:nth-child(1), .liquid-glass-card:nth-child(1) { animation-delay: 0.05s; }
+.glass-card:nth-child(2), .liquid-glass-card:nth-child(2) { animation-delay: 0.1s; }
+.glass-card:nth-child(3), .liquid-glass-card:nth-child(3) { animation-delay: 0.15s; }
+.glass-card:nth-child(4), .liquid-glass-card:nth-child(4) { animation-delay: 0.2s; }
+.glass-card:nth-child(5), .liquid-glass-card:nth-child(5) { animation-delay: 0.25s; }
+.glass-card:nth-child(6), .liquid-glass-card:nth-child(6) { animation-delay: 0.3s; }
+.glass-card:nth-child(7), .liquid-glass-card:nth-child(7) { animation-delay: 0.35s; }
+.glass-card:nth-child(8), .liquid-glass-card:nth-child(8) { animation-delay: 0.4s; }
+.glass-card:nth-child(9), .liquid-glass-card:nth-child(9) { animation-delay: 0.45s; }
+.glass-card:nth-child(n+10), .liquid-glass-card:nth-child(n+10) { animation-delay: 0.5s; }
+
 
 

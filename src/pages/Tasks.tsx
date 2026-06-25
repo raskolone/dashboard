@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store/AppContext';
-import { Target, Circle, CheckCircle2, PlayCircle, Plus, Edit2, Trash2, X, AlertTriangle, List, LayoutGrid, GripVertical, CheckSquare, Square, ListChecks } from 'lucide-react';
+import { Target, Circle, CheckCircle2, PlayCircle, Plus, Edit2, Trash2, X, AlertTriangle, List, LayoutGrid, GripVertical, CheckSquare, Square, ListChecks, ChevronDown, ChevronRight, MoreVertical } from 'lucide-react';
 import { TaskStatus, TaskPriority, TaskCategory, Task, ChecklistItem } from '../types';
 import { GenieModal } from '../components/GenieModal';
 import { motion, AnimatePresence } from 'motion/react';
@@ -145,10 +145,46 @@ export function Tasks() {
   type ViewMode = 'today' | 'week' | 'all';
   type FilterStatus = 'all' | 'active' | 'done';
   type LayoutMode = 'list' | 'board';
+  type ListSubMode = 'vertical' | 'tiles';
   const [viewMode, setViewMode] = useState<ViewMode>('today');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('active');
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('board');
+  const [listSubMode, setListSubMode] = useState<ListSubMode>('tiles');
+  const [expandedCompletedLists, setExpandedCompletedLists] = useState<Record<string, boolean>>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
+
+  const getRelativeDateLabel = (dateStr: string, lang: 'pl' | 'en') => {
+    if (!dateStr) return '';
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const target = new Date(dateStr);
+    target.setHours(0,0,0,0);
+    
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return lang === 'pl' ? 'Dzisiaj' : 'Today';
+    } else if (diffDays === 1) {
+      return lang === 'pl' ? 'Jutro' : 'Tomorrow';
+    } else if (diffDays === -1) {
+      return lang === 'pl' ? 'Wczoraj' : 'Yesterday';
+    } else if (diffDays < 0) {
+      const daysAgo = Math.abs(diffDays);
+      if (lang === 'pl') {
+        return `${daysAgo} ${daysAgo === 1 ? 'dzień' : daysAgo < 5 ? 'dni' : 'dni'} temu`;
+      } else {
+        return `${daysAgo} ${daysAgo === 1 ? 'day' : 'days'} ago`;
+      }
+    } else {
+      if (lang === 'pl') {
+        return `za ${diffDays} dni`;
+      } else {
+        return `in ${diffDays} days`;
+      }
+    }
+  };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('text/plain', id);
@@ -384,25 +420,46 @@ export function Tasks() {
         </div>
 
         {layoutMode === 'list' && (
-          <div className="flex gap-2 overflow-x-auto">
-             <button 
-              onClick={() => setFilterStatus('active')}
-              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'active' ? 'bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_15px_rgba(74,222,128,0.1)] border-[#4ade80]/30' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
-            >
-              {language === 'pl' ? 'Aktywne' : 'Active'}
-            </button>
-            <button 
-              onClick={() => setFilterStatus('done')}
-              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'done' ? 'bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_15px_rgba(74,222,128,0.1)] border-[#4ade80]/30' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
-            >
-              {language === 'pl' ? 'Ukończone' : 'Completed'}
-            </button>
-            <button 
-              onClick={() => setFilterStatus('all')}
-              className={`glass-card !rounded-2xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'all' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
-            >
-              {language === 'pl' ? 'Zarówno' : 'Both'}
-            </button>
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* List Sub Mode Toggle */}
+            <div className="flex gap-2 overflow-x-auto">
+              <button 
+                onClick={() => setListSubMode('vertical')}
+                className={`glass-card !rounded-2xl px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 border ${listSubMode === 'vertical' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
+              >
+                <List className="w-4 h-4 text-[#38bdf8]" />
+                {language === 'pl' ? 'Jeden pod drugim' : 'Vertical Stack'}
+              </button>
+              <button 
+                onClick={() => setListSubMode('tiles')}
+                className={`glass-card !rounded-2xl px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 border ${listSubMode === 'tiles' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
+              >
+                <LayoutGrid className="w-4 h-4 text-[#c084fc]" />
+                {language === 'pl' ? 'Kafelki' : 'Tiles'}
+              </button>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex gap-2 overflow-x-auto">
+               <button 
+                onClick={() => setFilterStatus('active')}
+                className={`glass-card !rounded-2xl px-3.5 py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'active' ? 'bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_15px_rgba(74,222,128,0.1)] border-[#4ade80]/30' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
+              >
+                {language === 'pl' ? 'Aktywne' : 'Active'}
+              </button>
+              <button 
+                onClick={() => setFilterStatus('done')}
+                className={`glass-card !rounded-2xl px-3.5 py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'done' ? 'bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_15px_rgba(74,222,128,0.1)] border-[#4ade80]/30' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
+              >
+                {language === 'pl' ? 'Ukończone' : 'Completed'}
+              </button>
+              <button 
+                onClick={() => setFilterStatus('all')}
+                className={`glass-card !rounded-2xl px-3.5 py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-all border ${filterStatus === 'all' ? 'bg-white/10 text-white shadow-[inset_0_0_15px_rgba(255,255,255,0.05)] border-white/20' : 'text-slate-400 hover:text-white hover:bg-white/5 border-white/5 hover:border-white/10'}`}
+              >
+                {language === 'pl' ? 'Zarówno' : 'Both'}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -534,122 +591,344 @@ export function Tasks() {
           })}
         </div>
       ) : (
-        <div className="glass-card p-6 relative z-10">
-          <motion.div layout className="space-y-8">
-            <AnimatePresence mode="popLayout">
-              {taskLists.map(list => {
-                if (activeListId !== 'all' && list.id !== activeListId) return null;
-                const listTasks = filteredTasks.filter(t => (t.listId || 'default') === list.id);
-                
-                return (
-                  <motion.div key={list.id} layout className="space-y-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <div className="flex items-center justify-between px-1">
-                      <h3 className="font-display font-bold text-white text-lg flex items-center gap-2">
-                        {list.name}
+        (() => {
+          const getListColorPalette = (index: number) => {
+            const palettes = [
+              { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', hex: '#34d399' },
+              { text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', hex: '#60a5fa' },
+              { text: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', hex: '#c084fc' },
+              { text: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20', hex: '#f472b6' },
+              { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', hex: '#fbbf24' },
+              { text: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', hex: '#fb923c' },
+              { text: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', hex: '#22d3ee' },
+              { text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', hex: '#f87171' },
+            ];
+            return palettes[index % palettes.length];
+          };
+
+          if (listSubMode === 'vertical') {
+            return (
+              <div className="glass-card p-6 relative z-10 animate-in fade-in duration-300">
+                <motion.div layout className="space-y-8">
+                  <AnimatePresence mode="popLayout">
+                    {taskLists.map((list, idx) => {
+                      if (activeListId !== 'all' && list.id !== activeListId) return null;
+                      const listTasks = filteredTasks.filter(t => (t.listId || 'default') === list.id);
+                      const palette = getListColorPalette(idx);
+                      
+                      return (
+                        <motion.div key={list.id} layout className="space-y-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                          <div className="flex items-center justify-between px-1">
+                            <h3 className={cn("font-display font-bold text-lg flex items-center gap-2", palette.text)}>
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: palette.hex }} />
+                              {list.name}
+                              <span className="text-xs font-mono font-semibold text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-lg border border-[#222222]">
+                                {listTasks.length}
+                              </span>
+                            </h3>
+                          </div>
+                          
+                          {listTasks.length === 0 ? (
+                            <div className="p-6 rounded-xl border border-dashed border-[#222222] flex flex-col items-center justify-center text-center text-slate-500">
+                              <Target className="w-8 h-8 mb-2 stroke-[1.5] opacity-20" />
+                              <p className="text-sm">{language === 'pl' ? 'Pusta lista. Brak zadań.' : 'Empty list. No tasks.'}</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {listTasks.map(task => (
+                                <motion.div 
+                                  layout
+                                  draggable
+                                  onDragStart={(e: any) => handleDragStart(e, task.id)}
+                                  onDragEnd={handleDragEnd as any}
+                                  initial={{ opacity: 0, y: 12 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                                  key={task.id} 
+                                  className="glass-card !rounded-2xl flex flex-col p-4 transition-colors group relative overflow-hidden border border-[#222222] hover:border-white/10"
+                                >
+                                  {task.color && (
+                                    <div 
+                                      className="absolute left-0 top-0 bottom-0 w-1" 
+                                      style={{ backgroundColor: task.color }}
+                                    />
+                                  )}
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer" onClick={() => openEditModal(task)}>
+                                    <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+                                      <div className="shrink-0 flex items-center gap-1">
+                                        <span className="p-1 cursor-grab active:cursor-grabbing text-slate-600 opacity-40 group-hover:opacity-100 transition-opacity" onPointerDown={(e) => {
+                                          e.stopPropagation();
+                                        }}>
+                                          <GripVertical className="w-3.5 h-3.5" />
+                                        </span>
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); handleStatusChange(task.id, task.status); }} 
+                                          className="shrink-0 hover:scale-110 transition-transform pl-1"
+                                          title={language === 'pl' ? "Zmień status" : "Change status"}
+                                        >
+                                          {getStatusIcon(task.status)}
+                                        </button>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className={cn(
+                                          "truncate",
+                                          task.status === 'done' ? 'text-slate-500 line-through font-medium' : 'text-white font-medium'
+                                        )}>
+                                          {task.title}
+                                        </div>
+                                        <div className="text-xs text-slate-500 mt-0.5 font-mono flex items-center gap-3">
+                                          <span>{language === 'pl' ? 'Termin:' : 'Due:'} {task.due_date}</span>
+                                          {task.checklist && task.checklist.length > 0 && (
+                                            <span className="flex items-center gap-1 text-[#4ade80]">
+                                              <ListChecks className="w-3 h-3" />
+                                              {task.checklist.filter(c => c.isCompleted).length}/{task.checklist.length}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
+                                      <div className="flex gap-2 font-mono">
+                                        <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                                          task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
+                                          task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
+                                          task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
+                                          'bg-slate-800 text-slate-300'
+                                        }`}>
+                                          {translatePriority(task.priority)}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
+                                          className="p-1.5 rounded-lg text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors"
+                                          title={language === 'pl' ? 'Szczegóły' : 'Details'}
+                                        >
+                                          <Edit2 className="w-4 h-4" />
+                                        </button>
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); handleDelete(task.id, task.title); }}
+                                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                          title={language === 'pl' ? "Usuń" : "Delete"}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              </div>
+            );
+          } else {
+            // tiles (kafelki) sub-mode
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start relative z-10 animate-in fade-in duration-300">
+                {taskLists.map((list, idx) => {
+                  if (activeListId !== 'all' && list.id !== activeListId) return null;
+                  
+                  const listTasks = filteredTasks.filter(t => (t.listId || 'default') === list.id);
+                  const activeListTasks = listTasks.filter(t => t.status !== 'done');
+                  const completedListTasks = listTasks.filter(t => t.status === 'done');
+                  const palette = getListColorPalette(idx);
+                  const isCompletedExpanded = expandedCompletedLists[list.id] || false;
+                  
+                  return (
+                    <motion.div 
+                      key={list.id} 
+                      layout 
+                      className="glass-card p-5 rounded-[1.5rem] flex flex-col border border-[#222222] hover:border-white/10 transition-all duration-300 relative overflow-hidden"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                    >
+                      {/* Top Accent Strip */}
+                      <div 
+                        className="absolute top-0 left-0 right-0 h-1.5" 
+                        style={{ backgroundColor: palette.hex }}
+                      />
+                      
+                      {/* Title & Badge */}
+                      <div className="flex items-center justify-between mb-4 mt-2">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: palette.hex }} />
+                          <h3 className={cn("font-display font-bold text-base truncate", palette.text)}>
+                            {list.name}
+                          </h3>
+                        </div>
                         <span className="text-xs font-mono font-semibold text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-lg border border-[#222222]">
                           {listTasks.length}
                         </span>
-                      </h3>
-                    </div>
-                    
-                    {listTasks.length === 0 ? (
-                      <div className="p-6 rounded-xl border border-dashed border-[#222222] flex flex-col items-center justify-center text-center text-slate-500">
-                        <Target className="w-8 h-8 mb-2 stroke-[1.5] opacity-20" />
-                        <p className="text-sm">{language === 'pl' ? 'Pusta lista. Brak zadań.' : 'Empty list. No tasks.'}</p>
                       </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {listTasks.map(task => (
-                          <motion.div 
-                            layout
-                            draggable
-                            onDragStart={(e: any) => handleDragStart(e, task.id)}
-                            onDragEnd={handleDragEnd as any}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
-                            key={task.id} 
-                            className="glass-card !rounded-2xl flex flex-col p-4 transition-colors group relative overflow-hidden"
-                          >
-                            {task.color && (
-                              <div 
-                                className="absolute left-0 top-0 bottom-0 w-1" 
-                                style={{ backgroundColor: task.color }}
-                              />
-                            )}
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer" onClick={() => openEditModal(task)}>
-                              <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
-                                <div className="shrink-0 flex items-center gap-1">
-                                  <span className="p-1 cursor-grab active:cursor-grabbing text-slate-600 opacity-40 group-hover:opacity-100 transition-opacity" onPointerDown={(e) => {
-                                    e.stopPropagation();
-                                  }}>
-                                    <GripVertical className="w-3.5 h-3.5" />
-                                  </span>
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); handleStatusChange(task.id, task.status); }} 
-                                    className="shrink-0 hover:scale-110 transition-transform pl-1"
-                                    title={language === 'pl' ? "Zmień status" : "Change status"}
-                                  >
-                                    {getStatusIcon(task.status)}
-                                  </button>
-                                </div>
+                      
+                      {/* Dodaj zadanie inside Tile */}
+                      <button
+                        onClick={() => {
+                          setListId(list.id);
+                          setEditingTask(null);
+                          setTitle('');
+                          setPriority('medium');
+                          setStatus('todo');
+                          setDueDate(new Date().toISOString().split('T')[0]);
+                          setTaskColor(palette.hex);
+                          setDescription('');
+                          setChecklist([]);
+                          setNewChecklistItem('');
+                          setIsModalOpen(true);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 mb-4 rounded-xl border font-semibold text-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
+                        style={{
+                          borderColor: `${palette.hex}30`,
+                          color: palette.hex,
+                          backgroundColor: `${palette.hex}08`
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                        {language === 'pl' ? 'Dodaj zadanie' : 'Add task'}
+                      </button>
+                      
+                      {/* Active Tasks List */}
+                      <div className="space-y-2.5 flex-1 max-h-[350px] overflow-y-auto pr-1 scrollbar-none mb-4">
+                        <AnimatePresence mode="popLayout">
+                          {activeListTasks.length === 0 ? (
+                            <div className="h-20 flex flex-col items-center justify-center text-[11px] text-slate-500 border border-dashed border-[#222222] rounded-xl p-3 text-center">
+                              <Target className="w-5 h-5 mb-1 stroke-[1.5] opacity-20" />
+                              {language === 'pl' ? 'Brak aktywnych zadań' : 'No active tasks'}
+                            </div>
+                          ) : (
+                            activeListTasks.map(task => (
+                              <motion.div
+                                layout
+                                key={task.id}
+                                onClick={() => openEditModal(task)}
+                                className="group relative glass-card !rounded-xl p-3 cursor-pointer hover:bg-white/5 transition-all flex items-start gap-2.5 border border-[#222222]"
+                              >
+                                {task.color && (
+                                  <div 
+                                    className="absolute left-0 top-0 bottom-0 w-0.5" 
+                                    style={{ backgroundColor: task.color }}
+                                  />
+                                )}
+                                
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleStatusChange(task.id, task.status); }}
+                                  className="mt-0.5 text-slate-500 hover:text-[#4ade80] transition-colors shrink-0"
+                                >
+                                  {getStatusIcon(task.status)}
+                                </button>
+                                
                                 <div className="flex-1 min-w-0">
-                                  <div className={cn(
-                                    "truncate",
-                                    task.status === 'done' ? 'text-slate-500 line-through font-medium' : 'text-white font-medium'
-                                  )}>
+                                  <p className="text-xs font-semibold text-white truncate">
                                     {task.title}
-                                  </div>
-                                  <div className="text-xs text-slate-500 mt-0.5 font-mono flex items-center gap-3">
-                                    <span>{language === 'pl' ? 'Termin:' : 'Due:'} {task.due_date}</span>
+                                  </p>
+                                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
+                                    <span className="text-[9px] text-slate-500 font-mono">
+                                      {getRelativeDateLabel(task.due_date, language)}
+                                    </span>
                                     {task.checklist && task.checklist.length > 0 && (
-                                      <span className="flex items-center gap-1 text-[#4ade80]">
-                                        <ListChecks className="w-3 h-3" />
+                                      <span className="flex items-center gap-0.5 text-[9px] text-[#4ade80]">
+                                        <ListChecks className="w-2.5 h-2.5" />
                                         {task.checklist.filter(c => c.isCompleted).length}/{task.checklist.length}
                                       </span>
                                     )}
+                                    <span className={cn(
+                                      "text-[7px] font-bold tracking-wider uppercase font-mono px-1.5 py-0.2 rounded-full",
+                                      task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
+                                      task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
+                                      task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
+                                      'bg-slate-800 text-slate-300'
+                                    )}>
+                                      {translatePriority(task.priority)}
+                                    </span>
                                   </div>
                                 </div>
-                              </div>
-                              <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0 ml-auto">
-                                <div className="flex gap-2 font-mono">
-                                  <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                                    task.priority === 'urgent' ? 'bg-red-950/40 text-red-400' :
-                                    task.priority === 'high' ? 'bg-orange-950/40 text-orange-400' :
-                                    task.priority === 'medium' ? 'bg-blue-950/40 text-blue-400' :
-                                    'bg-slate-800 text-slate-300'
-                                  }`}>
-                                    {translatePriority(task.priority)}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button 
+                                
+                                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 transition-opacity ml-auto">
+                                  <button
                                     onClick={(e) => { e.stopPropagation(); openEditModal(task); }}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-[#4ade80] hover:bg-[#4ade80]/10 transition-colors"
-                                    title={language === 'pl' ? 'Szczegóły' : 'Details'}
+                                    className="p-1 rounded text-slate-400 hover:text-white"
                                   >
-                                    <Edit2 className="w-4 h-4" />
+                                    <Edit2 className="w-3 h-3" />
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={(e) => { e.stopPropagation(); handleDelete(task.id, task.title); }}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                    title={language === 'pl' ? "Usuń" : "Delete"}
+                                    className="p-1 rounded text-slate-400 hover:text-red-400"
                                   >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="w-3 h-3" />
                                   </button>
                                 </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))}
+                              </motion.div>
+                            ))
+                          )}
+                        </AnimatePresence>
                       </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </motion.div>
-        </div>
+                      
+                      {/* Completed Accordion inside Tile */}
+                      {completedListTasks.length > 0 && (
+                        <div className="border-t border-[#222222] pt-3">
+                          <button
+                            onClick={() => setExpandedCompletedLists(prev => ({ ...prev, [list.id]: !isCompletedExpanded }))}
+                            className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-white transition-colors"
+                          >
+                            <div className="flex items-center gap-1.5 font-semibold">
+                              {isCompletedExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                              <span>
+                                {language === 'pl' ? `Ukończone (${completedListTasks.length})` : `Completed (${completedListTasks.length})`}
+                              </span>
+                            </div>
+                          </button>
+                          
+                          <AnimatePresence>
+                            {isCompletedExpanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden mt-2 space-y-1.5 max-h-[180px] overflow-y-auto pr-1 scrollbar-none"
+                              >
+                                {completedListTasks.map(task => (
+                                  <div
+                                    key={task.id}
+                                    onClick={() => openEditModal(task)}
+                                    className="group relative p-2 rounded-lg cursor-pointer hover:bg-white/5 transition-all flex items-center gap-2 text-[11px] text-slate-500 border border-transparent hover:border-[#222222]"
+                                  >
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleStatusChange(task.id, task.status); }}
+                                      className="text-[#4ade80] hover:text-slate-500 shrink-0"
+                                    >
+                                      {getStatusIcon(task.status)}
+                                    </button>
+                                    <span className="line-through truncate flex-1 font-medium text-slate-500">
+                                      {task.title}
+                                    </span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleDelete(task.id, task.title); }}
+                                      className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-400 hover:text-red-400 ml-auto transition-opacity"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            );
+          }
+        })()
       )}
 
       {/* Modal Add / Edit */}
