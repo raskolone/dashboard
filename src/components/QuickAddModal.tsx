@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, Plus, ChevronRight } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
-import { TaskPriority, TaskCategory, KnowledgeCategory, EventType } from '../types';
+import { TaskPriority, TaskCategory, EventType } from '../types';
 import { useLocation } from 'react-router-dom';
 
 export function QuickAddModal() {
-  const { addTask, addKnowledge, addHabit, addEvent, language } = useAppStore();
+  const { addTask, addHabit, addEvent, language } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [type, setType] = useState<'task' | 'note' | 'habit' | 'event'>('task');
+  const [type, setType] = useState<'task' | 'habit' | 'event'>('task');
   const [habitStep, setHabitStep] = useState<'list' | 'details'>('list');
   const location = useLocation();
 
@@ -66,11 +66,6 @@ export function QuickAddModal() {
   const [eventStartTime, setEventStartTime] = useState('09:00');
   const [eventEndTime, setEventEndTime] = useState('10:00');
 
-  // Note state
-  const [noteTitle, setNoteTitle] = useState('');
-  const [noteContent, setNoteContent] = useState('');
-  const [noteCategory, setNoteCategory] = useState<KnowledgeCategory>('Notes');
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -83,7 +78,7 @@ export function QuickAddModal() {
     };
     
     const handleCustomOpen = (e: CustomEvent) => {
-      if (e.detail?.type) {
+      if (e.detail?.type && e.detail.type !== 'note') {
         setType(e.detail.type);
       } else {
         openModalBasedOnRoute();
@@ -104,7 +99,6 @@ export function QuickAddModal() {
     if (path.includes('/tasks')) setType('task');
     else if (path.includes('/habits')) setType('habit');
     else if (path.includes('/calendar')) setType('event');
-    else if (path.includes('/notes')) setType('note');
     else setType('task');
     setHabitStep('list');
     setIsOpen(true);
@@ -133,9 +127,6 @@ export function QuickAddModal() {
       setHabitReminder(false);
       
       setEventTitle('');
-      setNoteTitle('');
-      setNoteContent('');
-      setNoteCategory('Notes');
     }
   }, [isOpen]);
 
@@ -171,10 +162,11 @@ export function QuickAddModal() {
       if (!taskTitle.trim()) return;
       addTask({
         title: taskTitle.trim(),
-        due_date: new Date().toISOString().split('T')[0],
+        due_date: '',
         status: 'todo',
         priority: taskPriority,
-        category: taskCategory
+        category: taskCategory,
+        in_pool: true
       });
     } else if (type === 'habit') {
       if (!habitName.trim()) return;
@@ -204,15 +196,6 @@ export function QuickAddModal() {
         start_time: eventStartTime,
         end_time: eventEndTime,
         type: 'meeting'
-      });
-    } else {
-      if (!noteTitle.trim() || !noteContent.trim()) return;
-      addKnowledge({
-        title: noteTitle.trim(),
-        content: noteContent.trim(),
-        category: noteCategory,
-        tags: [],
-        is_pinned: false
       });
     }
     setIsOpen(false);
@@ -267,13 +250,6 @@ export function QuickAddModal() {
                       className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors cursor-pointer ${type === 'event' ? 'bg-[#3b82f6] text-[#fff]' : 'text-slate-400 hover:text-white'}`}
                     >
                       {language === 'pl' ? 'Wydarzenie' : 'Event'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setType('note')}
-                      className={`px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap font-medium rounded-lg transition-colors cursor-pointer ${type === 'note' ? 'bg-[#eab308] text-[#fff]' : 'text-slate-400 hover:text-white'}`}
-                    >
-                      {language === 'pl' ? 'Notatka' : 'Note'}
                     </button>
                   </div>
                   <button
@@ -340,17 +316,14 @@ export function QuickAddModal() {
                       placeholder={
                         type === 'task' 
                           ? (language === 'pl' ? "Co masz do zrobienia?" : "What needs to be done?") 
-                          : type === 'event' 
-                            ? (language === 'pl' ? "Tytuł wydarzenia" : "Event Title") 
-                            : (language === 'pl' ? "Tytuł notatki" : "Note Title")
+                          : (language === 'pl' ? "Tytuł wydarzenia" : "Event Title")
                       }
                       className="w-full bg-[#161616]/50 border border-[#262626] rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-[#4ade80] transition-colors"
-                      value={type === 'task' ? taskTitle : type === 'event' ? eventTitle : noteTitle}
+                      value={type === 'task' ? taskTitle : eventTitle}
                       onChange={(e) => {
                         const val = e.target.value;
                         if (type === 'task') setTaskTitle(val);
-                        else if (type === 'event') setEventTitle(val);
-                        else setNoteTitle(val);
+                        else setEventTitle(val);
                       }}
                     />
                   )}
@@ -543,15 +516,6 @@ export function QuickAddModal() {
                     </div>
                   )}
 
-                  {type === 'note' && (
-                    <textarea
-                      placeholder={language === 'pl' ? "Zanotuj swoje myśli..." : "Write down your thoughts..."}
-                      className="w-full bg-[#161616]/50 border border-[#262626] rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-[#4ade80] transition-colors min-h-[100px] resize-y"
-                      value={noteContent}
-                      onChange={(e) => setNoteContent(e.target.value)}
-                    />
-                  )}
-
                   {type === 'task' && (
                     <div className="flex gap-4">
                        <select 
@@ -577,21 +541,6 @@ export function QuickAddModal() {
                         </select>
                     </div>
                   )}
-                  {type === 'note' && (
-                    <div>
-                      <select 
-                          value={noteCategory}
-                          onChange={(e) => setNoteCategory(e.target.value as KnowledgeCategory)}
-                          className="w-full bg-[#161616]/50 border border-[#262626] rounded-xl px-4 py-2 text-white focus:outline-none"
-                        >
-                          <option value="Notes">{language === 'pl' ? 'Notatki' : 'Notes'}</option>
-                          <option value="Ideas">{language === 'pl' ? 'Pomysły' : 'Ideas'}</option>
-                          <option value="Bookmarks">{language === 'pl' ? 'Zakładki' : 'Bookmarks'}</option>
-                          <option value="Resources">{language === 'pl' ? 'Zasoby' : 'Resources'}</option>
-                          <option value="Snippets">{language === 'pl' ? 'Snippety' : 'Snippets'}</option>
-                        </select>
-                    </div>
-                  )}
 
                   <div className="pt-4 flex justify-between items-center text-slate-500 text-xs mt-2 border-t border-white/5">
                     {type === 'habit' && habitStep === 'details' ? (
@@ -610,19 +559,18 @@ export function QuickAddModal() {
                     
                     <div className="flex gap-2 ml-auto">
                        <button
-                        type="button"
-                        onClick={() => setIsOpen(false)}
-                        className="px-4 py-2 rounded-xl border border-white/10 text-slate-300 font-semibold hover:bg-white/5 transition-colors cursor-pointer"
-                      >
-                        {language === 'pl' ? 'Anuluj' : 'Cancel'}
-                      </button>
-                      <button
+                         type="button"
+                         onClick={() => setIsOpen(false)}
+                         className="px-4 py-2 rounded-xl border border-white/10 text-slate-300 font-semibold hover:bg-white/5 transition-colors cursor-pointer"
+                       >
+                         {language === 'pl' ? 'Anuluj' : 'Cancel'}
+                       </button>
+                       <button
                         type="submit"
                         className={`px-4 py-2 rounded-xl text-[#1a1a1a] font-bold flex items-center gap-2 transition-transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                           type === 'task' ? 'bg-[#4ade80]' : 
                           type === 'habit' ? 'bg-[#a855f7] text-white' : 
-                          type === 'event' ? 'bg-[#3b82f6] text-white' : 
-                          'bg-[#eab308] text-white'
+                          'bg-[#3b82f6] text-white'
                         }`}
                       >
                         <Check className="w-4 h-4" />
@@ -630,9 +578,7 @@ export function QuickAddModal() {
                           ? (language === 'pl' ? 'Dodaj zadanie' : 'Add task') 
                           : type === 'habit' 
                             ? (language === 'pl' ? 'Zapisz Nawyk' : 'Save Habit') 
-                            : type === 'event' 
-                              ? (language === 'pl' ? 'Dodaj wydarzenie' : 'Add event') 
-                              : (language === 'pl' ? 'Zapisz notatkę' : 'Save note')}
+                            : (language === 'pl' ? 'Dodaj wydarzenie' : 'Add event')}
                       </button>
                     </div>
                   </div>

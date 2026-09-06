@@ -14,12 +14,17 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  CalendarDays,
+  Copy,
+  Edit3,
+  Sparkles
 } from 'lucide-react';
 import { EventType, CalendarEvent } from '../types';
 import { GenieModal } from '../components/GenieModal';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
 
 type CalViewMode = 'daily' | 'weekly' | 'monthly' | 'agenda';
 
@@ -227,6 +232,164 @@ export function Calendar() {
       await updateEvent(eventId, { start_time: targetHourStr, end_time: endHourStr });
     }
     setIsDraggingEventId(null);
+  };
+
+  // Custom Right-Click Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    items: ContextMenuItem[];
+    title?: string;
+  } | null>(null);
+
+  const handleDuplicateEvent = async (ev: CalendarEvent) => {
+    await addEvent({
+      title: `${ev.title} (${language === 'pl' ? 'kopia' : 'copy'})`,
+      date: ev.date,
+      start_time: ev.start_time,
+      end_time: ev.end_time,
+      type: ev.type,
+      description: ev.description,
+      location: ev.location
+    });
+  };
+
+  const handleEventContextMenu = (e: React.MouseEvent, ev: CalendarEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isPl = language === 'pl';
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowISO = tomorrowDate.toISOString().split('T')[0];
+
+    const items: ContextMenuItem[] = [
+      {
+        id: 'ev-header',
+        header: `${ev.title} (${ev.start_time}${ev.end_time ? ' - ' + ev.end_time : ''})`
+      },
+      {
+        id: 'ev-edit',
+        label: isPl ? 'Edytuj szczegóły' : 'Edit details',
+        icon: Edit3,
+        onClick: () => {
+          setTitle(ev.title);
+          setDate(ev.date);
+          setStartTime(ev.start_time);
+          setEndTime(ev.end_time || '11:00');
+          setType(ev.type);
+          setDescription(ev.description || '');
+          setIsModalOpen(true);
+        }
+      },
+      {
+        id: 'ev-move-today',
+        label: isPl ? 'Przenieś na dzisiaj' : 'Move to today',
+        icon: Clock,
+        disabled: ev.date === todayStr,
+        onClick: () => updateEvent(ev.id, { date: todayStr })
+      },
+      {
+        id: 'ev-move-tomorrow',
+        label: isPl ? 'Przenieś na jutro' : 'Move to tomorrow',
+        icon: CalendarRange,
+        disabled: ev.date === tomorrowISO,
+        onClick: () => updateEvent(ev.id, { date: tomorrowISO })
+      },
+      {
+        id: 'ev-type-submenu',
+        label: isPl ? 'Zmień typ' : 'Change type',
+        icon: Sparkles,
+        submenu: [
+          { id: 't-meeting', label: isPl ? 'Spotkanie' : 'Meeting', checked: ev.type === 'meeting', onClick: () => updateEvent(ev.id, { type: 'meeting' }) },
+          { id: 't-lesson', label: isPl ? 'Lekcja / Szkolenie' : 'Lesson', checked: ev.type === 'lesson', onClick: () => updateEvent(ev.id, { type: 'lesson' }) },
+          { id: 't-personal', label: isPl ? 'Prywatne' : 'Personal', checked: ev.type === 'personal', onClick: () => updateEvent(ev.id, { type: 'personal' }) },
+          { id: 't-deadline', label: isPl ? 'Termin ostateczny' : 'Deadline', checked: ev.type === 'deadline', onClick: () => updateEvent(ev.id, { type: 'deadline' }) },
+          { id: 't-reminder', label: isPl ? 'Przypomnienie' : 'Reminder', checked: ev.type === 'reminder', onClick: () => updateEvent(ev.id, { type: 'reminder' }) }
+        ]
+      },
+      {
+        id: 'ev-duplicate',
+        label: isPl ? 'Duplikuj wydarzenie' : 'Duplicate event',
+        icon: Copy,
+        onClick: () => handleDuplicateEvent(ev)
+      },
+      { id: 'div-ev-1', divider: true },
+      {
+        id: 'ev-delete',
+        label: isPl ? 'Usuń wydarzenie' : 'Delete event',
+        icon: Trash2,
+        danger: true,
+        onClick: () => handleDeleteEvent(ev.id, ev.title)
+      }
+    ];
+
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items,
+      title: isPl ? 'Wydarzenie' : 'Calendar Event'
+    });
+  };
+
+  const handleDateCellContextMenu = (e: React.MouseEvent, dateStr: string, hourStr?: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isPl = language === 'pl';
+    const items: ContextMenuItem[] = [
+      {
+        id: 'cell-header',
+        header: `${isPl ? 'Dzień' : 'Day'}: ${dateStr}${hourStr ? ` (${hourStr})` : ''}`
+      },
+      {
+        id: 'cell-add',
+        label: hourStr 
+          ? (isPl ? `Dodaj spotkanie o ${hourStr}` : `Add meeting at ${hourStr}`) 
+          : (isPl ? 'Dodaj spotkanie w tym dniu' : 'Add meeting on this day'),
+        icon: Plus,
+        onClick: () => {
+          if (hourStr) {
+            handleHourlySlotClick(dateStr, hourStr);
+          } else {
+            handleCellClick(dateStr);
+          }
+        }
+      },
+      {
+        id: 'cell-today',
+        label: isPl ? 'Przejdź do dzisiaj' : 'Go to today',
+        icon: Clock,
+        onClick: handleSetToday
+      },
+      { id: 'div-cell-1', divider: true },
+      {
+        id: 'cell-views',
+        label: isPl ? 'Zmień widok kalendarza' : 'Switch calendar view',
+        icon: CalendarDays,
+        submenu: [
+          { id: 'v-day', label: isPl ? 'Widok dzienny' : 'Day view', checked: calViewMode === 'daily', onClick: () => setCalViewMode('daily') },
+          { id: 'v-week', label: isPl ? 'Widok tygodniowy' : 'Week view', checked: calViewMode === 'weekly', onClick: () => setCalViewMode('weekly') },
+          { id: 'v-month', label: isPl ? 'Widok miesięczny' : 'Month view', checked: calViewMode === 'monthly', onClick: () => setCalViewMode('monthly') },
+          { id: 'v-agenda', label: isPl ? 'Widok agendy' : 'Agenda view', checked: calViewMode === 'agenda', onClick: () => setCalViewMode('agenda') }
+        ]
+      },
+      ...(isGoogleConnected ? [
+        {
+          id: 'cell-sync',
+          label: isPl ? 'Synchronizuj z Google Calendar' : 'Sync Google Calendar',
+          icon: RefreshCw,
+          onClick: () => syncCalendar()
+        }
+      ] : [])
+    ];
+
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items,
+      title: isPl ? 'Menu kalendarza' : 'Calendar Menu'
+    });
   };
 
   // Event visual backgrounds helper
@@ -509,6 +672,7 @@ export function Calendar() {
                   <div 
                     key={keyStr}
                     onClick={() => handleCellClick(keyStr)}
+                    onContextMenu={(e) => handleDateCellContextMenu(e, keyStr)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleEventDropOnDate(e, keyStr)}
                     className={cn(
@@ -537,6 +701,7 @@ export function Calendar() {
                           onDragStart={(e) => { e.stopPropagation(); handleEventDragStart(e, ev.id); }}
                           onDragEnd={handleEventDragEnd}
                           onClick={(e) => { e.stopPropagation(); }}
+                          onContextMenu={(e) => handleEventContextMenu(e, ev)}
                           className={cn(
                             "px-1.5 py-0.5 rounded text-[10px] truncate cursor-grab active:cursor-grabbing font-medium select-none capitalize transition-all",
                             getEventColors(ev.type),
@@ -568,6 +733,7 @@ export function Calendar() {
                 <div 
                   key={keyStr}
                   onClick={() => handleCellClick(keyStr)}
+                  onContextMenu={(e) => handleDateCellContextMenu(e, keyStr)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleEventDropOnDate(e, keyStr)}
                   className={cn(
@@ -600,6 +766,7 @@ export function Calendar() {
                           onDragStart={(e) => { e.stopPropagation(); handleEventDragStart(e, ev.id); }}
                           onDragEnd={handleEventDragEnd}
                           onClick={(e) => { e.stopPropagation(); }}
+                          onContextMenu={(e) => handleEventContextMenu(e, ev)}
                           className={cn(
                             "group p-2.5 rounded-xl border transition-all cursor-grab active:cursor-grabbing hover:bg-white/5",
                             getEventColors(ev.type),
@@ -673,6 +840,7 @@ export function Calendar() {
                     <div 
                       key={hour}
                       onClick={() => handleHourlySlotClick(targetDateStr, hour)}
+                      onContextMenu={(e) => handleDateCellContextMenu(e, targetDateStr, hour)}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => handleEventDropOnHour(e, hour)}
                       className={cn(
@@ -699,6 +867,7 @@ export function Calendar() {
                               onDragStart={(e) => { e.stopPropagation(); handleEventDragStart(e, ev.id); }}
                               onDragEnd={handleEventDragEnd}
                               onClick={(e) => { e.stopPropagation(); }}
+                              onContextMenu={(e) => handleEventContextMenu(e, ev)}
                               className={cn(
                                 "group/pill px-3 py-1.5 rounded-xl font-medium text-xs flex items-center gap-3 cursor-grab active:cursor-grabbing",
                                 getEventColors(ev.type),
@@ -752,7 +921,11 @@ export function Calendar() {
                     </h3>
                     <div className="grid grid-cols-1 gap-2">
                       {eventsByDate[dateStr].map(ev => (
-                        <div key={ev.id} className="glass-card p-4 rounded-xl flex items-center justify-between gap-4 group hover:border-white/10 transition-all border border-[#222222]">
+                        <div 
+                          key={ev.id} 
+                          onContextMenu={(e) => handleEventContextMenu(e, ev)}
+                          className="glass-card p-4 rounded-xl flex items-center justify-between gap-4 group hover:border-white/10 transition-all border border-[#222222]"
+                        >
                           <div className="flex items-start gap-4">
                             <div className="h-10 w-10 shrink-0 bg-[#161616] border border-[#222222] rounded-lg flex flex-col items-center justify-center text-xs font-mono text-slate-400">
                               <Clock className="w-4 h-4 text-[#4ade80]" />
@@ -914,6 +1087,17 @@ export function Calendar() {
           </div>
         </form>
       </GenieModal>
+
+      {/* Calendar Custom Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          title={contextMenu.title}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

@@ -25,6 +25,10 @@ export interface Task {
   category?: TaskCategory;
   listId?: string; // Replaces tags/categories for grouping
   due_date: string; // ISO format YYYY-MM-DD
+  due_time?: string; // HH:mm format e.g. "14:30"
+  all_day?: boolean; // true if all-day task
+  in_pool?: boolean; // true if created in/part of general task pool
+  target_month?: string; // YYYY-MM format e.g. "2026-09" for monthly pool categorization
   color?: string; // Hex color for categorization/tagging
   checklist?: ChecklistItem[];
   googleEventId?: string; // Reference to Google Calendar event

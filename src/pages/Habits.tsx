@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useAppStore } from '../store/AppContext';
-import { Plus, X, Trash2, Milestone, CalendarDays, Flame, Trophy, Activity, Check, Edit2, Settings, BarChart2, List, Archive, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, X, Trash2, Milestone, CalendarDays, Flame, Trophy, Activity, Check, Edit2, Settings, BarChart2, List, Archive, ChevronLeft, ChevronRight, Database } from 'lucide-react';
 import { subDays, format, addDays, startOfWeek, isSameDay, isToday, isYesterday } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import confetti from 'canvas-confetti';
 import { calculateHabitStats, getLocalDateStr } from '../lib/utils';
 import { useLongPress } from '../hooks/useLongPress';
 import { GenieModal } from '../components/GenieModal';
+import { HabitsDatabaseView } from '../components/HabitsDatabaseView';
 import { motion, AnimatePresence } from 'motion/react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -277,7 +278,7 @@ export function Habits() {
   const { habits, addHabit, updateHabit, toggleHabit, updateHabitProgress, skipHabit, deleteHabit, reorderHabits, t, language, stackHabits } = useAppStore();
   
   // Tabs
-  const [activeTab, setActiveTab] = useState<'home' | 'history'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'database' | 'history'>('home');
   const [historySubTab, setHistorySubTab] = useState<'trends' | 'habits' | 'archive'>('habits');
 
   // Home State
@@ -820,26 +821,33 @@ export function Habits() {
     <div className="relative min-h-[calc(100vh-8rem)] text-white overflow-x-hidden">
       
       {/* App Header (Top Nav) */}
-      <div className="sticky top-4 z-20 px-4 max-w-2xl mx-auto w-full mb-6 pt-2">
-        <header className="flex items-center justify-between py-2 px-4 liquid-glass-card rounded-[24px]">
-          <div className="w-10 opacity-0 pointer-events-none" />
-          <div className="flex bg-black/40 backdrop-blur-md rounded-[18px] p-1 shadow-inner border border-white/5">
+      <div className="sticky top-4 z-20 px-4 max-w-3xl mx-auto w-full mb-6 pt-2">
+        <header className="flex items-center justify-between py-2 px-3 sm:px-4 liquid-glass-card rounded-[24px]">
+          <div className="w-10 opacity-0 pointer-events-none hidden sm:block" />
+          <div className="flex bg-black/40 backdrop-blur-md rounded-[18px] p-1 shadow-inner border border-white/5 mx-auto sm:mx-0">
             <button 
               onClick={() => setActiveTab('home')}
-              className={`px-6 py-2 rounded-[14px] text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'home' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              className={`px-4 sm:px-6 py-2 rounded-[14px] text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'home' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
             >
               {language === 'pl' ? 'Główna' : 'Home'}
             </button>
             <button 
+              onClick={() => setActiveTab('database')}
+              className={`px-3.5 sm:px-5 py-2 rounded-[14px] text-[13px] font-bold transition-all duration-300 cursor-pointer flex items-center gap-1.5 ${activeTab === 'database' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+            >
+              <Database className="w-3.5 h-3.5 text-purple-300" />
+              <span>{language === 'pl' ? 'Baza danych' : 'Database'}</span>
+            </button>
+            <button 
               onClick={() => setActiveTab('history')}
-              className={`px-6 py-2 rounded-[14px] text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'history' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              className={`px-4 sm:px-6 py-2 rounded-[14px] text-[13px] font-bold transition-all duration-300 cursor-pointer ${activeTab === 'history' ? 'bg-gradient-to-tr from-[#8b5cf6] to-[#a855f7] text-white shadow-[0_4px_14px_rgba(168,85,247,0.45),_inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#c084fc]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
             >
               {language === 'pl' ? 'Historia' : 'History'}
             </button>
           </div>
           <button 
             onClick={() => setIsSettingsOpen(true)}
-            className="w-10 h-10 liquid-glass-circle flex items-center justify-center hover:border-[#a855f7]/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] active:scale-95 transition-all duration-300 cursor-pointer"
+            className="w-10 h-10 liquid-glass-circle flex items-center justify-center hover:border-[#a855f7]/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] active:scale-95 transition-all duration-300 cursor-pointer shrink-0"
             title={language === 'pl' ? 'Ustawienia nawyków' : 'Habit Settings'}
           >
             <Settings className="w-4 h-4 text-slate-300 hover:text-white transition-colors" />
@@ -849,7 +857,7 @@ export function Habits() {
 
       {/* Main Content Area */}
       <main className="py-4">
-        {activeTab === 'home' ? renderHome() : renderHistory()}
+        {activeTab === 'home' ? renderHome() : activeTab === 'database' ? <HabitsDatabaseView /> : renderHistory()}
       </main>
 
       {/* Interaction Bottom Sheet Modal */}

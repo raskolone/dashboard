@@ -113,10 +113,25 @@ export const getAccessToken = async (): Promise<string | null> => {
   return cachedAccessToken;
 };
 
-export const logout = async () => {
-  await auth.signOut();
+export const clearAccessToken = () => {
   cachedAccessToken = null;
   try {
     localStorage.removeItem('google_access_token');
   } catch {}
+};
+
+export const setAccessToken = (token: string | null) => {
+  cachedAccessToken = token;
+  try {
+    if (token) {
+      localStorage.setItem('google_access_token', token);
+    } else {
+      localStorage.removeItem('google_access_token');
+    }
+  } catch {}
+};
+
+export const logout = async () => {
+  await auth.signOut();
+  clearAccessToken();
 };

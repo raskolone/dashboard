@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/AppContext';
-import { CheckCircle2, Clock, CalendarIcon, Target, Activity, Brain, Flame, Plus, MoreVertical, LayoutGrid, X, Filter, ChevronDown } from 'lucide-react';
+import { CheckCircle2, Clock, CalendarIcon, Target, Activity, Brain, Flame, Plus, MoreVertical, LayoutGrid, X, Filter, ChevronDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProductivityChart } from '../components/ProductivityChart';
 import { PomodoroTimer } from '../components/PomodoroTimer';
 import { calculateHabitStats } from '../lib/utils';
+import confetti from 'canvas-confetti';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -113,8 +114,12 @@ const SortableWidget = ({ widget, children, onChangeSize, onRemove, language }: 
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit, t, language } = useAppStore();
+  const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit, addHabit, updateHabitProgress, t, language } = useAppStore();
   const [activeFilterTag, setActiveFilterTag] = React.useState<string | null>(null);
+  const [showHabitCreator, setShowHabitCreator] = useState(false);
+  const [newHabitName, setNewHabitName] = useState('');
+  const [newHabitIcon, setNewHabitIcon] = useState('🔥');
+  const [newHabitColor, setNewHabitColor] = useState('#4ade80');
   const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
     const saved = localStorage.getItem('dashboard_widgets_v2');
     return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
@@ -398,53 +403,157 @@ export function Dashboard() {
     if (widget.type === 'habit-streak') {
       const activeHabits = filteredHabits;
       
+      const handleQuickAddHabit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newHabitName.trim()) return;
+        addHabit({
+          name: newHabitName.trim(),
+          icon: newHabitIcon,
+          color: newHabitColor,
+          target_count: 1,
+          frequency: 'daily',
+          tags: activeFilterTag ? [activeFilterTag] : ['Personal']
+        });
+        setNewHabitName('');
+        setShowHabitCreator(false);
+      };
+
       return (
         <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[160px]`}>
-          <h2 
-            className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#a855f7] transition-colors w-fit`}
-            onClick={() => navigate('/habits')}
-          >
-            <Flame className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#a855f7]`} />
-            {language === 'pl' ? 'Analiza procesów (Nawyki)' : 'Habit Street Tracker'}
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 
+              className={`${widget.size === 'small' ? 'text-base sm:text-lg' : 'text-xl'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#a855f7] transition-colors`}
+              onClick={() => navigate('/habits')}
+            >
+              <Flame className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#a855f7]`} />
+              {language === 'pl' ? 'Budowanie nawyków' : 'Habit Building'}
+            </h2>
+            <button
+              onClick={() => setShowHabitCreator(!showHabitCreator)}
+              className="text-xs px-3 py-1.5 rounded-xl bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 hover:bg-[#a855f7]/30 transition-all font-semibold flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {language === 'pl' ? 'Nowy' : 'New'}
+            </button>
+          </div>
+
+          {showHabitCreator && (
+            <form onSubmit={handleQuickAddHabit} className="mb-4 p-3 rounded-2xl bg-white/5 border border-white/10 space-y-3 animate-in fade-in">
+              <div className="flex gap-2">
+                <input 
+                  type="text"
+                  value={newHabitIcon}
+                  onChange={e => setNewHabitIcon(e.target.value)}
+                  className="w-12 text-center bg-[#141414] border border-white/10 rounded-xl text-sm py-1.5 text-white"
+                  placeholder="🔥"
+                />
+                <input 
+                  type="text"
+                  value={newHabitName}
+                  onChange={e => setNewHabitName(e.target.value)}
+                  placeholder={language === 'pl' ? 'Nazwa nawyku (np. Medytacja)...' : 'Habit name...'}
+                  className="flex-1 bg-[#141414] border border-white/10 rounded-xl px-3 text-sm py-1.5 text-white focus:outline-none focus:border-[#a855f7]"
+                  autoFocus
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex gap-1.5">
+                  {['#4ade80', '#60a5fa', '#c084fc', '#f472b6', '#fbbf24', '#fb923c'].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setNewHabitColor(c)}
+                      className={`w-5 h-5 rounded-full border-2 transition-transform ${newHabitColor === c ? 'scale-110 border-white' : 'border-transparent'}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowHabitCreator(false)}
+                    className="px-3 py-1 rounded-xl text-xs text-slate-400 hover:text-white"
+                  >
+                    {language === 'pl' ? 'Anuluj' : 'Cancel'}
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-3 py-1 rounded-xl text-xs bg-[#a855f7] text-white font-bold hover:bg-[#9333ea]"
+                  >
+                    {language === 'pl' ? 'Dodaj' : 'Add'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
           
-          <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+          <div className="flex-1 overflow-y-auto pr-1 space-y-3">
             {activeHabits.length === 0 ? (
-              <p className={`text-slate-500 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>
-                {language === 'pl' ? 'Brak nawyków.' : 'No habits.'}
-              </p>
+              <div className="p-6 rounded-2xl border border-dashed border-[#222222] text-center flex flex-col items-center justify-center text-slate-500">
+                <Flame className="w-8 h-8 mb-2 opacity-20 text-[#a855f7]" />
+                <p className={`text-slate-400 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>
+                  {language === 'pl' ? 'Brak nawyków do budowania.' : 'No habits to build yet.'}
+                </p>
+              </div>
             ) : (
               activeHabits.slice(0, widget.size === 'small' ? 2 : widget.size === 'medium' ? 4 : 8).map(habit => {
                 const daysToShow = widget.size === 'small' ? 7 : 14;
                 const lastDays = Array.from({ length: daysToShow }).map((_, i) => getLocalDateStr(new Date(Date.now() - ((daysToShow - 1) - i) * 86400000))).reverse();
+                const isCompletedToday = habit.completedDates.includes(todayStr);
+                const stats = calculateHabitStats(habit.completedDates);
+
                 return (
-                  <div key={habit.id} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-lg">{habit.icon}</span>
+                  <div key={habit.id} className="bg-white/5 rounded-2xl p-3.5 border border-white/10 hover:border-white/25 transition-all">
+                    <div className="flex justify-between items-center mb-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {/* Interactive Today Check Button */}
+                        <button
+                          onClick={() => {
+                            toggleHabit(habit.id, todayStr);
+                            if (!isCompletedToday) {
+                              try { confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 } }); } catch {}
+                            }
+                          }}
+                          className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${isCompletedToday ? 'bg-[#a855f7] border-[#a855f7] text-white shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-slate-600 hover:border-[#a855f7]'}`}
+                          title={language === 'pl' ? 'Oznacz dzisiejszy nawyk' : 'Check today habit'}
+                        >
+                          {isCompletedToday && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </button>
+                        <span className="text-base">{habit.icon}</span>
                         <span className="font-bold text-sm text-white truncate">{habit.name}</span>
                       </div>
-                      <span className="text-xs font-bold text-slate-400 bg-black/40 px-2 py-0.5 rounded-full">
-                        <Flame className="inline w-3 h-3 text-[#a855f7] mr-1" />
-                        {calculateHabitStats(habit.completedDates).currentStreak}
+                      <span className="text-xs font-bold text-[#a855f7] bg-[#a855f7]/10 px-2.5 py-0.5 rounded-full border border-[#a855f7]/20 flex items-center gap-1 font-mono">
+                        <Flame className="w-3 h-3 fill-current" />
+                        {stats.currentStreak} {language === 'pl' ? 'dni' : 'days'}
                       </span>
                     </div>
-                    <div className="flex justify-between items-end h-8 w-full gap-1">
+                    <div className="flex justify-between items-end h-7 w-full gap-1 pt-1">
                       {lastDays.map((dateStr) => {
                         const isComp = habit.completedDates.includes(dateStr);
                         const isSkip = habit.skippedDates?.includes(dateStr);
+                        const isTodayDate = dateStr === todayStr;
                         const currentProgress = isComp ? habit.target_count : (habit.progress?.[dateStr] || 0);
                         const heightPerc = habit.target_count > 1 ? (currentProgress / habit.target_count) * 100 : (isComp ? 100 : 0);
                         return (
-                          <div key={dateStr} className="flex-1 bg-[#1a1a1a] rounded overflow-hidden relative h-full">
+                          <div 
+                            key={dateStr} 
+                            onClick={() => {
+                              toggleHabit(habit.id, dateStr);
+                              if (!isComp && isTodayDate) {
+                                try { confetti({ particleCount: 40, spread: 50 }); } catch {}
+                              }
+                            }}
+                            className={`flex-1 rounded overflow-hidden relative h-full cursor-pointer transition-all hover:opacity-100 ${isTodayDate ? 'ring-1 ring-[#a855f7]' : ''} ${isComp ? 'opacity-100' : 'opacity-40 hover:opacity-75 bg-[#1a1a1a]'}`}
+                            title={`${dateStr}: ${isComp ? 'Ukończone' : 'Brak'}`}
+                          >
                              {(heightPerc > 0 || isComp) && (
                                 <div 
-                                  className="absolute bottom-0 left-0 right-0" 
-                                  style={{ height: `${Math.max(10, heightPerc)}%`, backgroundColor: habit.color }} 
+                                  className="absolute bottom-0 left-0 right-0 rounded-t" 
+                                  style={{ height: `${Math.max(15, heightPerc)}%`, backgroundColor: habit.color || '#a855f7' }} 
                                 />
                              )}
                              {isSkip && !isComp && (
-                                <div className="absolute bottom-0 left-0 right-0 h-[20%] bg-slate-600" />
+                                <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-slate-600" />
                              )}
                           </div>
                         );

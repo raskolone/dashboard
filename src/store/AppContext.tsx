@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User } from 'firebase/auth';
 import { Task, TaskList, Habit, CalendarEvent, KnowledgeEntry, TaskStatus, TaskPriority, TaskCategory, EventType, KnowledgeCategory } from '../types';
 import { mockTasks, mockHabits, mockEvents, mockKnowledge } from '../lib/mockData';
-import { initAuth, googleSignIn, logout as firebaseLogout } from '../lib/auth';
+import { initAuth, googleSignIn, logout as firebaseLogout, clearAccessToken, setAccessToken } from '../lib/auth';
 import { fetchCalendarEvents, createGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../lib/calendar';
 import { subscribeToCollection, createDocument, updateDocument, deleteDocument, generateId } from '../lib/db';
 import { translations } from '../lib/translations';
@@ -227,12 +227,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (res) {
         setUser(res.user);
         setGoogleToken(res.accessToken);
+        setAccessToken(res.accessToken);
         try {
           localStorage.removeItem('demo_mode_active_v1');
         } catch {}
       }
-    } catch (err) {
-      console.error('Google Sign-In failed:', err);
+    } catch (err: any) {
+      if (err?.code === 'auth/popup-closed-by-user') {
+        console.info('Google Sign-In popup closed by user.');
+        return;
+      }
+      console.warn('Google Sign-In notice:', err?.message || err);
     }
   };
 
@@ -247,6 +252,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       photoURL: null,
       emailVerified: true
     } as any);
+    clearAccessToken();
     setGoogleToken(null);
   };
 
@@ -256,13 +262,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await firebaseLogout();
       }
       setUser(null);
+      clearAccessToken();
       setGoogleToken(null);
       setGoogleEvents([]);
       try {
         localStorage.removeItem('demo_mode_active_v1');
       } catch {}
     } catch (err) {
-      console.error('Sign out failed:', err);
+      console.warn('Sign out notice:', err);
     }
   };
 
@@ -295,13 +302,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       setGoogleEvents(mapped);
     } catch (error: any) {
-      console.error('Error syncing Google Calendar:', error);
-      if (error instanceof Error && error.message === 'UNAUTHORIZED_OR_EXPIRED') {
+      if (error instanceof Error && (error.message === 'UNAUTHORIZED_OR_EXPIRED' || error.message.includes('401') || error.message.includes('UNAUTHORIZED'))) {
+        console.warn('Google Calendar authorization expired or revoked. Resetting token.');
+        clearAccessToken();
         setGoogleToken(null);
         setGoogleEvents([]);
-        try {
-          localStorage.removeItem('google_access_token');
-        } catch {}
+      } else {
+        console.warn('Google Calendar sync notice:', error?.message || error);
       }
     } finally {
       setIsSyncingCalendar(false);
@@ -328,8 +335,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         googleEventId = res.id;
         syncCalendar();
-      } catch (err) {
-        console.error('Failed to sync task to Google Calendar', err);
+      } catch (err: any) {
+        if (err instanceof Error && (err.message === 'UNAUTHORIZED_OR_EXPIRED' || err.message.includes('401'))) {
+          clearAccessToken();
+          setGoogleToken(null);
+          setGoogleEvents([]);
+        } else {
+          console.warn('Could not sync task to Google Calendar:', err?.message || err);
+        }
       }
     }
 
@@ -353,8 +366,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           date: updates.due_date || task.due_date,
         });
         syncCalendar();
-      } catch (err) {
-        console.error('Failed to update task in Google Calendar', err);
+      } catch (err: any) {
+        if (err instanceof Error && (err.message === 'UNAUTHORIZED_OR_EXPIRED' || err.message.includes('401'))) {
+          clearAccessToken();
+          setGoogleToken(null);
+          setGoogleEvents([]);
+        } else {
+          console.warn('Could not update task in Google Calendar:', err?.message || err);
+        }
       }
     }
 
@@ -370,8 +389,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         await deleteGoogleCalendarEvent(task.googleEventId);
         syncCalendar();
-      } catch (err) {
-        console.error('Failed to delete task from Google Calendar', err);
+      } catch (err: any) {
+        if (err instanceof Error && (err.message === 'UNAUTHORIZED_OR_EXPIRED' || err.message.includes('401'))) {
+          clearAccessToken();
+          setGoogleToken(null);
+          setGoogleEvents([]);
+        } else {
+          console.warn('Could not delete task from Google Calendar:', err?.message || err);
+        }
       }
     }
 
@@ -380,7 +405,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       setTasks(prev => prev.filter(t => t.id !== id));
     }
-  }
+  };
 
   // TaskList actions
   const addTaskList = (name: string) => {
@@ -546,13 +571,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         await syncCalendar();
       } catch (err: any) {
-        console.error('Google Calendar event write failed, saving locally:', err);
-        if (err instanceof Error && err.message === 'UNAUTHORIZED_OR_EXPIRED') {
+        if (err instanceof Error && (err.message === 'UNAUTHORIZED_OR_EXPIRED' || err.message.includes('401'))) {
+          clearAccessToken();
           setGoogleToken(null);
           setGoogleEvents([]);
-          try {
-            localStorage.removeItem('google_access_token');
-          } catch {}
+        } else {
+          console.warn('Google Calendar event write notice, saving locally:', err?.message || err);
         }
         if (user && user.uid !== 'demo_user') {
           createDocument(`users/${user.uid}/events`, generateId(), event);
@@ -586,13 +610,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await deleteGoogleCalendarEvent(id);
         await syncCalendar();
       } catch (err: any) {
-        console.error('Google Calendar delete error:', err);
-        if (err instanceof Error && err.message === 'UNAUTHORIZED_OR_EXPIRED') {
+        if (err instanceof Error && (err.message === 'UNAUTHORIZED_OR_EXPIRED' || err.message.includes('401'))) {
+          clearAccessToken();
           setGoogleToken(null);
           setGoogleEvents([]);
-          try {
-            localStorage.removeItem('google_access_token');
-          } catch {}
+        } else {
+          console.warn('Google Calendar delete notice:', err?.message || err);
         }
       }
     } else {

@@ -11,7 +11,6 @@ import { Dashboard } from './pages/Dashboard';
 import { Tasks } from './pages/Tasks';
 import { Calendar } from './pages/Calendar';
 import { Habits } from './pages/Habits';
-import { Notes } from './pages/Notes';
 import { Assistant } from './pages/Assistant';
 import { Login } from './pages/Login';
 import { SettingsPage } from './pages/Settings';
@@ -28,12 +27,11 @@ function AppRouter() {
       <Routes>
         {user ? (
           <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="tasks" element={<Tasks />} />
+            <Route index element={<Tasks />} />
+            <Route path="tasks" element={<Navigate to="/" replace />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="habits" element={<Habits />} />
-            <Route path="knowledge" element={<Notes />} />
-            <Route path="assistant" element={<Assistant />} />
+            <Route path="assistant" element={<Navigate to="/" replace />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

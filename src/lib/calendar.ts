@@ -72,7 +72,7 @@ export async function createGoogleCalendarEvent(event: {
       throw new Error('UNAUTHORIZED_OR_EXPIRED');
     }
     const errText = await res.text();
-    console.error('Google API error:', errText);
+    console.warn('Google API response:', errText);
     throw new Error('Failed to create calendar event in Google Calendar');
   }
 
