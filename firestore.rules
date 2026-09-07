@@ -12,8 +12,8 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Match any document in the user's specific collection
-    match /users/{userId}/{collection}/{documentId} {
+    // Match any document in the user's specific collection or subcollections
+    match /users/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
     }
   }

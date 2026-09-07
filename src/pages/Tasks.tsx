@@ -76,8 +76,8 @@ export function Tasks() {
   // GPT 5.6 Luna AI smart advice modal
   const [isLunaAdviceOpen, setIsLunaAdviceOpen] = useState(false);
 
-  // Pool collapse state
-  const [isPoolCollapsed, setIsPoolCollapsed] = useState(false);
+  // Pool collapse state (defaults to open so tasks are always immediately visible)
+  const [isPoolCollapsed, setIsPoolCollapsed] = useState<boolean>(false);
 
   // Calendar config (1, 3, 5, 7 days or 'month') - default to 5 days
   const [dayCount, setDayCount] = useState<1 | 3 | 5 | 7 | 'month'>(5);
@@ -949,37 +949,48 @@ export function Tasks() {
           {/* ========================================================
               TOP SECTION: PULA ZADAŃ (TASK POOL ON TOP)
               ======================================================== */}
-          <div 
-            onDragOver={handlePoolDragOver}
-            onDragLeave={() => setDragOverPool(false)}
-            onDrop={handlePoolDrop}
-            className={cn(
-              "glass-card rounded-2xl border transition-all duration-200 bg-[#161616]/90 shadow-xl overflow-hidden",
-              dragOverPool ? "border-[#4ade80] ring-2 ring-[#4ade80]/40 bg-[#13231a]" : "border-white/10"
-            )}
-          >
-            
-            {/* Header of Pool Tray */}
-            <div className="p-4 sm:p-5 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
-              <div className="flex items-center gap-3">
+          {isPoolCollapsed ? (
+            <div 
+              onDragOver={handlePoolDragOver}
+              onDragLeave={() => setDragOverPool(false)}
+              onDrop={handlePoolDrop}
+              className={cn(
+                "glass-card rounded-2xl border transition-all duration-200 bg-[#161616]/90 shadow-lg p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden",
+                dragOverPool ? "border-[#4ade80] ring-2 ring-[#4ade80]/40 bg-[#13231a]" : "border-white/10"
+              )}
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-[#4ade80]/15 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80] shrink-0">
                   <Layers className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    {t('tasks.poolTitle')}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-bold text-white">
+                      {t('tasks.poolTitle')} <span className="text-xs text-slate-400 font-normal">({language === 'pl' ? 'zwinięta' : 'collapsed'})</span>
+                    </h2>
                     <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-white/10 text-slate-300">
-                      {poolTasks.length} {t('tasks.tasksInPool')}
+                      {allPoolTasks.length} {t('tasks.tasksInPool')}
                     </span>
-                  </h2>
-                  <p className="text-xs text-slate-400 hidden sm:block">
-                    {t('tasks.dragHint')}
+                    {currentMonthPoolCount > 0 && (
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 hidden sm:inline">
+                        {currentMonthPoolCount} {language === 'pl' ? 'na ten miesiąc' : 'this month'}
+                      </span>
+                    )}
+                    {ideasPoolCount > 0 && (
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 hidden sm:inline">
+                        {ideasPoolCount} {language === 'pl' ? 'pomysłów' : 'ideas'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 truncate mt-0.5">
+                    {language === 'pl'
+                      ? `${allPoolTasks.length} zadań w kolejce do zaplanowania na osi czasu.`
+                      : `${allPoolTasks.length} tasks ready to be scheduled on timeline.`}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* Jasny przycisk dodawania do puli bezpośrednio przy puli */}
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -993,155 +1004,206 @@ export function Tasks() {
                   <span>{language === 'pl' ? '+ Do puli' : '+ To pool'}</span>
                 </button>
 
-                {/* Toggle Collapse Pool */}
                 <button
                   type="button"
-                  onClick={() => setIsPoolCollapsed(prev => !prev)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setIsPoolCollapsed(false);
+                    try { localStorage.setItem('tasks_pool_collapsed', 'false'); } catch {}
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#4ade80]/15 hover:bg-[#4ade80]/25 text-[#4ade80] border border-[#4ade80]/30 text-xs font-semibold transition-all cursor-pointer"
                 >
-                  {isPoolCollapsed ? (
-                    <>
-                      <ChevronDown className="w-4 h-4 text-[#4ade80]" />
-                      <span>{t('tasks.expandPool')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <ChevronUp className="w-4 h-4 text-[#4ade80]" />
-                      <span>{t('tasks.collapsePool')}</span>
-                    </>
-                  )}
+                  <ChevronDown className="w-4 h-4" />
+                  <span>{t('tasks.expandPool')}</span>
                 </button>
               </div>
             </div>
+          ) : (
+            <div 
+              onDragOver={handlePoolDragOver}
+              onDragLeave={() => setDragOverPool(false)}
+              onDrop={handlePoolDrop}
+              className={cn(
+                "glass-card rounded-2xl border transition-all duration-200 bg-[#161616]/90 shadow-xl overflow-hidden",
+                dragOverPool ? "border-[#4ade80] ring-2 ring-[#4ade80]/40 bg-[#13231a]" : "border-white/10"
+              )}
+            >
+              
+              {/* Header of Pool Tray */}
+              <div className="p-4 sm:p-5 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#4ade80]/15 border border-[#4ade80]/30 flex items-center justify-center text-[#4ade80] shrink-0">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                      {t('tasks.poolTitle')}
+                      <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-white/10 text-slate-300">
+                        {poolTasks.length} {t('tasks.tasksInPool')}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-400 hidden sm:block">
+                      {t('tasks.dragHint')}
+                    </p>
+                  </div>
+                </div>
 
-            {/* Miesięczna pula zadań (Monthly Task Pool Filter) */}
-            <div className="px-4 sm:px-5 py-2.5 bg-black/40 border-b border-white/5 flex flex-wrap items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <CalendarDays className="w-3.5 h-3.5 text-purple-400" />
-                  <span>{t('tasks.monthlyPoolFilter')}:</span>
-                </span>
-
-                <div className="flex items-center gap-1 flex-wrap">
+                <div className="flex items-center gap-2">
+                  {/* Jasny przycisk dodawania do puli bezpośrednio przy puli */}
                   <button
                     type="button"
-                    onClick={() => setSelectedMonthFilter('all')}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer",
-                      selectedMonthFilter === 'all'
-                        ? "bg-purple-500/25 text-purple-200 border border-purple-500/40 font-bold"
-                        : "text-slate-400 hover:text-white border border-transparent hover:border-white/10"
-                    )}
+                    onClick={() => {
+                      setIsInstantPoolModalOpen(true);
+                      setInstantPoolTitle('');
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#4ade80] hover:bg-[#3ec470] text-[#0a120d] text-xs font-bold shadow-[0_0_12px_rgba(74,222,128,0.3)] transition-all cursor-pointer active:scale-95"
+                    title="Utwórz zadanie bezpośrednio w puli"
                   >
-                    {t('tasks.allInPool')} ({allPoolTasks.length})
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>{language === 'pl' ? '+ Do puli' : '+ To pool'}</span>
                   </button>
 
+                  {/* Toggle Collapse Pool */}
                   <button
                     type="button"
-                    onClick={() => setSelectedMonthFilter('current')}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer",
-                      selectedMonthFilter === 'current'
-                        ? "bg-purple-500/25 text-purple-200 border border-purple-500/40 font-bold"
-                        : "text-slate-400 hover:text-white border border-transparent hover:border-white/10"
-                    )}
+                    onClick={() => {
+                      setIsPoolCollapsed(true);
+                      try { localStorage.setItem('tasks_pool_collapsed', 'true'); } catch {}
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                   >
-                    {t('tasks.currentMonth')} ({currentMonthPoolCount})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMonthFilter('next')}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer",
-                      selectedMonthFilter === 'next'
-                        ? "bg-purple-500/25 text-purple-200 border border-purple-500/40 font-bold"
-                        : "text-slate-400 hover:text-white border border-transparent hover:border-white/10"
-                    )}
-                  >
-                    {t('tasks.nextMonth')} ({nextMonthPoolCount})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMonthFilter('unassigned')}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer",
-                      selectedMonthFilter === 'unassigned'
-                        ? "bg-purple-500/25 text-purple-200 border border-purple-500/40 font-bold"
-                        : "text-slate-400 hover:text-white border border-transparent hover:border-white/10"
-                    )}
-                  >
-                    {t('tasks.noMonth')} ({unassignedPoolCount})
+                    <ChevronUp className="w-4 h-4 text-[#4ade80]" />
+                    <span>{t('tasks.collapsePool')}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Specific Month Select & Archive Filter Button */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <select
-                  value={['all', 'current', 'next', 'unassigned', 'archive', 'idea'].includes(selectedMonthFilter) ? '' : selectedMonthFilter}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setSelectedMonthFilter(e.target.value);
-                    }
-                  }}
-                  className="bg-[#1e1e24] border border-white/10 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer"
-                >
-                  <option value="">{language === 'pl' ? 'Wybierz miesiąc...' : 'Select month...'}</option>
-                  {availableMonths.map(m => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-
-                {/* Pomysł (Idea) Filter Button */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedMonthFilter(prev => prev === 'idea' ? 'all' : 'idea')}
-                  className={cn(
-                    "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm",
-                    selectedMonthFilter === 'idea'
-                      ? "bg-amber-500 text-slate-950 border border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)] scale-105"
-                      : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border border-amber-500/35 hover:border-amber-500/60"
-                  )}
-                  title={language === 'pl' ? 'Pomysły: zadania przypisane do kategorii pomysłów' : 'Ideas: tasks assigned to ideas category'}
-                >
-                  <Lightbulb className="w-3.5 h-3.5" />
-                  <span>{language === 'pl' ? 'Pomysły' : 'Ideas'}</span>
-                  <span className={cn(
-                    "px-1.5 py-0.2 rounded-full font-mono text-[10px] font-bold",
-                    selectedMonthFilter === 'idea' ? "bg-black/25 text-black" : "bg-amber-500/25 text-amber-200"
-                  )}>
-                    {ideasPoolCount}
+              {/* Miesięczna pula zadań (Monthly Task Pool Filter) */}
+              <div className="px-4 sm:px-5 py-2.5 bg-black/40 border-b border-white/5 flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <CalendarDays className="w-3.5 h-3.5 text-purple-400" />
+                    <span>{t('tasks.monthlyPoolFilter')}:</span>
                   </span>
-                </button>
 
-                {/* Archiwum - distinct, slightly different color (emerald/amber glow) as explicitly requested */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedMonthFilter(prev => prev === 'archive' ? 'all' : 'archive')}
-                  className={cn(
-                    "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm",
-                    selectedMonthFilter === 'archive'
-                      ? "bg-emerald-500 text-slate-950 border border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-105"
-                      : "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/35 hover:border-emerald-500/60"
-                  )}
-                  title={language === 'pl' ? 'Archiwum: wszystkie ukończone zadania od początku istnienia aplikacji' : 'Archive: all completed tasks since the beginning'}
-                >
-                  <Archive className="w-3.5 h-3.5" />
-                  <span>{language === 'pl' ? 'Archiwum' : 'Archive'}</span>
-                  <span className={cn(
-                    "px-1.5 py-0.2 rounded-full font-mono text-[10px] font-bold",
-                    selectedMonthFilter === 'archive' ? "bg-black/25 text-black" : "bg-emerald-500/25 text-emerald-200"
-                  )}>
-                    {archiveTasksCount}
-                  </span>
-                </button>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonthFilter('all')}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer",
+                        selectedMonthFilter === 'all'
+                          ? "bg-purple-500/25 text-purple-200 border border-purple-500/40 font-bold"
+                          : "text-slate-400 hover:text-white border border-transparent hover:border-white/10"
+                      )}
+                    >
+                      {t('tasks.allInPool')} ({allPoolTasks.length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonthFilter('current')}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer",
+                        selectedMonthFilter === 'current'
+                          ? "bg-purple-500/25 text-purple-200 border border-purple-500/40 font-bold"
+                          : "text-slate-400 hover:text-white border border-transparent hover:border-white/10"
+                      )}
+                    >
+                      {t('tasks.currentMonth')} ({currentMonthPoolCount})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonthFilter('next')}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer",
+                        selectedMonthFilter === 'next'
+                          ? "bg-purple-500/25 text-purple-200 border border-purple-500/40 font-bold"
+                          : "text-slate-400 hover:text-white border border-transparent hover:border-white/10"
+                      )}
+                    >
+                      {t('tasks.nextMonth')} ({nextMonthPoolCount})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonthFilter('unassigned')}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer",
+                        selectedMonthFilter === 'unassigned'
+                          ? "bg-purple-500/25 text-purple-200 border border-purple-500/40 font-bold"
+                          : "text-slate-400 hover:text-white border border-transparent hover:border-white/10"
+                      )}
+                    >
+                      {t('tasks.noMonth')} ({unassignedPoolCount})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Specific Month Select & Archive Filter Button */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={['all', 'current', 'next', 'unassigned', 'archive', 'idea'].includes(selectedMonthFilter) ? '' : selectedMonthFilter}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setSelectedMonthFilter(e.target.value);
+                      }
+                    }}
+                    className="bg-[#1e1e24] border border-white/10 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer"
+                  >
+                    <option value="">{language === 'pl' ? 'Wybierz miesiąc...' : 'Select month...'}</option>
+                    {availableMonths.map(m => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+
+                  {/* Pomysł (Idea) Filter Button */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMonthFilter(prev => prev === 'idea' ? 'all' : 'idea')}
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm",
+                      selectedMonthFilter === 'idea'
+                        ? "bg-amber-500 text-slate-950 border border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)] scale-105"
+                        : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border border-amber-500/35 hover:border-amber-500/60"
+                    )}
+                    title={language === 'pl' ? 'Pomysły: zadania przypisane do kategorii pomysłów' : 'Ideas: tasks assigned to ideas category'}
+                  >
+                    <Lightbulb className="w-3.5 h-3.5" />
+                    <span>{language === 'pl' ? 'Pomysły' : 'Ideas'}</span>
+                    <span className={cn(
+                      "px-1.5 py-0.2 rounded-full font-mono text-[10px] font-bold",
+                      selectedMonthFilter === 'idea' ? "bg-black/25 text-black" : "bg-amber-500/25 text-amber-200"
+                    )}>
+                      {ideasPoolCount}
+                    </span>
+                  </button>
+
+                  {/* Archiwum - distinct, slightly different color (emerald/amber glow) as explicitly requested */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMonthFilter(prev => prev === 'archive' ? 'all' : 'archive')}
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm",
+                      selectedMonthFilter === 'archive'
+                        ? "bg-emerald-500 text-slate-950 border border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-105"
+                        : "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/35 hover:border-emerald-500/60"
+                    )}
+                    title={language === 'pl' ? 'Archiwum: wszystkie ukończone zadania od początku istnienia aplikacji' : 'Archive: all completed tasks since the beginning'}
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    <span>{language === 'pl' ? 'Archiwum' : 'Archive'}</span>
+                    <span className={cn(
+                      "px-1.5 py-0.2 rounded-full font-mono text-[10px] font-bold",
+                      selectedMonthFilter === 'archive' ? "bg-black/25 text-black" : "bg-emerald-500/25 text-emerald-200"
+                    )}>
+                      {archiveTasksCount}
+                    </span>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Task Pool Tray: Grid of Draggable Cards */}
-            {!isPoolCollapsed && (
+              {/* Task Pool Tray: Grid of Draggable Cards */}
               <div className="p-4 sm:p-5 bg-black/10">
                 {poolTasks.length === 0 ? (
                   <div className="text-center py-8 px-4 border border-dashed border-white/10 rounded-2xl">
@@ -1255,8 +1317,8 @@ export function Tasks() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* ========================================================
               BOTTOM SECTION: KALENDARZ Z OSIĄ CZASU 05:00 - 22:00

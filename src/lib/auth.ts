@@ -17,18 +17,6 @@ export const auth = getAuth(app);
 const customDbId = (firebaseConfig as any).firestoreDatabaseId;
 export const db = customDbId ? getFirestore(app, customDbId) : getFirestore(app);
 
-// Test offline connection constraint based on Firebase Integration skill
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if(error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
-    }
-  }
-}
-testConnection();
-
 const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/calendar.events');
 provider.addScope('https://www.googleapis.com/auth/calendar.readonly');

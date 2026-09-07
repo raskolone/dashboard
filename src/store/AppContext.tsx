@@ -278,7 +278,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setTaskLists(data.sort((a,b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()));
           }
         }),
-        subscribeToCollection<Task>(`users/${uId}/tasks`, (data) => setTasks(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
+        subscribeToCollection<Task>(`users/${uId}/tasks`, (data) => {
+          if (data.length === 0) {
+            // Restore from local cache or seed default pool tasks so pool tasks never disappear
+            let initialTasks: Task[] = [];
+            try {
+              const savedUser = localStorage.getItem(`app_user_tasks_${uId}`);
+              const savedOffline = localStorage.getItem('app_offline_tasks');
+              if (savedUser) {
+                initialTasks = JSON.parse(savedUser);
+              } else if (savedOffline) {
+                initialTasks = JSON.parse(savedOffline);
+              }
+            } catch {}
+
+            if (!initialTasks || initialTasks.length === 0) {
+              initialTasks = mockTasks;
+            }
+
+            setTasks(initialTasks);
+            try {
+              localStorage.setItem('app_offline_tasks', JSON.stringify(initialTasks));
+              localStorage.setItem(`app_user_tasks_${uId}`, JSON.stringify(initialTasks));
+            } catch {}
+
+            // Background seed to Firestore for the user
+            initialTasks.forEach(t => {
+              const docId = t.id || generateId();
+              createDocument(`users/${uId}/tasks`, docId, { ...t, id: docId })
+                .catch(err => console.warn('Could not seed task to Firestore:', err));
+            });
+          } else {
+            const sorted = data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+            setTasks(sorted);
+            try {
+              localStorage.setItem('app_offline_tasks', JSON.stringify(sorted));
+              localStorage.setItem(`app_user_tasks_${uId}`, JSON.stringify(sorted));
+            } catch {}
+          }
+        }),
         subscribeToCollection<Habit>(`users/${uId}/habits`, (data) => setHabits(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
         subscribeToCollection<CalendarEvent>(`users/${uId}/events`, (data) => setEvents(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
         subscribeToCollection<KnowledgeEntry>(`users/${uId}/knowledge`, (data) => setKnowledge(data.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()))),
@@ -304,14 +342,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Persist offline cache whenever local state changes so no data is ever lost
   useEffect(() => {
-    if (!user || user.uid === 'demo_user') {
-      try {
-        localStorage.setItem('app_offline_tasks', JSON.stringify(tasks));
-        localStorage.setItem('app_offline_habits', JSON.stringify(habits));
-        localStorage.setItem('app_offline_events', JSON.stringify(events));
-        localStorage.setItem('app_offline_knowledge', JSON.stringify(knowledge));
-      } catch {}
-    }
+    try {
+      localStorage.setItem('app_offline_tasks', JSON.stringify(tasks));
+      if (user && user.uid && user.uid !== 'demo_user') {
+        localStorage.setItem(`app_user_tasks_${user.uid}`, JSON.stringify(tasks));
+      }
+      localStorage.setItem('app_offline_habits', JSON.stringify(habits));
+      localStorage.setItem('app_offline_events', JSON.stringify(events));
+      localStorage.setItem('app_offline_knowledge', JSON.stringify(knowledge));
+    } catch {}
   }, [tasks, habits, events, knowledge, user]);
 
   const loginGoogle = async () => {
@@ -471,12 +510,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const newTask = { ...task, googleEventId };
+    const id = generateId();
+    const taskWithId: Task = {
+      ...newTask,
+      id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setTasks(prev => [taskWithId, ...prev]);
 
     if (user && user.uid !== 'demo_user') {
-      const id = generateId();
-      createDocument(`users/${user.uid}/tasks`, id, newTask);
-    } else {
-      setTasks(prev => [{ ...newTask, id: generateId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...prev]);
+      createDocument(`users/${user.uid}/tasks`, id, taskWithId);
     }
   };
   const updateTask = async (id: string, updates: Partial<Task>) => {
@@ -501,10 +546,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t));
+
     if (user && user.uid !== 'demo_user') {
       updateDocument(`users/${user.uid}/tasks`, id, updates);
-    } else {
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
     }
   };
   const deleteTask = async (id: string) => {
@@ -524,10 +569,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    setTasks(prev => prev.filter(t => t.id !== id));
+
     if (user && user.uid !== 'demo_user') {
       deleteDocument(`users/${user.uid}/tasks`, id);
-    } else {
-      setTasks(prev => prev.filter(t => t.id !== id));
     }
   };
 

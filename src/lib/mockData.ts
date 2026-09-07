@@ -1,9 +1,79 @@
 import { Task, Habit, CalendarEvent, KnowledgeEntry } from '../types';
 
 export const mockTasks: Task[] = [
-  { id: '1', title: 'Finish MVP requirements', status: 'in_progress', priority: 'high', category: 'project', due_date: new Date().toISOString().split('T')[0], color: '#4ade80' },
-  { id: '2', title: 'Schedule sync with marketing', status: 'todo', priority: 'medium', category: 'work', due_date: new Date().toISOString().split('T')[0], color: '#4ade80' },
-  { id: '3', title: 'Quick workout', status: 'done', priority: 'medium', category: 'health', due_date: new Date().toISOString().split('T')[0], color: '#4ade80' },
+  // Zadania w puli (gotowe do przeciągnięcia na oś czasu)
+  { 
+    id: 'pool-1', 
+    title: 'Przygotować ofertę szkoleniową dla nowych kursantów', 
+    description: 'Szczegółowy plan modułów, cennik pakietowy oraz harmonogram konsultacji.',
+    status: 'todo', 
+    priority: 'high', 
+    category: 'work', 
+    in_pool: true,
+    due_date: '',
+    color: '#4ade80' 
+  },
+  { 
+    id: 'pool-2', 
+    title: 'Zaktualizować cennik zajęć i pakietów lekcji', 
+    description: 'Dostosować stawki godzinowe oraz wprowadzić zniżkę na pakiety 10 lekcji.',
+    status: 'todo', 
+    priority: 'medium', 
+    category: 'work', 
+    in_pool: true,
+    due_date: '',
+    color: '#4ade80' 
+  },
+  { 
+    id: 'pool-3', 
+    title: 'Wysłać materiały uzupełniające po warsztatach', 
+    description: 'PDF z ćwiczeniami, linki do nagrań i repetytorium dla uczestników.',
+    status: 'todo', 
+    priority: 'high', 
+    category: 'work', 
+    in_pool: true,
+    due_date: '',
+    color: '#4ade80' 
+  },
+  { 
+    id: 'pool-4', 
+    title: 'Uporządkować bazę kontaktów i leadów z formularza', 
+    description: 'Sprawdzić zapytania z ostatniego tygodnia i oznaczyć status pierwszego kontaktu.',
+    status: 'todo', 
+    priority: 'medium', 
+    category: 'work', 
+    in_pool: true,
+    due_date: '',
+    color: '#38bdf8' 
+  },
+  { 
+    id: 'pool-5', 
+    title: 'Przegląd pomysłów na warsztaty weekendowe', 
+    description: 'Koncepcja intensywnego kursu weekendowego z analizy danych i automatyzacji.',
+    status: 'todo', 
+    priority: 'low', 
+    category: 'project', 
+    in_pool: true,
+    due_date: '',
+    target_month: 'idea',
+    color: '#f59e0b' 
+  },
+  { 
+    id: 'pool-6', 
+    title: 'Optymalizacja szablonów wiadomości e-mail do kursantów', 
+    description: 'Przygotować gotowe szablony potwierdzenia lekcji i przypomnienia o zadaniach domowych.',
+    status: 'todo', 
+    priority: 'medium', 
+    category: 'work', 
+    in_pool: true,
+    due_date: '',
+    color: '#a855f7' 
+  },
+
+  // Zadania zaplanowane w kalendarzu na bieżący dzień
+  { id: '1', title: 'Podsumowanie wymagań dla kursantów', status: 'in_progress', priority: 'high', category: 'project', due_date: new Date().toISOString().split('T')[0], due_time: '10:00', color: '#4ade80' },
+  { id: '2', title: 'Odpowiedź na maile i ustalenie terminów', status: 'todo', priority: 'medium', category: 'work', due_date: new Date().toISOString().split('T')[0], due_time: '12:00', color: '#4ade80' },
+  { id: '3', title: 'Szybki trening i spacer regeneracyjny', status: 'done', priority: 'medium', category: 'health', due_date: new Date().toISOString().split('T')[0], due_time: '16:00', color: '#4ade80' },
 ];
 
 export const mockHabits: Habit[] = [

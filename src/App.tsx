@@ -12,6 +12,7 @@ import { Tasks } from './pages/Tasks';
 import { Calendar } from './pages/Calendar';
 import { Habits } from './pages/Habits';
 import { GmailPage } from './pages/Gmail';
+import { DailyReport } from './pages/DailyReport';
 import { Assistant } from './pages/Assistant';
 import { Login } from './pages/Login';
 import { SettingsPage } from './pages/Settings';
@@ -31,7 +32,8 @@ function AppRouter() {
             <Route index element={<Tasks />} />
             <Route path="tasks" element={<Navigate to="/" replace />} />
             <Route path="calendar" element={<Calendar />} />
-            <Route path="gmail" element={<GmailPage />} />
+            <Route path="daily-report" element={<DailyReport />} />
+            <Route path="gmail" element={<Navigate to="/daily-report" replace />} />
             <Route path="habits" element={<Habits />} />
             <Route path="assistant" element={<Navigate to="/" replace />} />
             <Route path="settings" element={<SettingsPage />} />

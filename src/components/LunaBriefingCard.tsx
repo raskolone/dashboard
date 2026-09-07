@@ -1,9 +1,28 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../store/AppContext';
-import { Sparkles, ArrowRight, Calendar, CheckCircle2 } from 'lucide-react';
-import { addDays, format, getDay } from 'date-fns';
-import { pl, enUS } from 'date-fns/locale';
-import { getLocalDateStr } from '../lib/utils';
+import {
+  Sparkles,
+  ArrowRight,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  Mail,
+  AlertTriangle,
+  Clock,
+  Send,
+  Plus,
+  RefreshCw,
+  FileText,
+  ShieldCheck,
+  Bot,
+  Zap,
+  CheckSquare,
+  ChevronRight
+} from 'lucide-react';
+import { fetchGmailMessages, GmailMessage } from '../lib/gmail';
+import { buildAgendaReport } from '../lib/agendaService';
+import { AgendaReportModal } from './AgendaReportModal';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 
 function getPolishVocative(name: string): string {
   if (!name) return 'Macieju';
@@ -70,16 +89,54 @@ function getPolishVocative(name: string): string {
 }
 
 export function LunaBriefingCard({ onOpenPool }: { onOpenPool?: () => void }) {
-  const { tasks, googleEvents, events, language, user, googleToken } = useAppStore();
+  const navigate = useNavigate();
+  const {
+    tasks,
+    googleEvents,
+    events,
+    language,
+    user,
+    googleToken,
+    t
+  } = useAppStore();
+
+  const [gmailMessages, setGmailMessages] = useState<GmailMessage[]>([]);
+  const [isGmailLoading, setIsGmailLoading] = useState(false);
+  const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
 
   const activeEvents = googleToken ? googleEvents : events;
 
-  const todayDate = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => getLocalDateStr(todayDate), [todayDate]);
-  const tomorrowDate = useMemo(() => addDays(todayDate, 1), [todayDate]);
-  const tomorrowStr = useMemo(() => getLocalDateStr(tomorrowDate), [tomorrowDate]);
+  // Fetch recent inbox emails if Google token exists
+  const loadEmails = async () => {
+    if (!googleToken) return;
+    setIsGmailLoading(true);
+    try {
+      const res = await fetchGmailMessages({ maxResults: 30 });
+      setGmailMessages(res.messages || []);
+    } catch (e) {
+      console.warn('Agenda email fetch error:', e);
+    } finally {
+      setIsGmailLoading(false);
+    }
+  };
 
-  // User first name vocative
+  useEffect(() => {
+    if (googleToken) {
+      loadEmails();
+    }
+  }, [googleToken]);
+
+  // Build the complete Agenda Report using the agenda skill
+  const report = useMemo(() => {
+    return buildAgendaReport({
+      events: activeEvents,
+      tasks,
+      emails: gmailMessages,
+      language
+    });
+  }, [activeEvents, tasks, gmailMessages, language]);
+
+  // Polish Vocative Name
   const greetingName = useMemo(() => {
     const rawName = user?.displayName || user?.email?.split('@')[0] || 'Maciej';
     if (language === 'pl') {
@@ -88,150 +145,144 @@ export function LunaBriefingCard({ onOpenPool }: { onOpenPool?: () => void }) {
     return rawName.trim().split(' ')[0];
   }, [user, language]);
 
-  // Today's stats
-  const todayTasks = useMemo(() => tasks.filter(t => t.due_date === todayStr), [tasks, todayStr]);
-  const todayEvents = useMemo(() => activeEvents.filter(e => e.date === todayStr), [activeEvents, todayStr]);
+  const hasUrgentAction = report.actionRequiredList.length > 0;
 
-  // Tomorrow's stats
-  const tomorrowTasks = useMemo(() => tasks.filter(t => t.due_date === tomorrowStr), [tasks, tomorrowStr]);
-  const tomorrowEvents = useMemo(() => activeEvents.filter(e => e.date === tomorrowStr), [activeEvents, tomorrowStr]);
-
-  // Find upcoming busy day (e.g. Tuesday or next 2-5 days)
-  const upcomingBusyDayInfo = useMemo(() => {
-    let bestDay = null;
-    let maxLoad = -1;
-
-    for (let i = 2; i <= 6; i++) {
-      const d = addDays(todayDate, i);
-      const dStr = getLocalDateStr(d);
-      const dayTasks = tasks.filter(t => t.due_date === dStr);
-      const dayEvs = activeEvents.filter(e => e.date === dStr);
-      const load = dayTasks.length + dayEvs.length * 2;
-      const isTuesday = d.getDay() === 2; // Tuesday
-
-      // Give Tuesday extra priority if it has key meetings
-      const weight = isTuesday ? load + 3 : load;
-
-      if (weight > maxLoad && (dayTasks.length > 0 || dayEvs.length > 0)) {
-        maxLoad = weight;
-        const dayNamePl = format(d, 'EEEE', { locale: pl });
-        const dayNameEn = format(d, 'EEEE', { locale: enUS });
-        bestDay = {
-          date: d,
-          dateStr: dStr,
-          dayNamePl,
-          dayNameEn,
-          tasks: dayTasks,
-          events: dayEvs,
-          isTuesday
-        };
-      }
-    }
-
-    return bestDay;
-  }, [todayDate, tasks, activeEvents]);
-
-  // Generate the natural conversational paragraph
-  const dynamicGreetingText = useMemo(() => {
-    if (language === 'pl') {
-      // 1. Today part
-      let todayPhrase = '';
-      const totalToday = todayTasks.length + todayEvents.length;
-      if (totalToday === 0) {
-        todayPhrase = 'Dzisiaj masz luźny dzień bez zaplanowanych spotkań.';
-      } else if (totalToday <= 2) {
-        todayPhrase = todayEvents.length > 0
-          ? `Dzisiaj masz spokojny dzień z ${todayEvents.length === 1 ? '1 spotkaniem' : `${todayEvents.length} spotkaniami`}.`
-          : `Dzisiaj masz luźny dzień z kilkoma drobnymi zadaniami.`;
-      } else {
-        todayPhrase = `Dzisiaj czeka Cię ${totalToday} zadań i spotkań.`;
-      }
-
-      // 2. Tomorrow part
-      let tomorrowPhrase = '';
-      const totalTomorrow = tomorrowTasks.length + tomorrowEvents.length;
-      if (totalTomorrow === 0) {
-        tomorrowPhrase = 'Jutro też będzie w porządku i masz wolny czas.';
-      } else if (totalTomorrow <= 2) {
-        tomorrowPhrase = 'Jutro też będzie w porządku.';
-      } else {
-        tomorrowPhrase = `Jutro masz zaplanowane ${totalTomorrow} rzeczy.`;
-      }
-
-      // 3. Upcoming busy day part (specifically Tuesday or next day with events)
-      let upcomingPhrase = '';
-      if (upcomingBusyDayInfo) {
-        const dayName = upcomingBusyDayInfo.dayNamePl;
-        const keyEvents = upcomingBusyDayInfo.events;
-        const keyTasks = upcomingBusyDayInfo.tasks;
-
-        if (keyEvents.length > 0) {
-          const firstEventTitle = keyEvents[0].title;
-          upcomingPhrase = `Natomiast ${dayName} jest dla Ciebie bardziej pracowity, bo masz m.in. ${firstEventTitle}${keyEvents.length > 1 ? ` oraz ${keyEvents.length - 1} inne spotkania` : ''}${keyTasks.length > 0 ? ` i ${keyTasks.length} zadania` : ''}.`;
-        } else if (keyTasks.length > 0) {
-          upcomingPhrase = `Natomiast ${dayName} jest dla Ciebie bardziej pracowity, bo masz zaplanowane ${keyTasks.length} zadań.`;
-        }
-      } else {
-        upcomingPhrase = 'Najbliższe dni wyglądają przejrzyście i stabilnie.';
-      }
-
-      return `${todayPhrase} ${tomorrowPhrase} ${upcomingPhrase}`;
-    } else {
-      // English greeting
-      const totalToday = todayTasks.length + todayEvents.length;
-      const todayPhrase = totalToday <= 2 ? "Today looks light and relaxed." : `Today you have ${totalToday} items on your schedule.`;
-      const tomorrowPhrase = "Tomorrow should also be smooth.";
-      const upcomingPhrase = upcomingBusyDayInfo 
-        ? `However, ${upcomingBusyDayInfo.dayNameEn} will be busier with upcoming meetings.` 
-        : "Your upcoming days look clean and well-balanced.";
-
-      return `${todayPhrase} ${tomorrowPhrase} ${upcomingPhrase}`;
-    }
-  }, [language, todayTasks, todayEvents, tomorrowTasks, tomorrowEvents, upcomingBusyDayInfo]);
-
-  const handleOpenSiftAI = () => {
+  const handleOpenSiftAIChat = () => {
     window.dispatchEvent(new CustomEvent('open-siftai'));
   };
 
   return (
-    <div className="glass-card rounded-2xl border border-white/10 bg-gradient-to-r from-[#141419]/90 via-[#181822]/90 to-[#121217]/90 p-4 sm:p-5 backdrop-blur-xl shadow-xl relative overflow-hidden">
-      {/* Ambient background glow */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-10 w-60 h-60 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+    <>
+      <div className="glass-card rounded-3xl border border-white/10 bg-gradient-to-br from-[#12141a]/95 via-[#161822]/95 to-[#0e1015]/95 p-5 sm:p-6 backdrop-blur-2xl shadow-xl relative overflow-hidden text-white transition-all">
+        {/* Ambient subtle glow */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-10 w-60 h-60 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1.5 flex-1">
-          {/* Header with Greeting & SiftAI Tag */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-[11px] font-semibold font-mono">
-              <Sparkles className="w-3 h-3 text-purple-400 animate-pulse" />
-              <span>SiftAI</span>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          {/* Left: Greeting & High-level Status */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-[11px] font-semibold font-mono">
+                <Sparkles className="w-3 h-3 text-purple-400 animate-pulse" />
+                <span>SiftAI Command Center</span>
+              </div>
+              {googleToken && (
+                <span className="px-2 py-0.5 rounded-full bg-[#4ade80]/15 text-[#4ade80] border border-[#4ade80]/30 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  Gmail & Kalendarz Live
+                </span>
+              )}
             </div>
-            <h2 className="text-lg sm:text-xl font-bold font-display text-white">
+
+            <h2 className="text-xl sm:text-2xl font-bold font-display text-white">
               {language === 'pl' ? `Witaj, ${greetingName}.` : `Welcome, ${greetingName}.`}
             </h2>
+
+            <p className="text-xs text-slate-400 max-w-xl leading-relaxed">
+              {report.quickSummary}
+            </p>
+
+            {/* Quick Status Chips */}
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/5 text-[11px] text-slate-300 font-medium">
+                <CalendarIcon className="w-3.5 h-3.5 text-indigo-400" />
+                <span>{report.eventsCount} {language === 'pl' ? 'zajęć (7 dni)' : 'sessions'}</span>
+              </span>
+
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/5 text-[11px] text-slate-300 font-medium">
+                <CheckSquare className="w-3.5 h-3.5 text-[#4ade80]" />
+                <span>{report.tasksCount} {language === 'pl' ? 'zadań na dziś' : 'tasks today'}</span>
+              </span>
+
+              {report.emailsNeedReplyCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-300 font-semibold">
+                  <Mail className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{report.emailsNeedReplyCount} {language === 'pl' ? 'maili do odpowiedzi' : 'to reply'}</span>
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Intelligent, single-paragraph personalized summary */}
-          <p className="text-sm text-slate-300 leading-relaxed max-w-4xl">
-            {dynamicGreetingText}
-          </p>
-        </div>
+          {/* Right: Main AI Agenda Modal Trigger Button & SiftAI Assistant */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            {/* PRIMARY BUTTON: SiftAI Agenda & Mail Analysis (PULSES IF ACTION REQUIRED) */}
+            <button
+              type="button"
+              onClick={() => setIsAgendaModalOpen(true)}
+              className={`relative group px-5 py-3.5 rounded-2xl flex items-center justify-between sm:justify-start gap-3.5 transition-all duration-300 cursor-pointer text-left shadow-xl ${
+                hasUrgentAction
+                  ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-[#4ade80] text-slate-950 font-bold ring-2 ring-amber-400 ring-offset-2 ring-offset-[#12141a] animate-pulse hover:animate-none'
+                  : 'bg-white/10 hover:bg-white/15 text-white border border-white/15 font-semibold hover:border-white/30'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  hasUrgentAction ? 'bg-black/20 text-black' : 'bg-purple-500/20 text-purple-300'
+                }`}>
+                  {hasUrgentAction ? (
+                    <AlertTriangle className="w-5 h-5 text-black" />
+                  ) : (
+                    <Bot className="w-5 h-5 text-purple-300" />
+                  )}
+                </div>
 
-        {/* Action Button: Opens SiftAI Speech Bubble in Bottom Right */}
-        <div className="shrink-0 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleOpenSiftAI}
-            className="px-3.5 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-200 border border-purple-500/30 hover:border-purple-500/50 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-sm group"
-            title={language === 'pl' ? 'Otwórz asystenta SiftAI' : 'Open SiftAI assistant'}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform" />
-            <span>{language === 'pl' ? 'Zapytaj SiftAI' : 'Ask SiftAI'}</span>
-            <ArrowRight className="w-3 h-3 text-purple-400 group-hover:translate-x-0.5 transition-transform" />
-          </button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold tracking-tight">
+                      {language === 'pl' ? '⚡ Raport Agendy & Poczty AI' : '⚡ AI Agenda & Mail Report'}
+                    </span>
+                    {hasUrgentAction && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping shrink-0" />
+                    )}
+                  </div>
+
+                  {/* Subtitle informing about action required */}
+                  <div className={`text-[11px] font-semibold flex items-center gap-1 mt-0.5 ${
+                    hasUrgentAction ? 'text-black/85' : 'text-slate-400'
+                  }`}>
+                    {hasUrgentAction ? (
+                      <>
+                        <span className="underline underline-offset-2">
+                          {language === 'pl' 
+                            ? `Wymaga Twojej akcji (${report.actionRequiredList.length})` 
+                            : `Action required (${report.actionRequiredList.length})`}
+                        </span>
+                      </>
+                    ) : (
+                      <span>{language === 'pl' ? 'Wszystko ogarnięte • Otwórz raport' : 'All clear • Open report'}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <ChevronRight className={`w-5 h-5 shrink-0 transition-transform group-hover:translate-x-0.5 ${
+                hasUrgentAction ? 'text-black' : 'text-slate-400'
+              }`} />
+            </button>
+
+            {/* SiftAI Chat Trigger */}
+            <button
+              type="button"
+              onClick={handleOpenSiftAIChat}
+              className="px-4 py-3 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 border border-purple-500/25 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              title="Zapytaj SiftAI o dowolne zadanie lub plan"
+            >
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span>SiftAI</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* The Separate Full AI Agenda & Mail Intelligence Modal Window */}
+      <AgendaReportModal
+        isOpen={isAgendaModalOpen}
+        onClose={() => setIsAgendaModalOpen(false)}
+        report={report}
+        onRefresh={loadEmails}
+        isLoading={isGmailLoading}
+        onOpenPool={onOpenPool}
+      />
+    </>
   );
 }

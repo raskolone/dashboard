@@ -367,6 +367,16 @@ export async function modifyGmailMessage(
   }
 }
 
+// Archive message (removes from INBOX)
+export async function archiveGmailMessage(messageId: string): Promise<void> {
+  return modifyGmailMessage(messageId, [], ['INBOX']);
+}
+
+// Unarchive message (restores to INBOX)
+export async function unarchiveGmailMessage(messageId: string): Promise<void> {
+  return modifyGmailMessage(messageId, ['INBOX'], []);
+}
+
 // User-confirmed operation: Move to trash
 export async function trashGmailMessage(messageId: string): Promise<void> {
   const token = await getAccessToken();

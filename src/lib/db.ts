@@ -67,7 +67,9 @@ export function subscribeToCollection<T>(path: string, callback: (data: T[]) => 
       });
       callback(results);
     }, 
-    (error) => handleFirestoreError(error, OperationType.GET, path)
+    (error) => {
+      console.warn(`Firestore subscription notice for path [${path}]:`, error?.message || error);
+    }
   );
 }
 

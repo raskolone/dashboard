@@ -91,20 +91,27 @@ ${context?.details ? `Dodatkowe informacje o zadaniach: ${context.details}` : ''
         if (text) {
           return res.json({ reply: text, model: 'SiftAI' });
         }
-      } catch (genError) {
-        console.warn('Gemini 3.8 Flash primary call failed, attempting fallback...', genError);
-        // Secondary fallback to gemini-3.8-flash or fast model
-        try {
-          const fallbackResponse = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
-            contents: `${systemInstruction}\n\n${userPrompt}`
-          });
-          const text = fallbackResponse.text?.trim();
-          if (text) {
-            return res.json({ reply: text, model: 'SiftAI' });
+      } catch (genError: any) {
+        const errorMsg = genError?.message || String(genError);
+        const isAuthError =
+          genError?.status === 'UNAUTHENTICATED' ||
+          errorMsg.includes('401') ||
+          errorMsg.includes('ACCOUNT_STATE_INVALID') ||
+          errorMsg.includes('service account');
+
+        if (!isAuthError) {
+          try {
+            const fallbackResponse = await ai.models.generateContent({
+              model: 'gemini-3.8-flash',
+              contents: `${systemInstruction}\n\n${userPrompt}`
+            });
+            const text = fallbackResponse.text?.trim();
+            if (text) {
+              return res.json({ reply: text, model: 'SiftAI' });
+            }
+          } catch (fallbackError) {
+            // Silently proceed to client-side fallback
           }
-        } catch (fallbackError) {
-          console.warn('Gemini fallback attempt failed:', fallbackError);
         }
       }
     }
