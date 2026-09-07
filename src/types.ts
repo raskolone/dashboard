@@ -65,6 +65,8 @@ export interface CalendarEvent {
   type: EventType;
   description?: string;
   location?: string;
+  recurring?: boolean;
+  googleEventId?: string;
   createdAt?: string;
   updatedAt?: string;
 }

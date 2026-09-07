@@ -91,3 +91,48 @@ export function calculateHabitStats(completedDates: string[]) {
 
   return { currentStreak, longestStreak, completionRate7Days, completionRate30Days };
 }
+
+export function getEventDurationInfo(start_time?: string, end_time?: string, lang: 'pl' | 'en' = 'pl') {
+  if (!start_time || !end_time || (start_time === '00:00' && end_time === '23:59')) {
+    return {
+      durationMinutes: 1440,
+      formattedDuration: lang === 'pl' ? 'Cały dzień' : 'All day',
+      isAllDay: true,
+      timeSpan: lang === 'pl' ? 'Cały dzień' : 'All day',
+      startHour: 0,
+      startMinute: 0,
+      endHour: 23,
+      endMinute: 59,
+    };
+  }
+
+  const [sh, sm] = start_time.split(':').map(Number);
+  const [eh, em] = end_time.split(':').map(Number);
+  let durationMinutes = (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0));
+  if (durationMinutes <= 0) durationMinutes = 60; // graceful fallback
+
+  const hours = Math.floor(durationMinutes / 60);
+  const mins = durationMinutes % 60;
+
+  let formattedDuration = '';
+  if (hours > 0 && mins > 0) {
+    formattedDuration = lang === 'pl' ? `${hours} godz. ${mins} min` : `${hours}h ${mins}m`;
+  } else if (hours > 0) {
+    formattedDuration = lang === 'pl' 
+      ? `${hours} ${hours === 1 ? 'godz.' : 'godz.'}` 
+      : `${hours}h`;
+  } else {
+    formattedDuration = lang === 'pl' ? `${mins} min` : `${mins}m`;
+  }
+
+  return {
+    durationMinutes,
+    formattedDuration,
+    isAllDay: false,
+    timeSpan: `${start_time} – ${end_time}`,
+    startHour: sh,
+    startMinute: sm || 0,
+    endHour: eh,
+    endMinute: em || 0,
+  };
+}

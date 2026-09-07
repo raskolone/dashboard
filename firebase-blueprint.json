@@ -69,6 +69,22 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "title", "content", "category", "tags", "is_pinned", "createdAt", "updatedAt"]
+    },
+    "UserSettings": {
+      "title": "User Settings",
+      "description": "Persistent memory settings and configurations for the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "language": { "type": "string", "enum": ["pl", "en"] },
+        "stackHabits": { "type": "boolean" },
+        "dashboardWidgets": { "type": "array" },
+        "googleConnected": { "type": "boolean" },
+        "googleUserEmail": { "type": "string" },
+        "lastSyncedAt": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "language", "updatedAt"]
     }
   },
   "firestore": {
@@ -87,6 +103,10 @@
     "/users/{userId}/knowledge/{knowledgeId}": {
       "schema": { "$ref": "#/entities/KnowledgeEntry" },
       "description": "Knowledge entries belonging to a specific user."
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Persistent settings and memory for user preferences and integrations."
     }
   }
 }

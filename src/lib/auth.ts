@@ -6,6 +6,7 @@ import {
   getRedirectResult, 
   GoogleAuthProvider, 
   onAuthStateChanged, 
+  signInAnonymously,
   User 
 } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
@@ -13,7 +14,8 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+const customDbId = (firebaseConfig as any).firestoreDatabaseId;
+export const db = customDbId ? getFirestore(app, customDbId) : getFirestore(app);
 
 // Test offline connection constraint based on Firebase Integration skill
 async function testConnection() {
@@ -30,6 +32,12 @@ testConnection();
 const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/calendar.events');
 provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+provider.addScope('https://mail.google.com/');
+provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+provider.addScope('https://www.googleapis.com/auth/gmail.send');
+provider.addScope('https://www.googleapis.com/auth/gmail.modify');
+provider.addScope('https://www.googleapis.com/auth/gmail.labels');
+provider.addScope('https://www.googleapis.com/auth/gmail.compose');
 
 let isSigningIn = false;
 let cachedAccessToken: string | null = (() => {
@@ -53,6 +61,7 @@ export const initAuth = (
           cachedAccessToken = credential.accessToken;
           try {
             localStorage.setItem('google_access_token', cachedAccessToken);
+            localStorage.setItem('google_calendar_connected', 'true');
           } catch {}
           if (onAuthSuccess) {
             onAuthSuccess(result.user, cachedAccessToken);
@@ -66,15 +75,22 @@ export const initAuth = (
 
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
-      const token = cachedAccessToken || '';
+      const token = cachedAccessToken || localStorage.getItem('google_access_token') || '';
       if (onAuthSuccess) {
         onAuthSuccess(user, token);
       }
     } else {
-      cachedAccessToken = null;
+      // Auto-ensure persistent session through anonymous sign-in if no user logged in
       try {
-        localStorage.removeItem('google_access_token');
-      } catch {}
+        const anon = await signInAnonymously(auth);
+        if (anon?.user && onAuthSuccess) {
+          onAuthSuccess(anon.user, cachedAccessToken || '');
+          return;
+        }
+      } catch (anonErr) {
+        console.info('Anonymous sign-in unavailable, proceeding with local session:', anonErr);
+      }
+      cachedAccessToken = null;
       if (onAuthFailure) onAuthFailure();
     }
   });

@@ -4,7 +4,7 @@ import { Task, TaskList, Habit, CalendarEvent, KnowledgeEntry, TaskStatus, TaskP
 import { mockTasks, mockHabits, mockEvents, mockKnowledge } from '../lib/mockData';
 import { initAuth, googleSignIn, logout as firebaseLogout, clearAccessToken, setAccessToken } from '../lib/auth';
 import { fetchCalendarEvents, createGoogleCalendarEvent, deleteGoogleCalendarEvent } from '../lib/calendar';
-import { subscribeToCollection, createDocument, updateDocument, deleteDocument, generateId } from '../lib/db';
+import { subscribeToCollection, createDocument, updateDocument, deleteDocument, generateId, setDocumentWithMerge, subscribeToDocument } from '../lib/db';
 import { translations } from '../lib/translations';
 
 export type AppTheme = 'dark' | 'light';
@@ -33,6 +33,8 @@ interface AppState {
   // Google Auth & Sync Info
   user: User | null;
   googleToken: string | null;
+  isGoogleConnected: boolean;
+  googleUserEmail: string | null;
   isAuthLoading: boolean;
   isSyncingCalendar: boolean;
   loginGoogle: () => Promise<void>;
@@ -87,11 +89,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  const setLanguage = (lang: 'pl' | 'en') => {
-    setLanguageState(lang);
-    localStorage.setItem('app_language', lang);
-  };
-
   const [stackHabits, setStackHabitsState] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('app_stack_habits');
@@ -101,9 +98,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const setLanguage = (lang: 'pl' | 'en') => {
+    setLanguageState(lang);
+    try {
+      localStorage.setItem('app_language', lang);
+    } catch {}
+    if (user && user.uid && user.uid !== 'demo_user') {
+      setDocumentWithMerge(`users/${user.uid}/settings`, 'general', {
+        language: lang,
+        updatedAt: new Date().toISOString()
+      }).catch(err => console.warn('Failed to sync language to Firestore:', err));
+    }
+  };
+
   const setStackHabits = (stack: boolean) => {
     setStackHabitsState(stack);
-    localStorage.setItem('app_stack_habits', JSON.stringify(stack));
+    try {
+      localStorage.setItem('app_stack_habits', JSON.stringify(stack));
+    } catch {}
+    if (user && user.uid && user.uid !== 'demo_user') {
+      setDocumentWithMerge(`users/${user.uid}/settings`, 'general', {
+        stackHabits: stack,
+        updatedAt: new Date().toISOString()
+      }).catch(err => console.warn('Failed to sync stackHabits to Firestore:', err));
+    }
   };
 
   const t = (path: string): any => {
@@ -140,9 +158,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // No-op since light mode is deleted
   };
 
-  // Google Integration States
+  // Google Integration States & Persistent Connection
   const [user, setUser] = useState<User | null>(null);
-  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [googleToken, setGoogleToken] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('google_access_token');
+    } catch {
+      return null;
+    }
+  });
+  const [googleUserEmail, setGoogleUserEmail] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('google_user_email');
+    } catch {
+      return null;
+    }
+  });
+  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('google_calendar_connected') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>(() => {
     try {
       const saved = localStorage.getItem('app_google_events');
@@ -155,17 +194,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('app_google_events', JSON.stringify(googleEvents));
+    try {
+      localStorage.setItem('app_google_events', JSON.stringify(googleEvents));
+    } catch {}
   }, [googleEvents]);
 
-  // Auth initialization (with demo user check to prevent logging out on refresh)
+  // Auth initialization
   useEffect(() => {
     const isDemoActive = localStorage.getItem('demo_mode_active_v1') === 'true';
 
     const unsubscribe = initAuth(
       (authUser, token) => {
         setUser(authUser);
-        setGoogleToken(token);
+        if (token) {
+          setGoogleToken(token);
+          setIsGoogleConnected(true);
+          try {
+            localStorage.setItem('google_calendar_connected', 'true');
+          } catch {}
+        }
+        if (authUser.email) {
+          setGoogleUserEmail(authUser.email);
+          try {
+            localStorage.setItem('google_user_email', authUser.email);
+          } catch {}
+        }
         setIsAuthLoading(false);
         try {
           localStorage.removeItem('demo_mode_active_v1');
@@ -180,21 +233,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
             photoURL: null,
             emailVerified: true
           } as any);
-        } else {
-          setUser(null);
         }
-        setGoogleToken(null);
         setIsAuthLoading(false);
       }
     );
     return () => unsubscribe();
   }, []);
 
-  // Firebase Sync
+  // Firebase Real-time Sync & Persistent Settings
   useEffect(() => {
     if (user && user.uid !== 'demo_user') {
       const uId = user.uid;
       const unsubs = [
+        // Settings subscription (persistent memory for user preferences)
+        subscribeToDocument<{
+          language?: 'pl' | 'en';
+          stackHabits?: boolean;
+          googleConnected?: boolean;
+          googleUserEmail?: string;
+        }>(`users/${uId}/settings`, 'general', (settingsData) => {
+          if (settingsData) {
+            if (settingsData.language && settingsData.language !== language) {
+              setLanguageState(settingsData.language);
+              try { localStorage.setItem('app_language', settingsData.language); } catch {}
+            }
+            if (settingsData.stackHabits !== undefined && settingsData.stackHabits !== stackHabits) {
+              setStackHabitsState(settingsData.stackHabits);
+              try { localStorage.setItem('app_stack_habits', JSON.stringify(settingsData.stackHabits)); } catch {}
+            }
+            if (settingsData.googleConnected) {
+              setIsGoogleConnected(true);
+              try { localStorage.setItem('google_calendar_connected', 'true'); } catch {}
+            }
+            if (settingsData.googleUserEmail) {
+              setGoogleUserEmail(settingsData.googleUserEmail);
+              try { localStorage.setItem('google_user_email', settingsData.googleUserEmail); } catch {}
+            }
+          }
+        }),
         subscribeToCollection<TaskList>(`users/${uId}/taskLists`, (data) => {
           if (data.length === 0) {
             setTaskLists([{ id: 'default', name: 'Zadania', createdAt: new Date().toISOString() }]);
@@ -212,14 +288,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         unsubs.forEach(u => u());
       }
     } else {
-      // Fallback to offline/mock data storage for guest/demo users
-      setTasks(mockTasks);
+      // Offline fallback with persistent local cache
+      const cachedTasks = localStorage.getItem('app_offline_tasks');
+      const cachedHabits = localStorage.getItem('app_offline_habits');
+      const cachedEvents = localStorage.getItem('app_offline_events');
+      const cachedKnowledge = localStorage.getItem('app_offline_knowledge');
+
+      setTasks(cachedTasks ? JSON.parse(cachedTasks) : mockTasks);
       setTaskLists([{ id: 'default', name: 'Zadania', createdAt: new Date().toISOString() }]);
-      setHabits(mockHabits);
-      setEvents(mockEvents);
-      setKnowledge(mockKnowledge);
+      setHabits(cachedHabits ? JSON.parse(cachedHabits) : mockHabits);
+      setEvents(cachedEvents ? JSON.parse(cachedEvents) : mockEvents);
+      setKnowledge(cachedKnowledge ? JSON.parse(cachedKnowledge) : mockKnowledge);
     }
   }, [user]);
+
+  // Persist offline cache whenever local state changes so no data is ever lost
+  useEffect(() => {
+    if (!user || user.uid === 'demo_user') {
+      try {
+        localStorage.setItem('app_offline_tasks', JSON.stringify(tasks));
+        localStorage.setItem('app_offline_habits', JSON.stringify(habits));
+        localStorage.setItem('app_offline_events', JSON.stringify(events));
+        localStorage.setItem('app_offline_knowledge', JSON.stringify(knowledge));
+      } catch {}
+    }
+  }, [tasks, habits, events, knowledge, user]);
 
   const loginGoogle = async () => {
     try {
@@ -228,9 +321,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUser(res.user);
         setGoogleToken(res.accessToken);
         setAccessToken(res.accessToken);
+        setIsGoogleConnected(true);
+        if (res.user.email) {
+          setGoogleUserEmail(res.user.email);
+          try {
+            localStorage.setItem('google_user_email', res.user.email);
+          } catch {}
+        }
         try {
+          localStorage.setItem('google_calendar_connected', 'true');
           localStorage.removeItem('demo_mode_active_v1');
         } catch {}
+
+        // Persist Google Calendar connection to Firestore user settings
+        setDocumentWithMerge(`users/${res.user.uid}/settings`, 'general', {
+          googleConnected: true,
+          googleUserEmail: res.user.email || '',
+          lastSyncedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }).catch(e => console.warn('Could not save Google connection to settings:', e));
+
+        syncCalendar();
       }
     } catch (err: any) {
       if (err?.code === 'auth/popup-closed-by-user') {
@@ -282,12 +393,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const apiEvents = await fetchCalendarEvents(timeMin, timeMax);
       
       const mapped: CalendarEvent[] = apiEvents.map(e => {
-        const startDateTimeStr = e.start.dateTime || e.start.date || '';
-        const endDateTimeStr = e.end.dateTime || e.end.date || '';
-        
-        const dateOnly = startDateTimeStr.split('T')[0] || '';
-        const startTimeStr = startDateTimeStr.includes('T') ? startDateTimeStr.split('T')[1].substring(0, 5) : '00:00';
-        const endTimeStr = endDateTimeStr.includes('T') ? endDateTimeStr.split('T')[1].substring(0, 5) : '23:59';
+        let dateOnly = '';
+        let startTimeStr = '00:00';
+        let endTimeStr = '23:59';
+
+        if (e.start.dateTime) {
+          const sDate = new Date(e.start.dateTime);
+          const y = sDate.getFullYear();
+          const m = String(sDate.getMonth() + 1).padStart(2, '0');
+          const d = String(sDate.getDate()).padStart(2, '0');
+          dateOnly = `${y}-${m}-${d}`;
+          startTimeStr = `${String(sDate.getHours()).padStart(2, '0')}:${String(sDate.getMinutes()).padStart(2, '0')}`;
+        } else if (e.start.date) {
+          dateOnly = e.start.date;
+          startTimeStr = '00:00';
+        }
+
+        if (e.end.dateTime) {
+          const eDate = new Date(e.end.dateTime);
+          endTimeStr = `${String(eDate.getHours()).padStart(2, '0')}:${String(eDate.getMinutes()).padStart(2, '0')}`;
+        } else if (e.end.date) {
+          endTimeStr = '23:59';
+        }
         
         return {
           id: e.id,
@@ -297,16 +424,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           end_time: endTimeStr,
           type: 'meeting',
           description: e.description || '',
-          location: e.htmlLink || 'YouTube/Meet'
+          location: e.htmlLink || 'Google Meet'
         };
       });
       setGoogleEvents(mapped);
     } catch (error: any) {
       if (error instanceof Error && (error.message === 'UNAUTHORIZED_OR_EXPIRED' || error.message.includes('401') || error.message.includes('UNAUTHORIZED'))) {
-        console.warn('Google Calendar authorization expired or revoked. Resetting token.');
+        console.warn('Google Calendar authorization expired. Retaining cache for seamless experience.');
         clearAccessToken();
         setGoogleToken(null);
-        setGoogleEvents([]);
       } else {
         console.warn('Google Calendar sync notice:', error?.message || error);
       }
@@ -318,8 +444,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (googleToken) {
       syncCalendar();
-    } else {
-      setGoogleEvents([]);
     }
   }, [googleToken]);
 
@@ -656,7 +780,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       theme, toggleTheme,
       language, setLanguage, t,
       stackHabits, setStackHabits,
-      user, googleToken, isAuthLoading, isSyncingCalendar,
+      user, googleToken, isGoogleConnected, googleUserEmail, isAuthLoading, isSyncingCalendar,
       loginGoogle, logoutGoogle, loginDemo, syncCalendar,
       addTask, updateTask, deleteTask,
       addTaskList, updateTaskList, deleteTaskList,

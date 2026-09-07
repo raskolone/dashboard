@@ -12,7 +12,9 @@ export const mockHabits: Habit[] = [
 ];
 
 export const mockEvents: CalendarEvent[] = [
-  { id: '1', title: 'Weekly Sync', date: new Date().toISOString().split('T')[0], start_time: '14:00', end_time: '15:00', type: 'meeting', location: 'Google Meet' }
+  { id: '1', title: 'Weekly Sync', date: new Date().toISOString().split('T')[0], start_time: '14:00', end_time: '15:00', type: 'meeting', location: 'Google Meet' },
+  { id: 'ev-adam', title: 'Spotkanie z Adamem Zawadzkim', date: '2026-09-08', start_time: '07:30', end_time: '08:30', type: 'meeting', location: 'Google Meet', recurring: true, description: 'Cotygodniowe omówienie projektów strategicznych' },
+  { id: 'ev-sprint', title: 'Przegląd sprintu z zespołem', date: '2026-09-08', start_time: '08:35', end_time: '09:35', type: 'meeting', location: 'Pokój konferencyjny B', recurring: true, description: 'Podsumowanie zadań i wdrożeń' }
 ];
 
 export const mockKnowledge: KnowledgeEntry[] = [

@@ -4,6 +4,7 @@ import Constellation from './Constellation';
 import { Outlet } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { QuickAddModal } from './QuickAddModal';
+import { SiftAISpeechBubble } from './SiftAISpeechBubble';
 import { motion } from 'motion/react';
 
 export function Layout() {
@@ -26,6 +27,7 @@ export function Layout() {
         </div>
       </main>
 
+      <SiftAISpeechBubble />
       <QuickAddModal />
     </div>
   );

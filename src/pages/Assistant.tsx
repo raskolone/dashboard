@@ -4,7 +4,7 @@ import { Bot, Sparkles, Send, BrainCircuit, Activity, CalendarDays, Zap, CheckCi
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { askLunaAssistant, AI_MODEL_NAME, AI_MODEL_ID, AIMessage } from '../lib/aiService';
+import { askSiftAIAssistant, AI_MODEL_NAME, AI_MODEL_ID, AIMessage } from '../lib/aiService';
 
 export function Assistant() {
   const { tasks, habits, language, t } = useAppStore();
@@ -48,7 +48,7 @@ export function Assistant() {
     setIsTyping(true);
 
     try {
-      const reply = await askLunaAssistant(
+      const reply = await askSiftAIAssistant(
         textToSend.trim(),
         { tasks, habits, language },
         messages
@@ -229,7 +229,7 @@ export function Assistant() {
                   type="submit"
                   disabled={!query.trim() || isTyping}
                   className="absolute right-2 p-2 rounded-xl text-[#0a120d] bg-[#4ade80] hover:bg-[#3ec470] transition-all disabled:opacity-30 disabled:bg-slate-700 disabled:text-slate-400 cursor-pointer"
-                  title="Wyślij zapytanie do GPT 5.6 Luna"
+                  title="Wyślij zapytanie do SiftAI"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -246,7 +246,7 @@ export function Assistant() {
           <div className="glass-card rounded-3xl p-5 border border-white/10 bg-[#141416]/90 space-y-3">
             <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400 flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-[#4ade80]" />
-              <span>Szybkie akcje GPT 5.6 Luna</span>
+              <span>Szybkie akcje SiftAI</span>
             </h3>
 
             <div className="space-y-2">

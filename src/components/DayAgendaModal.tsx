@@ -18,6 +18,7 @@ import { format, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { Task, TaskPriority } from '../types';
+import { getEventDurationInfo } from '../lib/utils';
 
 interface DayAgendaModalProps {
   dateStr: string;
@@ -317,14 +318,23 @@ export function DayAgendaModal({ dateStr, onClose, onOpenEditTask }: DayAgendaMo
                   return h === hour;
                 });
 
-                // Google Calendar events matching this hour
-                const eventsInHour = dayGoogleEvents.filter(e => {
-                  if (!e.start_time) return false;
+                // Google Calendar events starting this hour
+                const startingEventsInHour = dayGoogleEvents.filter(e => {
+                  if (!e.start_time || e.start_time === '00:00') return false;
                   const h = parseInt(e.start_time.split(':')[0], 10);
                   return h === hour;
                 });
 
-                const hasItems = tasksInHour.length > 0 || eventsInHour.length > 0;
+                // Google Calendar events ongoing during this hour
+                const ongoingEventsInHour = dayGoogleEvents.filter(e => {
+                  if (!e.start_time || e.start_time === '00:00') return false;
+                  const sh = parseInt(e.start_time.split(':')[0], 10);
+                  const eh = e.end_time ? parseInt(e.end_time.split(':')[0], 10) : sh + 1;
+                  const em = e.end_time ? parseInt(e.end_time.split(':')[1], 10) : 0;
+                  return hour > sh && (hour < eh || (hour === eh && em > 5));
+                });
+
+                const hasItems = tasksInHour.length > 0 || startingEventsInHour.length > 0 || ongoingEventsInHour.length > 0;
 
                 return (
                   <div 
@@ -338,34 +348,64 @@ export function DayAgendaModal({ dateStr, onClose, onOpenEditTask }: DayAgendaMo
                     </span>
 
                     <div className="flex-1 space-y-2">
-                      {/* Google Calendar Events */}
-                      {eventsInHour.map(gEvent => (
-                        <div
-                          key={gEvent.id}
-                          className="p-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-200 text-xs flex items-center justify-between gap-2 shadow-sm"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-mono text-[10px] font-bold">
-                              Google
-                            </span>
-                            <span className="font-semibold truncate text-white">{gEvent.title}</span>
-                            <span className="text-[10px] text-blue-300 font-mono">
-                              {gEvent.start_time} - {gEvent.end_time}
+                      {/* Starting Google Calendar Events */}
+                      {startingEventsInHour.map(gEvent => {
+                        const durInfo = getEventDurationInfo(gEvent.start_time, gEvent.end_time, language);
+                        return (
+                          <div
+                            key={gEvent.id}
+                            className="p-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-200 text-xs flex items-center justify-between gap-2 shadow-sm"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                              <span className="px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-mono text-[10px] font-bold">
+                                Google
+                              </span>
+                              <span className="font-semibold truncate text-white">{gEvent.title}</span>
+                              <span className="text-[10px] text-blue-300 font-mono">
+                                {durInfo.timeSpan}
+                              </span>
+                              {!durInfo.isAllDay && (
+                                <span className="px-1.5 py-0.2 rounded bg-blue-400/20 text-blue-200 text-[10px] font-mono font-medium">
+                                  {durInfo.formattedDuration}
+                                </span>
+                              )}
+                            </div>
+                            {gEvent.location && (
+                              <a
+                                href={gEvent.location.startsWith('http') ? gEvent.location : undefined}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-blue-400 hover:underline shrink-0 flex items-center gap-1"
+                              >
+                                <span>Spotkanie</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Ongoing Google Calendar Events */}
+                      {ongoingEventsInHour.map(gEvent => {
+                        const durInfo = getEventDurationInfo(gEvent.start_time, gEvent.end_time, language);
+                        return (
+                          <div
+                            key={`ongoing-${gEvent.id}-${hour}`}
+                            className="p-2 rounded-lg bg-blue-950/30 border-l-2 border-blue-400/70 text-blue-200/90 text-xs flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                              <span className="truncate font-medium text-slate-300">{gEvent.title}</span>
+                              <span className="text-[10px] text-blue-300/80 font-mono">
+                                ({language === 'pl' ? `do ${gEvent.end_time}` : `until ${gEvent.end_time}`})
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-blue-400 font-mono shrink-0">
+                              {durInfo.formattedDuration}
                             </span>
                           </div>
-                          {gEvent.location && (
-                            <a
-                              href={gEvent.location.startsWith('http') ? gEvent.location : undefined}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[10px] text-blue-400 hover:underline shrink-0 flex items-center gap-1"
-                            >
-                              <span>Spotkanie</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       {/* Scheduled Tasks */}
                       {tasksInHour.map(task => (

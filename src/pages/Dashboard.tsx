@@ -1,138 +1,112 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/AppContext';
-import { CheckCircle2, Clock, CalendarIcon, Target, Activity, Brain, Flame, Plus, MoreVertical, LayoutGrid, X, Filter, ChevronDown, Check } from 'lucide-react';
+import { 
+  CheckCircle2, 
+  Clock, 
+  Calendar as CalendarIcon, 
+  Target, 
+  Activity, 
+  Brain, 
+  Flame, 
+  Plus, 
+  Filter, 
+  ChevronDown, 
+  ChevronUp, 
+  Check, 
+  Timer, 
+  TrendingUp, 
+  Eye, 
+  EyeOff, 
+  ArrowRight,
+  Sparkles
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProductivityChart } from '../components/ProductivityChart';
 import { PomodoroTimer } from '../components/PomodoroTimer';
 import { calculateHabitStats } from '../lib/utils';
 import confetti from 'canvas-confetti';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import * as ContextMenu from '@radix-ui/react-context-menu';
-
-export type WidgetSize = 'small' | 'medium' | 'large';
-
-export interface WidgetConfig {
-  id: string;
-  type: string;
-  size: WidgetSize;
-  visible: boolean;
-  order: number;
-}
-
-const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: 'w-stat-tasks', type: 'stat-tasks', size: 'small', visible: true, order: 0 },
-  { id: 'w-stat-events', type: 'stat-events', size: 'small', visible: true, order: 1 },
-  { id: 'w-stat-habits', type: 'stat-habits', size: 'small', visible: true, order: 2 },
-  { id: 'w-stat-progress', type: 'stat-progress', size: 'small', visible: true, order: 3 },
-  { id: 'w-focus', type: 'focus', size: 'large', visible: true, order: 4 },
-  { id: 'w-tasks', type: 'tasks-list', size: 'medium', visible: true, order: 5 },
-  { id: 'w-habit-streak', type: 'habit-streak', size: 'large', visible: true, order: 6 },
-  { id: 'w-agenda', type: 'agenda', size: 'medium', visible: true, order: 7 },
-  { id: 'w-pomodoro', type: 'pomodoro', size: 'large', visible: true, order: 8 },
-  { id: 'w-chart', type: 'chart', size: 'large', visible: true, order: 9 },
-];
-
-const SortableWidget = ({ widget, children, onChangeSize, onRemove, language }: { widget: WidgetConfig, children: React.ReactNode, onChangeSize: (w: WidgetConfig, s: WidgetSize) => void, onRemove: (w: WidgetConfig) => void, language: string }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widget.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : 1,
-    opacity: isDragging ? 0.8 : 1,
-  };
-
-  const colSpan = widget.size === 'small' ? 'col-span-1 md:col-span-1' : widget.size === 'medium' ? 'col-span-2 md:col-span-2' : 'col-span-2 md:col-span-4';
-  const rowSpan = widget.size === 'large' && widget.type !== 'stat' ? 'row-span-2' : 'row-span-1';
-
-  return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger asChild>
-        <div
-          ref={setNodeRef}
-          style={style}
-          {...attributes}
-          {...listeners}
-          className={`${colSpan} ${rowSpan} relative group touch-manipulation sm:touch-auto cursor-grab active:cursor-grabbing outline-none`}
-        >
-           <div className="absolute top-4 right-4 flex items-center gap-2 z-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-             <DropdownMenu.Root>
-                <DropdownMenu.Trigger asChild>
-                   <button className="p-1.5 rounded-lg bg-black/40 text-white/50 hover:text-white backdrop-blur-md border border-white/10 cursor-pointer transition-colors" title={language === 'pl' ? 'Opcje widgetu' : 'Widget options'}>
-                     <MoreVertical className="w-4 h-4" />
-                   </button>
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content className="z-[100] min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-2xl p-1 shadow-2xl animate-in fade-in zoom-in-95" sideOffset={8}>
-                    <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'pl' ? 'Rozmiar' : 'Size'}</div>
-                    <DropdownMenu.Item onSelect={() => onChangeSize(widget, 'small')} className={`px-3 py-2 text-sm rounded-xl transition-colors outline-none cursor-pointer ${widget.size === 'small' ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'text-white hover:bg-white/10'}`}>
-                      {language === 'pl' ? 'Mały' : 'Small'}
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item onSelect={() => onChangeSize(widget, 'medium')} className={`px-3 py-2 text-sm rounded-xl transition-colors outline-none cursor-pointer ${widget.size === 'medium' ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'text-white hover:bg-white/10'}`}>
-                      {language === 'pl' ? 'Średni' : 'Medium'}
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item onSelect={() => onChangeSize(widget, 'large')} className={`px-3 py-2 text-sm rounded-xl transition-colors outline-none cursor-pointer ${widget.size === 'large' ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'text-white hover:bg-white/10'}`}>
-                      {language === 'pl' ? 'Duży' : 'Large'}
-                    </DropdownMenu.Item>
-                    <div className="h-px bg-[#333] my-1 mx-2" />
-                    <DropdownMenu.Item onSelect={() => onRemove(widget)} className="px-3 py-2 text-sm rounded-xl text-red-400 hover:bg-red-500/10 transition-colors outline-none cursor-pointer">
-                      {language === 'pl' ? 'Usuń widget' : 'Remove widget'}
-                    </DropdownMenu.Item>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-             </DropdownMenu.Root>
-           </div>
-           {children}
-        </div>
-      </ContextMenu.Trigger>
-      
-      <ContextMenu.Portal>
-        <ContextMenu.Content className="z-[100] min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-2xl p-1 shadow-2xl animate-in fade-in zoom-in-95">
-          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'pl' ? 'Rozmiar' : 'Size'}</div>
-          <ContextMenu.Item onSelect={() => onChangeSize(widget, 'small')} className={`px-3 py-2 text-sm rounded-xl transition-colors outline-none cursor-pointer ${widget.size === 'small' ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'text-white hover:bg-white/10'}`}>
-            {language === 'pl' ? 'Mały' : 'Small'}
-          </ContextMenu.Item>
-          <ContextMenu.Item onSelect={() => onChangeSize(widget, 'medium')} className={`px-3 py-2 text-sm rounded-xl transition-colors outline-none cursor-pointer ${widget.size === 'medium' ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'text-white hover:bg-white/10'}`}>
-            {language === 'pl' ? 'Średni' : 'Medium'}
-          </ContextMenu.Item>
-          <ContextMenu.Item onSelect={() => onChangeSize(widget, 'large')} className={`px-3 py-2 text-sm rounded-xl transition-colors outline-none cursor-pointer ${widget.size === 'large' ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'text-white hover:bg-white/10'}`}>
-            {language === 'pl' ? 'Duży' : 'Large'}
-          </ContextMenu.Item>
-          <div className="h-px bg-[#333] my-1 mx-2" />
-          <ContextMenu.Item onSelect={() => onRemove(widget)} className="px-3 py-2 text-sm rounded-xl text-red-400 hover:bg-red-500/10 transition-colors outline-none cursor-pointer">
-            {language === 'pl' ? 'Usuń widget' : 'Remove widget'}
-          </ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
-  );
-};
+import { setDocumentWithMerge } from '../lib/db';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { tasks, habits, events, googleEvents, googleToken, updateTask, toggleHabit, addHabit, updateHabitProgress, t, language } = useAppStore();
-  const [activeFilterTag, setActiveFilterTag] = React.useState<string | null>(null);
+  const { 
+    tasks, 
+    habits, 
+    events, 
+    googleEvents, 
+    googleToken, 
+    user,
+    updateTask, 
+    toggleHabit, 
+    addHabit, 
+    t, 
+    language 
+  } = useAppStore();
+
+  const [activeFilterTag, setActiveFilterTag] = useState<string | null>(null);
   const [showHabitCreator, setShowHabitCreator] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
   const [newHabitIcon, setNewHabitIcon] = useState('🔥');
   const [newHabitColor, setNewHabitColor] = useState('#4ade80');
-  const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
-    const saved = localStorage.getItem('dashboard_widgets_v2');
-    return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
+
+  // Collapsible section states (stored in localStorage & Firestore for persistent memory)
+  const [collapsedSections, setCollapsedSections] = useState<{
+    tasksCalendar: boolean;
+    habits: boolean;
+    focusTools: boolean;
+  }>(() => {
+    try {
+      const saved = localStorage.getItem('dashboard_collapsed_v3');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      tasksCalendar: false, // open by default
+      habits: false,        // open by default
+      focusTools: true      // collapsed by default for maximum simplicity
+    };
   });
 
-  useEffect(() => {
-    localStorage.setItem('dashboard_widgets_v2', JSON.stringify(widgets));
-  }, [widgets]);
+  const toggleSection = (key: 'tasksCalendar' | 'habits' | 'focusTools') => {
+    setCollapsedSections(prev => {
+      const updated = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem('dashboard_collapsed_v3', JSON.stringify(updated));
+      } catch {}
+      if (user && user.uid && user.uid !== 'demo_user') {
+        setDocumentWithMerge(`users/${user.uid}/settings`, 'general', {
+          dashboardSections: updated,
+          updatedAt: new Date().toISOString()
+        }).catch(() => {});
+      }
+      return updated;
+    });
+  };
+
+  const areAllCollapsed = collapsedSections.tasksCalendar && collapsedSections.habits && collapsedSections.focusTools;
+
+  const toggleCollapseAll = () => {
+    const newState = areAllCollapsed
+      ? { tasksCalendar: false, habits: false, focusTools: false }
+      : { tasksCalendar: true, habits: true, focusTools: true };
+    
+    setCollapsedSections(newState);
+    try {
+      localStorage.setItem('dashboard_collapsed_v3', JSON.stringify(newState));
+    } catch {}
+    if (user && user.uid && user.uid !== 'demo_user') {
+      setDocumentWithMerge(`users/${user.uid}/settings`, 'general', {
+        dashboardSections: newState,
+        updatedAt: new Date().toISOString()
+      }).catch(() => {});
+    }
+  };
 
   const predefinedTags = ['Health', 'Work', 'Personal', 'Learning', 'Fitness'];
   const filteredHabits = activeFilterTag ? habits.filter(h => h.tags?.includes(activeFilterTag)) : habits;
   const activeTasks = tasks.filter(t => t.status !== 'done');
-  
+
   const getLocalDateStr = (d: Date) => {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -140,13 +114,41 @@ export function Dashboard() {
     return `${y}-${m}-${day}`;
   };
   const todayStr = getLocalDateStr(new Date());
-  
-  const isGoogleConnected = !!googleToken;
-  const activeEvents = isGoogleConnected ? googleEvents : events;
-  const todaysEvents = activeEvents.filter(e => e.date === todayStr);
 
-  const focusItems = React.useMemo(() => {
-    const items: Array<{ id: string; type: 'task' | 'habit'; title: string; subtitle: string; completed: boolean; score: number; color?: string; icon?: string; streak?: number; }> = [];
+  const isGoogleConnected = Boolean(googleToken || localStorage.getItem('google_calendar_connected') === 'true');
+  
+  // Combine local and Google Calendar events safely
+  const activeEvents = useMemo(() => {
+    const map = new Map<string, typeof events[0]>();
+    events.forEach(e => map.set(e.id, e));
+    googleEvents.forEach(e => map.set(e.id, e));
+    return Array.from(map.values());
+  }, [events, googleEvents]);
+
+  const todaysEvents = activeEvents.filter(e => e.date === todayStr);
+  const todaysActiveTasks = tasks.filter(t => t.status !== 'done' && t.due_date === todayStr);
+  const todaysCompletedTasks = tasks.filter(t => t.status === 'done' && t.due_date === todayStr);
+  const completedHabitsToday = filteredHabits.filter(h => h.completedDates.includes(todayStr));
+
+  // Calculate daily completion score
+  const totalActionable = todaysActiveTasks.length + todaysCompletedTasks.length + filteredHabits.length;
+  const totalCompleted = todaysCompletedTasks.length + completedHabitsToday.length;
+  const dailyProgressPercent = totalActionable > 0 ? Math.round((totalCompleted / totalActionable) * 100) : 0;
+
+  // Daily top focus items
+  const focusItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      type: 'task' | 'habit';
+      title: string;
+      subtitle: string;
+      completed: boolean;
+      score: number;
+      color?: string;
+      icon?: string;
+      streak?: number;
+    }> = [];
+
     tasks.forEach(tCode => {
       const isCompletedToday = tCode.status === 'done' && tCode.updatedAt?.startsWith(todayStr);
       if (tCode.status !== 'done' || isCompletedToday) {
@@ -157,23 +159,51 @@ export function Dashboard() {
         else if (tCode.priority === 'medium') { score = 70; priorityLabel = language === 'pl' ? 'Średni' : 'Medium'; }
         if (tCode.due_date === todayStr) score += 20;
         if (isCompletedToday) score -= 50;
-        items.push({ id: tCode.id, type: 'task', title: tCode.title, subtitle: language === 'pl' ? `Zadanie • ${priorityLabel} priorytet${tCode.due_date === todayStr ? ' • Na dziś' : ''}` : `Task • ${priorityLabel} priority${tCode.due_date === todayStr ? ' • For today' : ''}`, completed: isCompletedToday, score, color: tCode.color || '#4ade80' });
+        items.push({
+          id: tCode.id,
+          type: 'task',
+          title: tCode.title,
+          subtitle: language === 'pl' 
+            ? `Zadanie • ${priorityLabel}${tCode.due_date === todayStr ? ' • Dziś' : ''}` 
+            : `Task • ${priorityLabel}${tCode.due_date === todayStr ? ' • Today' : ''}`,
+          completed: isCompletedToday,
+          score,
+          color: tCode.color || '#4ade80'
+        });
       }
     });
-    habits.forEach(h => {
+
+    filteredHabits.forEach(h => {
       const isCompletedToday = h.completedDates.includes(todayStr);
       let score = 80;
       if (isCompletedToday) score -= 50;
       const { currentStreak } = calculateHabitStats(h.completedDates);
-      items.push({ id: h.id, type: 'habit', title: h.name, subtitle: language === 'pl' ? `Nawyk • Częstotliwość: ${h.frequency === 'daily' ? 'Codziennie' : 'Tygodniowo'}` : `Habit • Frequency: ${h.frequency === 'daily' ? 'Daily' : 'Weekly'}`, completed: isCompletedToday, score, icon: h.icon, color: h.color || '#4ade80', streak: currentStreak });
+      items.push({
+        id: h.id,
+        type: 'habit',
+        title: h.name,
+        subtitle: language === 'pl' ? 'Nawyk dnia' : 'Daily habit',
+        completed: isCompletedToday,
+        score,
+        icon: h.icon,
+        color: h.color || '#4ade80',
+        streak: currentStreak
+      });
     });
+
     items.sort((a, b) => b.score - a.score);
     return items.slice(0, 3);
-  }, [tasks, habits, todayStr, language]);
+  }, [tasks, filteredHabits, todayStr, language]);
 
   const handleToggleFocusItem = (item: typeof focusItems[0]) => {
-    if (item.type === 'task') updateTask(item.id, { status: item.completed ? 'todo' : 'done' });
-    else toggleHabit(item.id, todayStr);
+    if (item.type === 'task') {
+      updateTask(item.id, { status: item.completed ? 'todo' : 'done' });
+    } else {
+      toggleHabit(item.id, todayStr);
+    }
+    if (!item.completed) {
+      try { confetti({ particleCount: 35, spread: 45, origin: { y: 0.7 } }); } catch {}
+    }
   };
 
   const getGreeting = () => {
@@ -183,489 +213,86 @@ export function Dashboard() {
     return language === 'pl' ? 'Dobry wieczór' : 'Good evening';
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setWidgets(items => {
-        const activeIndex = items.findIndex(i => i.id === active.id);
-        const overIndex = items.findIndex(i => i.id === over.id);
-        const newItems = [...items];
-        const [moved] = newItems.splice(activeIndex, 1);
-        newItems.splice(overIndex, 0, moved);
-        return newItems.map((w, i) => ({ ...w, order: i }));
-      });
-    }
-  };
-
-  const changeWidgetSize = (widget: WidgetConfig, size: WidgetSize) => {
-    setWidgets(ws => ws.map(w => w.id === widget.id ? { ...w, size } : w));
-  };
-
-  const removeWidget = (widget: WidgetConfig) => {
-    setWidgets(ws => ws.map(w => w.id === widget.id ? { ...w, visible: false } : w));
-  };
-
-  const addWidget = (id: string) => {
-    setWidgets(ws => {
-      const items = [...ws];
-      const widget = items.find(w => w.id === id);
-      if (widget) {
-        widget.visible = true;
-        // place at the end
-        widget.order = Math.max(...items.map(i => i.order)) + 1;
-      }
-      return items.sort((a, b) => a.order - b.order).map((w, i) => ({ ...w, order: i }));
+  const handleQuickAddHabit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHabitName.trim()) return;
+    addHabit({
+      name: newHabitName.trim(),
+      icon: newHabitIcon,
+      color: newHabitColor,
+      target_count: 1,
+      frequency: 'daily',
+      tags: activeFilterTag ? [activeFilterTag] : ['Personal']
     });
-  };
-
-  const visibleWidgets = widgets.filter(w => w.visible).sort((a, b) => a.order - b.order);
-  const hiddenWidgets = widgets.filter(w => !w.visible);
-
-  const renderWidgetContent = (widget: WidgetConfig) => {
-    if (widget.type.startsWith('stat-')) {
-      let stat = null;
-      if (widget.type === 'stat-tasks') stat = { title: t('dashboard.tasksTodo'), value: activeTasks.length, icon: CheckCircle2, color: "text-blue-400", bg: "bg-blue-400/10", path: '/tasks' };
-      else if (widget.type === 'stat-events') stat = { title: t('dashboard.todaysEvents'), value: todaysEvents.length, icon: CalendarIcon, color: "text-purple-400", bg: "bg-purple-400/10", path: '/calendar' };
-      else if (widget.type === 'stat-habits') stat = { title: t('dashboard.habitsCompleted'), value: filteredHabits.filter(h => h.completedDates.includes(todayStr)).length, icon: Target, color: "text-[#4ade80]", bg: "bg-[#4ade80]/10", path: '/habits' };
-      else if (widget.type === 'stat-progress') stat = { title: t('dashboard.inProgress'), value: tasks.filter(t => t.status === 'in_progress').length, icon: Clock, color: "text-orange-400", bg: "bg-orange-400/10", path: '/tasks' };
-      
-      if (!stat) return null;
-
-      return (
-        <div 
-          onClick={() => navigate(stat.path)}
-          className={`glass-card ${widget.size === 'small' ? 'p-4' : 'p-6'} rounded-3xl flex ${widget.size === 'small' ? 'flex-col justify-center text-center' : 'items-center justify-between'} h-full group hover:border-[#4ade80]/30 transition-colors duration-300 cursor-pointer`}
-        >
-          {widget.size === 'small' ? (
-             <div className="flex flex-col items-center gap-2">
-               <div className={`p-3 rounded-xl ${stat.bg}`}><stat.icon className={`w-5 h-5 ${stat.color}`} /></div>
-               <div className="text-2xl font-display font-bold text-white leading-none">{stat.value}</div>
-             </div>
-          ) : widget.size === 'medium' ? (
-             <>
-               <div>
-                 <span className="text-slate-400 text-xs sm:text-sm font-medium">{stat.title}</span>
-                 <div className="text-3xl font-display font-bold text-white mt-1 sm:mt-2">{stat.value}</div>
-               </div>
-               <div className={`p-4 rounded-xl ${stat.bg}`}><stat.icon className={`w-6 h-6 ${stat.color}`} /></div>
-             </>
-          ) : (
-             <>
-               <div>
-                 <span className="text-slate-400 text-sm font-medium">{stat.title}</span>
-                 <div className="text-4xl font-display font-bold text-white mt-2">{stat.value}</div>
-               </div>
-               <div className={`p-5 rounded-2xl ${stat.bg}`}><stat.icon className={`w-8 h-8 ${stat.color}`} /></div>
-             </>
-          )}
-        </div>
-      );
-    }
-
-    if (widget.type === 'focus') {
-      return (
-        <div className={`glass-card ${widget.size === 'small' ? 'p-4' : 'p-6'} rounded-3xl h-full flex flex-col min-h-[160px]`}>
-          <div className={`flex flex-col ${widget.size === 'small' ? 'gap-2 mb-4' : 'sm:flex-row sm:items-center gap-4 mb-6'} justify-between`}>
-            <div>
-              <h2 
-                className={`${widget.size === 'small' ? 'text-base sm:text-lg' : 'text-xl'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#4ade80] transition-colors w-fit`}
-                onClick={() => navigate('/tasks')}
-              >
-                <Brain className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />
-                {t('dashboard.focusForToday')}
-              </h2>
-              {widget.size !== 'small' && <p className="text-sm text-slate-400 mt-1">{t('dashboard.focusDescription')}</p>}
-            </div>
-            {focusItems.length > 0 && widget.size === 'large' && (
-              <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#4ade80]/10 px-3 py-1.5 rounded-full border border-[#4ade80]/20 self-start sm:self-center">
-                {t('dashboard.completedRatio')}: {focusItems.filter(i => i.completed).length}/{focusItems.length}
-              </span>
-            )}
-          </div>
-          {focusItems.length === 0 ? (
-            <div className="p-4 sm:p-6 rounded-2xl bg-white/5 border border-white/10 text-center flex-1 flex items-center justify-center">
-              <p className={`text-slate-400 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>{t('dashboard.allDone')}</p>
-            </div>
-          ) : (
-            <div className={`grid grid-cols-1 ${widget.size === 'large' ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-3 sm:gap-4 flex-1 overflow-y-auto pr-1`}>
-              {focusItems.slice(0, widget.size === 'small' ? 2 : widget.size === 'medium' ? 3 : 6).map(item => (
-                <div key={`${item.type}-${item.id}`} className={`flex items-center gap-3 ${widget.size === 'small' ? 'p-3' : 'p-4'} rounded-xl bg-[#141414] border hover:border-[#4ade80]/30 transition-all relative overflow-hidden group ${item.completed ? 'border-[#222222] opacity-75' : 'border-[#222222]'}`}>
-                  {item.color && <div className="absolute left-0 top-0 bottom-0 w-1 transition-all" style={{ backgroundColor: item.color }} />}
-                  <button onClick={() => handleToggleFocusItem(item)} className={`shrink-0 flex items-center justify-center ${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} rounded-md border transition-all duration-200 focus:outline-none ${item.completed ? 'bg-[#4ade80] border-[#4ade80] text-[#1a1a1a]' : 'border-slate-600 hover:border-[#4ade80]'}`}>
-                    {item.completed && <svg className={`${widget.size === 'small' ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'} stroke-current`} fill="none" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                  </button>
-                  <div className="flex-1 min-w-0 cursor-pointer select-none" onClick={() => handleToggleFocusItem(item)}>
-                    <span className={`block truncate ${widget.size === 'small' ? 'text-xs' : 'text-sm'} font-semibold ${item.completed ? 'text-slate-500 line-through' : 'text-white'}`}>{item.icon && <span className="mr-1.5">{item.icon}</span>}{item.title}</span>
-                    {widget.size !== 'small' && (
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="block truncate text-[10px] text-slate-500 font-mono">{item.subtitle}</span>
-                        {item.type === 'habit' && item.streak !== undefined && item.streak > 0 && <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-full border border-current bg-current/10" style={{ color: item.color || '#4ade80' }}><Flame className="w-3 h-3 fill-current" />{item.streak}</span>}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (widget.type === 'tasks-list') {
-      const todaysActiveTasks = tasks.filter(t => t.status !== 'done' && t.due_date === todayStr);
-      const todaysCompletedTasks = tasks.filter(t => t.status === 'done' && t.due_date === todayStr);
-      const totalTodaysTasks = todaysActiveTasks.length + todaysCompletedTasks.length;
-      const progressPercent = totalTodaysTasks > 0 ? (todaysCompletedTasks.length / totalTodaysTasks) * 100 : 0;
-      return (
-        <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[160px]`}>
-          <div className="flex items-center gap-2 mb-4 sm:mb-6 w-fit">
-            <div 
-              className={`shrink-0 flex items-center justify-center rounded-xl bg-[#4ade80]/10 text-[#4ade80] hover:bg-[#4ade80]/20 transition-colors cursor-pointer ${widget.size === 'small' ? 'w-8 h-8' : 'w-10 h-10'}`}
-              onClick={() => navigate('/tasks')}
-              title={language === 'pl' ? 'Przejdź do zadań' : 'Go to tasks'}
-            >
-              <Target className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'}`} />
-            </div>
-            <h2 
-              className={`${widget.size === 'small' ? 'text-base sm:text-lg' : 'text-xl cursor-pointer hover:text-[#4ade80] transition-colors'} font-display font-bold text-white`}
-              onClick={() => widget.size !== 'small' ? navigate('/tasks') : undefined}
-            >
-              {widget.size !== 'small' && (language === 'pl' ? 'Zadania na dziś' : "Today's Tasks")}
-              {widget.size === 'small' && <span className="ml-1">{language === 'pl' ? 'Zadania' : 'Tasks'}</span>}
-            </h2>
-          </div>
-          {widget.size === 'large' && totalTodaysTasks > 0 && (
-            <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md relative overflow-hidden shrink-0">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs text-slate-400 font-medium font-mono uppercase tracking-wider">{language === 'pl' ? 'Postęp dzisiejszych zadań' : 'Today\'s Progress'}</span>
-                <span className="text-xs text-[#4ade80] font-bold font-mono">{Math.round(progressPercent)}% ({todaysCompletedTasks.length}/{totalTodaysTasks})</span>
-              </div>
-              <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden"><div style={{ width: `${progressPercent}%` }} className="h-full bg-[#4ade80] rounded-full shadow-[0_0_10px_rgba(74,222,128,0.2)] transition-all duration-1000" /></div>
-            </div>
-          )}
-          <div className="space-y-2 sm:space-y-3 flex-1 overflow-y-auto pr-1">
-            {todaysActiveTasks.length === 0 ? <p className={`text-slate-500 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>{language === 'pl' ? 'Masz czysto! Żadnych zadań na dziś.' : 'All clear! No tasks for today.'}</p> : todaysActiveTasks.slice(0, widget.size === 'small' ? 3 : widget.size === 'medium' ? 5 : 8).map(task => (
-              <div key={task.id} className={`${widget.size === 'small' ? 'p-3' : 'p-4'} rounded-xl bg-[#141414] border border-[#222222] hover:border-[#333333] transition-colors relative overflow-hidden flex flex-col justify-center`}>
-                {task.color && <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: task.color }} />}
-                <div className={`font-medium text-white ${widget.size === 'small' ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} truncate`}>{task.title}</div>
-                {widget.size !== 'small' && (
-                  <div className="flex gap-2 mt-2">
-                     <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#4ade80]/10 text-[#4ade80]">{task.status.replace('_', ' ')}</span>
-                     <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">{task.priority}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    if (widget.type === 'agenda') {
-      return (
-        <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[160px]`}>
-          <h2 
-            className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-purple-400 transition-colors w-fit`}
-            onClick={() => navigate('/calendar')}
-          >
-            <CalendarIcon className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-purple-400`} />
-            {language === 'pl' ? 'Agenda (Dzisiaj)' : "Agenda (Today)"}
-          </h2>
-          <div className="space-y-2 sm:space-y-3 flex-1 overflow-y-auto pr-1">
-             {todaysEvents.length === 0 ? <p className={`text-slate-500 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>{language === 'pl' ? 'Brak spotkań.' : 'No meetings.'}</p> : todaysEvents.slice(0, widget.size === 'small' ? 3 : widget.size === 'medium' ? 4 : 10).map(ev => (
-               <div key={ev.id} className={`${widget.size === 'small' ? 'p-3' : 'p-4'} rounded-xl bg-[#141414] border border-[#222222] flex items-start gap-3 sm:gap-4`}>
-                  <div className={`text-slate-400 font-mono pt-1 shrink-0 ${widget.size === 'small' ? 'text-[10px] w-8' : 'text-xs w-12'}`}>{ev.start_time}</div>
-                  <div className="min-w-0 flex-1">
-                     <div className={`font-medium text-white truncate ${widget.size === 'small' ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'}`}>{ev.title}</div>
-                     {widget.size !== 'small' && <div className="text-xs text-slate-400 mt-1 truncate">{ev.type} • {ev.location || (language === 'pl' ? 'Brak' : 'None')}</div>}
-                  </div>
-               </div>
-             ))}
-          </div>
-        </div>
-      );
-    }
-
-    if (widget.type === 'pomodoro') {
-      return (
-        <div className="h-full relative z-0 w-full min-h-[160px] pointer-events-auto">
-          <PomodoroTimer size={widget.size} />
-        </div>
-      );
-    }
-
-    if (widget.type === 'habit-streak') {
-      const activeHabits = filteredHabits;
-      
-      const handleQuickAddHabit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newHabitName.trim()) return;
-        addHabit({
-          name: newHabitName.trim(),
-          icon: newHabitIcon,
-          color: newHabitColor,
-          target_count: 1,
-          frequency: 'daily',
-          tags: activeFilterTag ? [activeFilterTag] : ['Personal']
-        });
-        setNewHabitName('');
-        setShowHabitCreator(false);
-      };
-
-      return (
-        <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[160px]`}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 
-              className={`${widget.size === 'small' ? 'text-base sm:text-lg' : 'text-xl'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#a855f7] transition-colors`}
-              onClick={() => navigate('/habits')}
-            >
-              <Flame className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#a855f7]`} />
-              {language === 'pl' ? 'Budowanie nawyków' : 'Habit Building'}
-            </h2>
-            <button
-              onClick={() => setShowHabitCreator(!showHabitCreator)}
-              className="text-xs px-3 py-1.5 rounded-xl bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 hover:bg-[#a855f7]/30 transition-all font-semibold flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              {language === 'pl' ? 'Nowy' : 'New'}
-            </button>
-          </div>
-
-          {showHabitCreator && (
-            <form onSubmit={handleQuickAddHabit} className="mb-4 p-3 rounded-2xl bg-white/5 border border-white/10 space-y-3 animate-in fade-in">
-              <div className="flex gap-2">
-                <input 
-                  type="text"
-                  value={newHabitIcon}
-                  onChange={e => setNewHabitIcon(e.target.value)}
-                  className="w-12 text-center bg-[#141414] border border-white/10 rounded-xl text-sm py-1.5 text-white"
-                  placeholder="🔥"
-                />
-                <input 
-                  type="text"
-                  value={newHabitName}
-                  onChange={e => setNewHabitName(e.target.value)}
-                  placeholder={language === 'pl' ? 'Nazwa nawyku (np. Medytacja)...' : 'Habit name...'}
-                  className="flex-1 bg-[#141414] border border-white/10 rounded-xl px-3 text-sm py-1.5 text-white focus:outline-none focus:border-[#a855f7]"
-                  autoFocus
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex gap-1.5">
-                  {['#4ade80', '#60a5fa', '#c084fc', '#f472b6', '#fbbf24', '#fb923c'].map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setNewHabitColor(c)}
-                      className={`w-5 h-5 rounded-full border-2 transition-transform ${newHabitColor === c ? 'scale-110 border-white' : 'border-transparent'}`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    type="button" 
-                    onClick={() => setShowHabitCreator(false)}
-                    className="px-3 py-1 rounded-xl text-xs text-slate-400 hover:text-white"
-                  >
-                    {language === 'pl' ? 'Anuluj' : 'Cancel'}
-                  </button>
-                  <button 
-                    type="submit"
-                    className="px-3 py-1 rounded-xl text-xs bg-[#a855f7] text-white font-bold hover:bg-[#9333ea]"
-                  >
-                    {language === 'pl' ? 'Dodaj' : 'Add'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          )}
-          
-          <div className="flex-1 overflow-y-auto pr-1 space-y-3">
-            {activeHabits.length === 0 ? (
-              <div className="p-6 rounded-2xl border border-dashed border-[#222222] text-center flex flex-col items-center justify-center text-slate-500">
-                <Flame className="w-8 h-8 mb-2 opacity-20 text-[#a855f7]" />
-                <p className={`text-slate-400 ${widget.size === 'small' ? 'text-xs' : 'text-sm'}`}>
-                  {language === 'pl' ? 'Brak nawyków do budowania.' : 'No habits to build yet.'}
-                </p>
-              </div>
-            ) : (
-              activeHabits.slice(0, widget.size === 'small' ? 2 : widget.size === 'medium' ? 4 : 8).map(habit => {
-                const daysToShow = widget.size === 'small' ? 7 : 14;
-                const lastDays = Array.from({ length: daysToShow }).map((_, i) => getLocalDateStr(new Date(Date.now() - ((daysToShow - 1) - i) * 86400000))).reverse();
-                const isCompletedToday = habit.completedDates.includes(todayStr);
-                const stats = calculateHabitStats(habit.completedDates);
-
-                return (
-                  <div key={habit.id} className="bg-white/5 rounded-2xl p-3.5 border border-white/10 hover:border-white/25 transition-all">
-                    <div className="flex justify-between items-center mb-2.5">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {/* Interactive Today Check Button */}
-                        <button
-                          onClick={() => {
-                            toggleHabit(habit.id, todayStr);
-                            if (!isCompletedToday) {
-                              try { confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 } }); } catch {}
-                            }
-                          }}
-                          className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${isCompletedToday ? 'bg-[#a855f7] border-[#a855f7] text-white shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-slate-600 hover:border-[#a855f7]'}`}
-                          title={language === 'pl' ? 'Oznacz dzisiejszy nawyk' : 'Check today habit'}
-                        >
-                          {isCompletedToday && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </button>
-                        <span className="text-base">{habit.icon}</span>
-                        <span className="font-bold text-sm text-white truncate">{habit.name}</span>
-                      </div>
-                      <span className="text-xs font-bold text-[#a855f7] bg-[#a855f7]/10 px-2.5 py-0.5 rounded-full border border-[#a855f7]/20 flex items-center gap-1 font-mono">
-                        <Flame className="w-3 h-3 fill-current" />
-                        {stats.currentStreak} {language === 'pl' ? 'dni' : 'days'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-end h-7 w-full gap-1 pt-1">
-                      {lastDays.map((dateStr) => {
-                        const isComp = habit.completedDates.includes(dateStr);
-                        const isSkip = habit.skippedDates?.includes(dateStr);
-                        const isTodayDate = dateStr === todayStr;
-                        const currentProgress = isComp ? habit.target_count : (habit.progress?.[dateStr] || 0);
-                        const heightPerc = habit.target_count > 1 ? (currentProgress / habit.target_count) * 100 : (isComp ? 100 : 0);
-                        return (
-                          <div 
-                            key={dateStr} 
-                            onClick={() => {
-                              toggleHabit(habit.id, dateStr);
-                              if (!isComp && isTodayDate) {
-                                try { confetti({ particleCount: 40, spread: 50 }); } catch {}
-                              }
-                            }}
-                            className={`flex-1 rounded overflow-hidden relative h-full cursor-pointer transition-all hover:opacity-100 ${isTodayDate ? 'ring-1 ring-[#a855f7]' : ''} ${isComp ? 'opacity-100' : 'opacity-40 hover:opacity-75 bg-[#1a1a1a]'}`}
-                            title={`${dateStr}: ${isComp ? 'Ukończone' : 'Brak'}`}
-                          >
-                             {(heightPerc > 0 || isComp) && (
-                                <div 
-                                  className="absolute bottom-0 left-0 right-0 rounded-t" 
-                                  style={{ height: `${Math.max(15, heightPerc)}%`, backgroundColor: habit.color || '#a855f7' }} 
-                                />
-                             )}
-                             {isSkip && !isComp && (
-                                <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-slate-600" />
-                             )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    if (widget.type === 'chart') {
-      return (
-        <div className={`glass-card rounded-3xl ${widget.size === 'small' ? 'p-4' : 'p-6'} h-full flex flex-col min-h-[220px]`}>
-          <h2 
-            className={`${widget.size === 'small' ? 'text-base sm:text-lg mb-4' : 'text-xl mb-6'} font-display font-bold text-white flex items-center gap-2 cursor-pointer hover:text-[#4ade80] transition-colors w-fit`}
-            onClick={() => navigate('/habits')}
-          >
-            <Activity className={`${widget.size === 'small' ? 'w-4 h-4' : 'w-5 h-5'} text-[#4ade80]`} />
-            {language === 'pl' ? 'Produktywność' : 'Productivity'}
-          </h2>
-          <div className={`flex-1 ${widget.size === 'small' ? 'min-h-[100px] -mx-2' : 'min-h-[150px]'}`}>
-            <ProductivityChart tasks={tasks} habits={filteredHabits} />
-          </div>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  const getWidgetName = (type: string) => {
-    switch(type) {
-      case 'stat-tasks': return language === 'pl' ? 'Statystyka: Zadania' : 'Tasks Stat';
-      case 'stat-events': return language === 'pl' ? 'Statystyka: Spotkania' : 'Events Stat';
-      case 'stat-habits': return language === 'pl' ? 'Statystyka: Nawyki' : 'Habits Stat';
-      case 'stat-progress': return language === 'pl' ? 'Statystyka: W toku' : 'Progress Stat';
-      case 'focus': return language === 'pl' ? 'Cel na dziś' : 'Daily Focus';
-      case 'tasks-list': return language === 'pl' ? 'Lista zadań' : 'Tasks List';
-      case 'habit-streak': return language === 'pl' ? 'Analiza nawyków' : 'Habit Streak';
-      case 'agenda': return language === 'pl' ? 'Agenda (Kalendarz)' : 'Agenda';
-      case 'pomodoro': return 'Pomodoro Timer';
-      case 'chart': return language === 'pl' ? 'Wykres produktywności' : 'Productivity Chart';
-      default: return type.replace('stat-', '').replace('-', ' ');
-    }
+    setNewHabitName('');
+    setShowHabitCreator(false);
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans pb-12">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="space-y-6 max-w-6xl mx-auto font-sans pb-16 animate-in fade-in duration-500">
+      
+      {/* 1. Header with Calm Title and Quick Controls */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <div>
-          <span className="text-[#4ade80] text-sm font-semibold tracking-wider uppercase">
-            {new Date().toLocaleDateString(language === 'pl' ? 'pl-PL' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </span>
-          <h1 className="text-4xl font-display font-bold text-white mt-1 leading-tight">{getGreeting()}</h1>
-          <p className="text-slate-400 mt-2 text-lg">{language === 'pl' ? 'Oto podsumowanie Twojego dnia.' : 'Here is a quick summary of your day.'}</p>
+          <div className="flex items-center gap-2 text-xs font-mono font-medium text-[#4ade80] uppercase tracking-wider">
+            <span>{new Date().toLocaleDateString(language === 'pl' ? 'pl-PL' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            {isGoogleConnected && (
+              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/20 font-sans">
+                <Check className="w-3 h-3" /> Google Calendar
+              </span>
+            )}
+          </div>
+          <h1 className="text-3xl font-display font-bold text-white mt-1 tracking-tight">{getGreeting()}</h1>
+          <p className="text-sm text-slate-400 mt-0.5">
+            {language === 'pl' 
+              ? `Podsumowanie dnia: ${todaysActiveTasks.length} zadań i ${todaysEvents.length} spotkań.` 
+              : `Today's overview: ${todaysActiveTasks.length} tasks and ${todaysEvents.length} events.`}
+          </p>
         </div>
-        
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          {/* Add Widget Dropdown */}
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button className="h-9 px-4 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium transition-colors border border-white/10 flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                {language === 'pl' ? 'Widget' : 'Widget'}
-              </button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content className="z-50 min-w-[200px] bg-[#1a1a1a] border border-[#333] rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in-95" sideOffset={8}>
-                {hiddenWidgets.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-slate-500">{language === 'pl' ? 'Wszystkie dodane' : 'All added'}</div>
-                ) : (
-                  hiddenWidgets.map(w => (
-                    <DropdownMenu.Item 
-                      key={w.id}
-                      onSelect={() => addWidget(w.id)}
-                      className="px-3 py-2 text-sm text-white hover:bg-white/10 outline-none rounded-xl cursor-pointer flex justify-between items-center"
-                    >
-                      <span>{getWidgetName(w.type)}</span>
-                      <Plus className="w-4 h-4 text-slate-400" />
-                    </DropdownMenu.Item>
-                  ))
-                )}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
 
-          {/* Tags Dropdown */}
+        {/* Toolbar Controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Collapse/Expand All Button */}
+          <button
+            onClick={toggleCollapseAll}
+            className="h-9 px-3.5 rounded-xl bg-[#141414] hover:bg-[#1f1f1f] text-slate-300 hover:text-white border border-[#262626] transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+            title={areAllCollapsed ? (language === 'pl' ? 'Rozwiń wszystkie sekcje' : 'Expand all') : (language === 'pl' ? 'Zwiń wszystkie sekcje' : 'Collapse all')}
+          >
+            {areAllCollapsed ? (
+              <>
+                <Eye className="w-3.5 h-3.5 text-[#4ade80]" />
+                <span>{language === 'pl' ? 'Rozwiń wszystko' : 'Expand all'}</span>
+              </>
+            ) : (
+              <>
+                <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                <span>{language === 'pl' ? 'Zwiń wszystko' : 'Collapse all'}</span>
+              </>
+            )}
+          </button>
+
+          {/* Filter by Tag Dropdown */}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <button className={`h-9 px-4 rounded-full font-medium transition-colors border flex items-center gap-2 ${activeFilterTag ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/30' : 'bg-[#161616] text-slate-400 border-[#262626] hover:text-white'}`}>
-                <Filter className="w-4 h-4" />
-                {activeFilterTag || (language === 'pl' ? 'Tagi' : 'Tags')}
-                <ChevronDown className="w-4 h-4" />
+              <button className={`h-9 px-3.5 rounded-xl font-medium transition-all border flex items-center gap-1.5 text-xs cursor-pointer ${activeFilterTag ? 'bg-[#4ade80]/15 text-[#4ade80] border-[#4ade80]/30' : 'bg-[#141414] text-slate-300 border-[#262626] hover:text-white'}`}>
+                <Filter className="w-3.5 h-3.5" />
+                <span>{activeFilterTag || (language === 'pl' ? 'Tagi' : 'Tags')}</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
-              <DropdownMenu.Content className="z-50 min-w-[150px] bg-[#1a1a1a] border border-[#333] rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in-95" sideOffset={8}>
+              <DropdownMenu.Content className="z-50 min-w-[150px] bg-[#1a1a1a] border border-[#333] rounded-2xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95" sideOffset={8}>
                 <DropdownMenu.Item 
                   onClick={() => setActiveFilterTag(null)}
-                  className={`px-3 py-2 text-sm outline-none rounded-xl cursor-pointer ${!activeFilterTag ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'text-slate-300 hover:bg-white/10'}`}
+                  className={`px-3 py-2 text-xs rounded-xl cursor-pointer outline-none ${!activeFilterTag ? 'bg-[#4ade80]/20 text-[#4ade80] font-semibold' : 'text-slate-300 hover:bg-white/10'}`}
                 >
-                  {language === 'pl' ? 'Wszystkie' : 'All'}
+                  {language === 'pl' ? 'Wszystkie tagi' : 'All tags'}
                 </DropdownMenu.Item>
                 {predefinedTags.map(tag => (
                   <DropdownMenu.Item 
                     key={tag}
                     onClick={() => setActiveFilterTag(tag)}
-                    className={`px-3 py-2 text-sm outline-none rounded-xl cursor-pointer ${activeFilterTag === tag ? 'bg-[#4ade80]/20 text-[#4ade80]' : 'text-slate-300 hover:bg-white/10'}`}
+                    className={`px-3 py-2 text-xs rounded-xl cursor-pointer outline-none ${activeFilterTag === tag ? 'bg-[#4ade80]/20 text-[#4ade80] font-semibold' : 'text-slate-300 hover:bg-white/10'}`}
                   >
                     {tag}
                   </DropdownMenu.Item>
@@ -676,18 +303,553 @@ export function Dashboard() {
         </div>
       </header>
 
-      {/* Widget Grid */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={visibleWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 auto-rows-[minmax(140px,auto)]">
-            {visibleWidgets.map((widget) => (
-              <SortableWidget key={widget.id} widget={widget} onChangeSize={changeWidgetSize} onRemove={removeWidget} language={language}>
-                {renderWidgetContent(widget)}
-              </SortableWidget>
+      {/* 2. Compact Unified 4-Metric Strip */}
+      <div className="bg-[#121212] border border-[#222222] rounded-2xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4 divide-y md:divide-y-0 md:divide-x divide-[#222222]">
+        
+        {/* Metric 1: Tasks */}
+        <div 
+          onClick={() => navigate('/tasks')} 
+          className="flex items-center gap-3.5 px-2 pt-2 md:pt-0 cursor-pointer group hover:opacity-85 transition-opacity"
+        >
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs text-slate-400 font-medium truncate">{language === 'pl' ? 'Zadania na dziś' : "Today's Tasks"}</div>
+            <div className="text-xl font-display font-bold text-white flex items-center gap-1.5">
+              <span>{todaysActiveTasks.length}</span>
+              <span className="text-xs text-slate-500 font-mono font-normal">/ {tasks.length} {language === 'pl' ? 'wszystkich' : 'total'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Metric 2: Events */}
+        <div 
+          onClick={() => navigate('/calendar')} 
+          className="flex items-center gap-3.5 px-2 pt-2 md:pt-0 cursor-pointer group hover:opacity-85 transition-opacity"
+        >
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+            <CalendarIcon className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs text-slate-400 font-medium truncate">{language === 'pl' ? 'Spotkania' : 'Meetings'}</div>
+            <div className="text-xl font-display font-bold text-white flex items-center gap-1.5">
+              <span>{todaysEvents.length}</span>
+              <span className="text-xs text-slate-500 font-mono font-normal">{language === 'pl' ? 'dzisiaj' : 'today'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Metric 3: Habits */}
+        <div 
+          onClick={() => navigate('/habits')} 
+          className="flex items-center gap-3.5 px-2 pt-2 md:pt-0 cursor-pointer group hover:opacity-85 transition-opacity"
+        >
+          <div className="w-10 h-10 rounded-xl bg-[#4ade80]/10 border border-[#4ade80]/20 flex items-center justify-center text-[#4ade80] shrink-0">
+            <Target className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs text-slate-400 font-medium truncate">{language === 'pl' ? 'Nawyki' : 'Habits'}</div>
+            <div className="text-xl font-display font-bold text-white flex items-center gap-1.5">
+              <span>{completedHabitsToday.length}</span>
+              <span className="text-xs text-slate-500 font-mono font-normal">/ {filteredHabits.length} {language === 'pl' ? 'ukończone' : 'done'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Metric 4: Overall Progress */}
+        <div className="flex items-center gap-3.5 px-2 pt-2 md:pt-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex justify-between items-center text-xs text-slate-400 font-medium mb-1">
+              <span>{language === 'pl' ? 'Postęp dnia' : 'Day Progress'}</span>
+              <span className="font-mono text-[#4ade80] font-bold">{dailyProgressPercent}%</span>
+            </div>
+            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[#4ade80] rounded-full transition-all duration-500" 
+                style={{ width: `${dailyProgressPercent}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 3. Daily Focus (Always visible, prominent, actionable) */}
+      <section className="bg-[#121212] border border-[#222222] rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5 text-[#4ade80]" />
+            <h2 className="text-base font-display font-bold text-white">
+              {language === 'pl' ? 'Priorytety na dzisiaj' : 'Daily Priorities'}
+            </h2>
+          </div>
+          <span className="text-xs text-slate-500 font-mono">
+            {focusItems.filter(i => i.completed).length}/{focusItems.length} {language === 'pl' ? 'zrobione' : 'completed'}
+          </span>
+        </div>
+
+        {focusItems.length === 0 ? (
+          <div className="py-6 text-center text-slate-500 text-sm">
+            {language === 'pl' ? 'Brak pilnych zadań i nawyków na dzisiaj. Czysty umysł!' : 'All clear for today. Great job!'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {focusItems.map(item => (
+              <div 
+                key={`${item.type}-${item.id}`}
+                onClick={() => handleToggleFocusItem(item)}
+                className={`p-3.5 rounded-xl border flex items-center gap-3 transition-all cursor-pointer relative overflow-hidden group ${
+                  item.completed 
+                    ? 'bg-[#161616] border-[#222222] opacity-60' 
+                    : 'bg-[#181818] border-[#2a2a2a] hover:border-[#4ade80]/40'
+                }`}
+              >
+                {item.color && (
+                  <div 
+                    className="absolute left-0 top-0 bottom-0 w-1" 
+                    style={{ backgroundColor: item.color }} 
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleFocusItem(item);
+                  }}
+                  className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${
+                    item.completed 
+                      ? 'bg-[#4ade80] border-[#4ade80] text-[#1a1a1a]' 
+                      : 'border-slate-600 hover:border-[#4ade80]'
+                  }`}
+                >
+                  {item.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className={`text-sm font-semibold truncate ${item.completed ? 'text-slate-400 line-through' : 'text-white'}`}>
+                    {item.icon && <span className="mr-1.5">{item.icon}</span>}
+                    {item.title}
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono truncate mt-0.5">
+                    {item.subtitle}
+                  </div>
+                </div>
+                {item.type === 'habit' && item.streak !== undefined && item.streak > 0 && (
+                  <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full shrink-0">
+                    <Flame className="w-3 h-3 fill-current" /> {item.streak}
+                  </span>
+                )}
+              </div>
             ))}
           </div>
-        </SortableContext>
-      </DndContext>
+        )}
+      </section>
+
+      {/* 4. Collapsible Section: Zadania i Agenda */}
+      <section className="bg-[#121212] border border-[#222222] rounded-2xl overflow-hidden transition-colors">
+        <button
+          onClick={() => toggleSection('tasksCalendar')}
+          className="w-full px-5 py-4 flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-display font-bold text-white text-sm">
+                {language === 'pl' ? 'Zadania na dziś i Agenda' : "Today's Tasks & Agenda"}
+              </span>
+              <span className="ml-2 text-xs font-mono text-slate-400">
+                ({todaysActiveTasks.length} {language === 'pl' ? 'zadań' : 'tasks'}, {todaysEvents.length} {language === 'pl' ? 'spotkań' : 'events'})
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-slate-400 text-xs">
+            <span>{collapsedSections.tasksCalendar ? (language === 'pl' ? 'Rozwiń' : 'Expand') : (language === 'pl' ? 'Zwiń' : 'Collapse')}</span>
+            {collapsedSections.tasksCalendar ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </div>
+        </button>
+
+        {/* Collapsed Preview Line */}
+        {collapsedSections.tasksCalendar && (
+          <div className="px-5 pb-4 pt-1 flex flex-wrap gap-2 text-xs text-slate-400">
+            {todaysActiveTasks.slice(0, 2).map(t => (
+              <span key={t.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#181818] border border-[#282828] text-slate-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <span className="truncate max-w-[150px]">{t.title}</span>
+              </span>
+            ))}
+            {todaysEvents.slice(0, 1).map(e => (
+              <span key={e.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#181818] border border-[#282828] text-purple-300">
+                <Clock className="w-3 h-3 text-purple-400" />
+                <span className="truncate max-w-[150px]">{e.title} ({e.start_time})</span>
+              </span>
+            ))}
+            {todaysActiveTasks.length === 0 && todaysEvents.length === 0 && (
+              <span className="text-slate-500 italic">{language === 'pl' ? 'Brak zaplanowanych pozycji na dziś.' : 'No scheduled items for today.'}</span>
+            )}
+          </div>
+        )}
+
+        {/* Expanded Content */}
+        <AnimatePresence initial={false}>
+          {!collapsedSections.tasksCalendar && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="px-5 pb-5 pt-2 border-t border-[#222222]"
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* Left: Today's Tasks */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    <span>{language === 'pl' ? 'Zadania (termin: dzisiaj)' : "Tasks (Due today)"}</span>
+                    <button 
+                      onClick={() => navigate('/tasks')} 
+                      className="text-[#4ade80] hover:underline flex items-center gap-1 font-sans text-xs capitalize"
+                    >
+                      {language === 'pl' ? 'Otwórz zadania' : 'View all'} <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  {todaysActiveTasks.length === 0 ? (
+                    <p className="text-xs text-slate-500 py-3 italic">
+                      {language === 'pl' ? 'Wszystkie dzisiejsze zadania ukończone!' : 'All of today\'s tasks are done!'}
+                    </p>
+                  ) : (
+                    todaysActiveTasks.slice(0, 5).map(task => (
+                      <div 
+                        key={task.id}
+                        onClick={() => updateTask(task.id, { status: 'done' })}
+                        className="p-3 rounded-xl bg-[#161616] border border-[#242424] hover:border-[#333] transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <button 
+                            type="button" 
+                            className="w-4 h-4 rounded border border-slate-600 group-hover:border-[#4ade80] shrink-0" 
+                          />
+                          <span className="text-sm font-medium text-white truncate">{task.title}</span>
+                        </div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 shrink-0">
+                          {task.priority}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Right: Today's Agenda */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    <span>{language === 'pl' ? 'Kalendarz (spotkania)' : 'Calendar agenda'}</span>
+                    <button 
+                      onClick={() => navigate('/calendar')} 
+                      className="text-purple-400 hover:underline flex items-center gap-1 font-sans text-xs capitalize"
+                    >
+                      {language === 'pl' ? 'Otwórz kalendarz' : 'Open calendar'} <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  {todaysEvents.length === 0 ? (
+                    <p className="text-xs text-slate-500 py-3 italic">
+                      {language === 'pl' ? 'Brak spotkań w kalendarzu na dzisiaj.' : 'No meetings scheduled for today.'}
+                    </p>
+                  ) : (
+                    todaysEvents.slice(0, 5).map(ev => (
+                      <div 
+                        key={ev.id}
+                        onClick={() => navigate('/calendar')}
+                        className="p-3 rounded-xl bg-[#161616] border border-[#242424] hover:border-purple-500/30 transition-all flex items-center justify-between gap-3 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-xs font-mono text-purple-400 font-semibold shrink-0">
+                            {ev.start_time}
+                          </span>
+                          <span className="text-sm font-medium text-white truncate">{ev.title}</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-mono shrink-0">
+                          {ev.type}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+
+      {/* 5. Collapsible Section: Nawyki i Serie */}
+      <section className="bg-[#121212] border border-[#222222] rounded-2xl overflow-hidden transition-colors">
+        <button
+          onClick={() => toggleSection('habits')}
+          className="w-full px-5 py-4 flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400">
+              <Flame className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-display font-bold text-white text-sm">
+                {language === 'pl' ? 'Nawyki i serie' : 'Habits & Streaks'}
+              </span>
+              <span className="ml-2 text-xs font-mono text-slate-400">
+                ({completedHabitsToday.length}/{filteredHabits.length} {language === 'pl' ? 'ukończonych dziś' : 'done today'})
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-slate-400 text-xs">
+            <span>{collapsedSections.habits ? (language === 'pl' ? 'Rozwiń' : 'Expand') : (language === 'pl' ? 'Zwiń' : 'Collapse')}</span>
+            {collapsedSections.habits ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </div>
+        </button>
+
+        {/* Collapsed Mini Chips Row (Quick tap to toggle habit!) */}
+        {collapsedSections.habits && (
+          <div className="px-5 pb-4 pt-1 flex flex-wrap gap-2">
+            {filteredHabits.map(habit => {
+              const isCompletedToday = habit.completedDates.includes(todayStr);
+              return (
+                <button
+                  key={habit.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHabit(habit.id, todayStr);
+                    if (!isCompletedToday) {
+                      try { confetti({ particleCount: 30, spread: 40 }); } catch {}
+                    }
+                  }}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                    isCompletedToday 
+                      ? 'bg-purple-500/20 border-purple-500/40 text-white' 
+                      : 'bg-[#181818] border-[#2a2a2a] text-slate-400 hover:text-white hover:border-[#383838]'
+                  }`}
+                  title={isCompletedToday ? (language === 'pl' ? 'Ukończono! Kliknij aby odznaczyć' : 'Completed') : (language === 'pl' ? 'Kliknij aby oznaczyć na dziś' : 'Click to check')}
+                >
+                  <span className="text-sm">{habit.icon}</span>
+                  <span className="truncate max-w-[120px]">{habit.name}</span>
+                  {isCompletedToday ? (
+                    <Check className="w-3.5 h-3.5 text-[#4ade80]" />
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-slate-600" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Expanded Full Habits Cards */}
+        <AnimatePresence initial={false}>
+          {!collapsedSections.habits && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="px-5 pb-5 pt-2 border-t border-[#222222]"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-slate-400">
+                  {language === 'pl' ? 'Kliknij nawyk, aby oznaczyć go na dziś.' : 'Click to complete for today.'}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowHabitCreator(!showHabitCreator)}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" /> {language === 'pl' ? 'Dodaj nawyk' : 'Add habit'}
+                  </button>
+                  <button
+                    onClick={() => navigate('/habits')}
+                    className="text-xs text-purple-400 hover:underline flex items-center gap-1"
+                  >
+                    {language === 'pl' ? 'Wszystkie nawyki' : 'View all'} <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Habit Creator */}
+              {showHabitCreator && (
+                <form onSubmit={handleQuickAddHabit} className="mb-4 p-3.5 rounded-xl bg-[#181818] border border-[#2a2a2a] space-y-3">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      value={newHabitIcon}
+                      onChange={e => setNewHabitIcon(e.target.value)}
+                      className="w-10 text-center bg-[#141414] border border-[#333] rounded-lg text-sm text-white"
+                      placeholder="🔥"
+                    />
+                    <input 
+                      type="text"
+                      value={newHabitName}
+                      onChange={e => setNewHabitName(e.target.value)}
+                      placeholder={language === 'pl' ? 'Nazwa nowego nawyku...' : 'New habit name...'}
+                      className="flex-1 bg-[#141414] border border-[#333] rounded-lg px-3 text-sm py-1.5 text-white focus:outline-none focus:border-[#4ade80]"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-1.5">
+                      {['#4ade80', '#60a5fa', '#c084fc', '#f472b6', '#fbbf24'].map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setNewHabitColor(c)}
+                          className={`w-4 h-4 rounded-full border transition-transform ${newHabitColor === c ? 'scale-125 border-white' : 'border-transparent'}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex gap-2 text-xs">
+                      <button 
+                        type="button" 
+                        onClick={() => setShowHabitCreator(false)} 
+                        className="px-2.5 py-1 text-slate-400 hover:text-white"
+                      >
+                        {language === 'pl' ? 'Anuluj' : 'Cancel'}
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="px-3 py-1 bg-[#4ade80] text-[#1a1a1a] font-bold rounded-lg hover:bg-[#5bb255]"
+                      >
+                        {language === 'pl' ? 'Zapisz' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredHabits.map(habit => {
+                  const isCompletedToday = habit.completedDates.includes(todayStr);
+                  const stats = calculateHabitStats(habit.completedDates);
+                  return (
+                    <div 
+                      key={habit.id}
+                      onClick={() => {
+                        toggleHabit(habit.id, todayStr);
+                        if (!isCompletedToday) {
+                          try { confetti({ particleCount: 30, spread: 45 }); } catch {}
+                        }
+                      }}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isCompletedToday 
+                          ? 'bg-purple-500/10 border-purple-500/30' 
+                          : 'bg-[#161616] border-[#262626] hover:border-[#383838]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <button
+                          type="button"
+                          className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
+                            isCompletedToday 
+                              ? 'bg-[#a855f7] border-[#a855f7] text-white shadow-[0_0_10px_rgba(168,85,247,0.3)]' 
+                              : 'border-slate-600 hover:border-[#a855f7]'
+                          }`}
+                        >
+                          {isCompletedToday && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </button>
+                        <span className="text-base">{habit.icon}</span>
+                        <div className="min-w-0 truncate">
+                          <span className="text-sm font-semibold text-white block truncate">{habit.name}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {habit.frequency === 'daily' ? (language === 'pl' ? 'Codziennie' : 'Daily') : (language === 'pl' ? 'Co tydzień' : 'Weekly')}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="flex items-center gap-1 text-xs font-mono font-bold text-[#a855f7] bg-[#a855f7]/10 px-2 py-0.5 rounded-full shrink-0">
+                        <Flame className="w-3 h-3 fill-current" /> {stats.currentStreak}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+
+      {/* 6. Collapsible Section: Narzędzia skupienia (Pomodoro & Wykres) - Collapsed by default */}
+      <section className="bg-[#121212] border border-[#222222] rounded-2xl overflow-hidden transition-colors">
+        <button
+          onClick={() => toggleSection('focusTools')}
+          className="w-full px-5 py-4 flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-400">
+              <Timer className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-display font-bold text-white text-sm">
+                {language === 'pl' ? 'Narzędzia skupienia i Analityka' : 'Focus Tools & Analytics'}
+              </span>
+              <span className="ml-2 text-xs font-mono text-slate-500">
+                ({language === 'pl' ? 'Pomodoro Timer + Wykres produktywności' : 'Pomodoro Timer + Chart'})
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-slate-400 text-xs">
+            <span>{collapsedSections.focusTools ? (language === 'pl' ? 'Pokaż narzędzia' : 'Show tools') : (language === 'pl' ? 'Ukryj narzędzia' : 'Hide tools')}</span>
+            {collapsedSections.focusTools ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </div>
+        </button>
+
+        {/* Collapsed subtle teaser */}
+        {collapsedSections.focusTools && (
+          <div className="px-5 pb-4 pt-1 flex items-center gap-4 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <Timer className="w-3.5 h-3.5 text-orange-400" /> Pomodoro Timer
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <Activity className="w-3.5 h-3.5 text-[#4ade80]" /> {language === 'pl' ? 'Tygodniowy wykres wykonania' : 'Weekly execution chart'}
+            </span>
+          </div>
+        )}
+
+        {/* Expanded Rich Tools */}
+        <AnimatePresence initial={false}>
+          {!collapsedSections.focusTools && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="px-5 pb-5 pt-3 border-t border-[#222222]"
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                {/* Pomodoro Timer component */}
+                <div className="bg-[#161616] border border-[#262626] rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Timer className="w-4 h-4 text-orange-400" />
+                    <h3 className="text-sm font-bold text-white">Pomodoro Timer</h3>
+                  </div>
+                  <PomodoroTimer size="medium" />
+                </div>
+
+                {/* Productivity Chart component */}
+                <div className="bg-[#161616] border border-[#262626] rounded-2xl p-4 flex flex-col">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Activity className="w-4 h-4 text-[#4ade80]" />
+                    <h3 className="text-sm font-bold text-white">
+                      {language === 'pl' ? 'Wykres Produktywności' : 'Productivity Chart'}
+                    </h3>
+                  </div>
+                  <div className="flex-1 min-h-[220px]">
+                    <ProductivityChart tasks={tasks} habits={filteredHabits} />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+
     </div>
   );
 }

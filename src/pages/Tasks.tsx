@@ -24,11 +24,13 @@ import {
   Trash2,
   Edit2,
   NotebookPen,
-  Send
+  Send,
+  Archive,
+  Lightbulb
 } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
 import { Task, TaskPriority, TaskStatus } from '../types';
-import { cn } from '../lib/utils';
+import { cn, getEventDurationInfo } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { 
   AI_MODEL_NAME, 
@@ -40,6 +42,7 @@ import {
 import { LunaBriefingCard } from '../components/LunaBriefingCard';
 import { DayAgendaModal } from '../components/DayAgendaModal';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
+import { TasksMonthView } from '../components/TasksMonthView';
 
 export function Tasks() {
   const { 
@@ -56,12 +59,6 @@ export function Tasks() {
     isSyncingCalendar 
   } = useAppStore();
   const navigate = useNavigate();
-
-  // Two primary views requested: Planner (Pool + Calendar) & Statuses (Kanban board)
-  const [activeTab, setActiveTab] = useState<'planner' | 'board'>('planner');
-
-  // Quick add state (inline in pool tray) - simplified, no priority selector
-  const [quickTitle, setQuickTitle] = useState('');
 
   // Note contextual modal & GPT 5.6 Luna
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -82,8 +79,18 @@ export function Tasks() {
   // Pool collapse state
   const [isPoolCollapsed, setIsPoolCollapsed] = useState(false);
 
-  // Calendar config (3, 5, or 7 days) - default to 5 days
-  const [dayCount, setDayCount] = useState<3 | 5 | 7>(5);
+  // Calendar config (1, 3, 5, 7 days or 'month') - default to 5 days
+  const [dayCount, setDayCount] = useState<1 | 3 | 5 | 7 | 'month'>(5);
+
+  // Calendar collapse state - user toggle
+  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('tasks_calendar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const [currentStartDate, setCurrentStartDate] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -197,8 +204,10 @@ export function Tasks() {
 
   // Calendar days generation
   const calendarDays = useMemo(() => {
+    if (dayCount === 'month') return [];
     const days: Date[] = [];
-    for (let i = 0; i < dayCount; i++) {
+    const numDays = typeof dayCount === 'number' ? dayCount : 5;
+    for (let i = 0; i < numDays; i++) {
       const d = new Date(currentStartDate);
       d.setDate(currentStartDate.getDate() + i);
       days.push(d);
@@ -207,6 +216,7 @@ export function Tasks() {
   }, [currentStartDate, dayCount]);
 
   const gridColsClass = useMemo(() => {
+    if (dayCount === 1) return "grid-cols-[65px_1fr]";
     if (dayCount === 3) return "grid-cols-[60px_repeat(3,minmax(200px,1fr))]";
     if (dayCount === 5) return "grid-cols-[60px_repeat(5,minmax(170px,1fr))]";
     return "grid-cols-[60px_repeat(7,minmax(150px,1fr))]";
@@ -223,22 +233,33 @@ export function Tasks() {
 
   // Date range label
   const dateRangeLabel = useMemo(() => {
+    const locale = language === 'pl' ? 'pl-PL' : 'en-US';
+    if (dayCount === 'month') {
+      return currentStartDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+    }
+    if (dayCount === 1) {
+      return currentStartDate.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
     if (calendarDays.length === 0) return '';
     const start = calendarDays[0];
     const end = calendarDays[calendarDays.length - 1];
     const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-    const locale = language === 'pl' ? 'pl-PL' : 'en-US';
 
     const startStr = start.toLocaleDateString(locale, options);
     const endStr = end.toLocaleDateString(locale, { ...options, year: 'numeric' });
     return `${startStr} — ${endStr}`;
-  }, [calendarDays, language]);
+  }, [calendarDays, currentStartDate, dayCount, language]);
 
   // Calendar Navigation
   const handlePrev = () => {
     setCurrentStartDate(prev => {
       const next = new Date(prev);
-      next.setDate(prev.getDate() - dayCount);
+      if (dayCount === 'month') {
+        next.setMonth(prev.getMonth() - 1);
+      } else {
+        const step = typeof dayCount === 'number' ? dayCount : 5;
+        next.setDate(prev.getDate() - step);
+      }
       return next;
     });
   };
@@ -246,7 +267,12 @@ export function Tasks() {
   const handleNext = () => {
     setCurrentStartDate(prev => {
       const next = new Date(prev);
-      next.setDate(prev.getDate() + dayCount);
+      if (dayCount === 'month') {
+        next.setMonth(prev.getMonth() + 1);
+      } else {
+        const step = typeof dayCount === 'number' ? dayCount : 5;
+        next.setDate(prev.getDate() + step);
+      }
       return next;
     });
   };
@@ -255,23 +281,6 @@ export function Tasks() {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     setCurrentStartDate(d);
-  };
-
-  // Quick add to general pool (simplified, drops straight into pool without friction)
-  const handleQuickAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quickTitle.trim()) return;
-
-    addTask({
-      title: quickTitle.trim(),
-      priority: 'medium',
-      status: 'todo',
-      due_date: '', // Unscheduled, sits in general pool
-      all_day: false,
-      in_pool: true
-    });
-
-    setQuickTitle('');
   };
 
   // Note Modal Actions:
@@ -379,13 +388,18 @@ export function Tasks() {
   }, [tasks]);
 
   const poolTasks = useMemo(() => {
+    if (selectedMonthFilter === 'archive') {
+      return tasks.filter(t => t.status === 'done');
+    }
     if (selectedMonthFilter === 'all') return allPoolTasks;
     if (selectedMonthFilter === 'current') return allPoolTasks.filter(t => t.target_month === currentMonthKey);
     if (selectedMonthFilter === 'next') return allPoolTasks.filter(t => t.target_month === nextMonthKey);
     if (selectedMonthFilter === 'unassigned') return allPoolTasks.filter(t => !t.target_month);
     return allPoolTasks.filter(t => t.target_month === selectedMonthFilter);
-  }, [allPoolTasks, selectedMonthFilter, currentMonthKey, nextMonthKey]);
+  }, [allPoolTasks, tasks, selectedMonthFilter, currentMonthKey, nextMonthKey]);
 
+  const archiveTasksCount = useMemo(() => tasks.filter(t => t.status === 'done').length, [tasks]);
+  const ideasPoolCount = useMemo(() => allPoolTasks.filter(t => t.target_month === 'idea').length, [allPoolTasks]);
   const currentMonthPoolCount = useMemo(() => allPoolTasks.filter(t => t.target_month === currentMonthKey).length, [allPoolTasks, currentMonthKey]);
   const nextMonthPoolCount = useMemo(() => allPoolTasks.filter(t => t.target_month === nextMonthKey).length, [allPoolTasks, nextMonthKey]);
   const unassignedPoolCount = useMemo(() => allPoolTasks.filter(t => !t.target_month).length, [allPoolTasks]);
@@ -908,8 +922,8 @@ export function Tasks() {
         onClick: () => setSelectedAgendaDate(dateStr)
       },
       {
-        id: 'luna-note',
-        label: isPl ? 'Notatka z GPT 5.6 Luna' : 'Planning note with Luna',
+        id: 'siftai-note',
+        label: isPl ? 'Notatka z SiftAI' : 'Planning note with SiftAI',
         icon: Sparkles,
         onClick: () => setIsNoteModalOpen(true)
       }
@@ -926,88 +940,11 @@ export function Tasks() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-16">
       
-      {/* 1. Luna AI Briefing Card at Top (GPT 5.6 Luna - Podsumowanie dzisiejszego dnia, jutra, niedzieli i puli zadań) */}
+      {/* 1. Luna AI Briefing Card at Top (Personalized Greeting & Schedule Overview) */}
       <LunaBriefingCard onOpenPool={() => setIsPoolCollapsed(false)} />
 
-      {/* 2. Sleek Top Navigation & View Switcher */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold font-display text-white flex items-center gap-2.5">
-              <span>{t('tasks.poolTitle')}</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-slate-300 border border-white/10 font-mono font-medium">
-                {allPoolTasks.length} {language === 'pl' ? 'w puli' : 'in pool'}
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {t('tasks.poolTrayHint')}
-            </p>
-          </div>
-        </div>
-
-        {/* Actions and View Switcher */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Przycisk tworzenia nowego zadania - wpada do puli */}
-          <button
-            type="button"
-            onClick={() => {
-              setIsInstantPoolModalOpen(true);
-              setInstantPoolTitle('');
-              setInstantPoolMonth('');
-            }}
-            className="px-3.5 py-2 rounded-xl bg-[#4ade80] hover:bg-[#3ec470] text-[#0a120d] font-bold text-xs sm:text-sm shadow-sm flex items-center gap-2 transition-all active:scale-95 cursor-pointer shrink-0"
-            title={language === 'pl' ? 'Utwórz zadanie bezpośrednio w puli ogólnej' : 'Create task directly into general pool'}
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>{t('tasks.newPoolTaskBtn')}</span>
-          </button>
-
-          {/* GPT 5.6 Luna AI Smart Action */}
-          <button
-            type="button"
-            onClick={() => setIsLunaAdviceOpen(true)}
-            className="px-3 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 hover:border-purple-500/50 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer shrink-0"
-            title="Asystent GPT 5.6 Luna: Rekomendacja planowania"
-          >
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            <span className="hidden sm:inline">GPT 5.6 Luna</span>
-          </button>
-
-          {/* View Switcher: Planer vs Statusy */}
-          <div className="flex items-center p-1 bg-black/40 rounded-xl border border-white/10 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab('planner')}
-              className={cn(
-                "px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer",
-                activeTab === 'planner'
-                  ? "bg-white/15 text-white shadow-sm font-bold border border-white/15"
-                  : "text-slate-400 hover:text-white"
-              )}
-            >
-              <CalendarDays className="w-4 h-4 text-[#4ade80]" />
-              {t('tasks.tabPlanner')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('board')}
-              className={cn(
-                "px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer",
-                activeTab === 'board'
-                  ? "bg-white/15 text-white shadow-sm font-bold border border-white/15"
-                  : "text-slate-400 hover:text-white"
-              )}
-            >
-              <Kanban className="w-4 h-4 text-purple-400" />
-              {t('tasks.tabStatuses')}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* VIEW 1: PLANER (PULA NA GÓRZE + KALENDARZ PONIŻEJ) */}
-      {activeTab === 'planner' && (
-        <div className="space-y-6">
+      {/* MAIN PLANNER (TASK POOL ON TOP + CALENDAR TIMELINE BELOW) */}
+      <div className="space-y-6">
           
           {/* ========================================================
               TOP SECTION: PULA ZADAŃ (TASK POOL ON TOP)
@@ -1077,53 +1014,6 @@ export function Tasks() {
               </div>
             </div>
 
-            {/* Quick Add Bar - Simplified, Clean, No filters or priorities */}
-            <div className="p-4 sm:p-5 border-b border-white/5 bg-black/20">
-              <form onSubmit={handleQuickAdd} className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={quickTitle}
-                    onChange={(e) => setQuickTitle(e.target.value)}
-                    placeholder={t('tasks.poolQuickAddPlaceholder')}
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#4ade80] transition-colors pr-10"
-                  />
-                  {quickTitle && (
-                    <button
-                      type="button"
-                      onClick={() => setQuickTitle('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Mała ikonka notatki - otwiera osobne okno kontekstowe połączone z GPT 5.6 Luna */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsNoteModalOpen(true);
-                    if (quickTitle) setNoteContent(quickTitle);
-                  }}
-                  className="p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-[#1e1e24] hover:bg-[#4ade80]/20 text-slate-300 hover:text-[#4ade80] border border-white/10 hover:border-[#4ade80]/40 transition-all cursor-pointer flex items-center gap-2 shrink-0 group shadow-sm"
-                  title={t('tasks.noteIconTooltip')}
-                >
-                  <NotebookPen className="w-4 h-4 text-[#4ade80] group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-semibold hidden sm:inline">{language === 'pl' ? 'Notatka Luna' : 'Luna Note'}</span>
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={!quickTitle.trim()}
-                  className="px-5 py-2.5 rounded-xl bg-[#4ade80] text-[#1a1a1a] font-bold text-sm hover:bg-[#4ade80]/90 disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-md"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{t('tasks.poolQuickAddBtn')}</span>
-                </button>
-              </form>
-            </div>
-
             {/* Miesięczna pula zadań (Monthly Task Pool Filter) */}
             <div className="px-4 sm:px-5 py-2.5 bg-black/40 border-b border-white/5 flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 flex-wrap">
@@ -1187,10 +1077,10 @@ export function Tasks() {
                 </div>
               </div>
 
-              {/* Specific Month Select */}
-              <div className="flex items-center gap-1.5">
+              {/* Specific Month Select & Archive Filter Button */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <select
-                  value={['all', 'current', 'next', 'unassigned'].includes(selectedMonthFilter) ? '' : selectedMonthFilter}
+                  value={['all', 'current', 'next', 'unassigned', 'archive', 'idea'].includes(selectedMonthFilter) ? '' : selectedMonthFilter}
                   onChange={(e) => {
                     if (e.target.value) {
                       setSelectedMonthFilter(e.target.value);
@@ -1198,11 +1088,55 @@ export function Tasks() {
                   }}
                   className="bg-[#1e1e24] border border-white/10 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer"
                 >
-                  <option value="">{language === 'pl' ? 'Inny miesiąc...' : 'Other month...'}</option>
+                  <option value="">{language === 'pl' ? 'Wybierz miesiąc...' : 'Select month...'}</option>
                   {availableMonths.map(m => (
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
+
+                {/* Pomysł (Idea) Filter Button */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonthFilter(prev => prev === 'idea' ? 'all' : 'idea')}
+                  className={cn(
+                    "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm",
+                    selectedMonthFilter === 'idea'
+                      ? "bg-amber-500 text-slate-950 border border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)] scale-105"
+                      : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border border-amber-500/35 hover:border-amber-500/60"
+                  )}
+                  title={language === 'pl' ? 'Pomysły: zadania przypisane do kategorii pomysłów' : 'Ideas: tasks assigned to ideas category'}
+                >
+                  <Lightbulb className="w-3.5 h-3.5" />
+                  <span>{language === 'pl' ? 'Pomysły' : 'Ideas'}</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full font-mono text-[10px] font-bold",
+                    selectedMonthFilter === 'idea' ? "bg-black/25 text-black" : "bg-amber-500/25 text-amber-200"
+                  )}>
+                    {ideasPoolCount}
+                  </span>
+                </button>
+
+                {/* Archiwum - distinct, slightly different color (emerald/amber glow) as explicitly requested */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonthFilter(prev => prev === 'archive' ? 'all' : 'archive')}
+                  className={cn(
+                    "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm",
+                    selectedMonthFilter === 'archive'
+                      ? "bg-emerald-500 text-slate-950 border border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-105"
+                      : "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/35 hover:border-emerald-500/60"
+                  )}
+                  title={language === 'pl' ? 'Archiwum: wszystkie ukończone zadania od początku istnienia aplikacji' : 'Archive: all completed tasks since the beginning'}
+                >
+                  <Archive className="w-3.5 h-3.5" />
+                  <span>{language === 'pl' ? 'Archiwum' : 'Archive'}</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full font-mono text-[10px] font-bold",
+                    selectedMonthFilter === 'archive' ? "bg-black/25 text-black" : "bg-emerald-500/25 text-emerald-200"
+                  )}>
+                    {archiveTasksCount}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -1213,10 +1147,14 @@ export function Tasks() {
                   <div className="text-center py-8 px-4 border border-dashed border-white/10 rounded-2xl">
                     <Sparkles className="w-6 h-6 mx-auto text-slate-600 mb-2" />
                     <p className="text-xs text-slate-400">
-                      {language === 'pl' ? 'Brak zadań w wybranym filtrze puli.' : 'No tasks in selected pool filter.'}
+                      {selectedMonthFilter === 'archive'
+                        ? (language === 'pl' ? 'Brak ukończonych zadań w archiwum.' : 'No completed tasks in archive.')
+                        : (language === 'pl' ? 'Brak zadań w wybranym filtrze puli.' : 'No tasks in selected pool filter.')}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      {language === 'pl' ? 'Zmień filtr lub wpisz zadanie powyżej i wciśnij Enter!' : 'Change filter or type a task above!'}
+                      {selectedMonthFilter === 'archive'
+                        ? (language === 'pl' ? 'Gdy ukończysz zadania, pojawią się w tym miejscu.' : 'Completed tasks will appear here.')
+                        : (language === 'pl' ? 'Zmień filtr lub wpisz zadanie powyżej i wciśnij Enter!' : 'Change filter or type a task above!')}
                     </p>
                   </div>
                 ) : (
@@ -1243,7 +1181,7 @@ export function Tasks() {
                           className={cn(
                             "h-10 px-2.5 rounded-xl border transition-all duration-150 flex items-center gap-2 cursor-pointer select-none group bg-[#1c1c1e] hover:bg-[#252528] relative shadow-sm",
                             draggingTaskId === task.id ? "opacity-30 border-dashed border-[#4ade80] scale-95" : "border-white/10 hover:border-[#4ade80]/50 hover:shadow-md",
-                            task.status === 'done' ? "opacity-50 bg-white/[0.02]" : ""
+                            task.status === 'done' ? "opacity-75 bg-white/[0.03] border-emerald-500/20" : ""
                           )}
                           title={language === 'pl' ? 'Kliknij, aby zmodyfikować lub przeciągnij na oś czasu' : 'Click to modify or drag to timeline'}
                         >
@@ -1265,13 +1203,28 @@ export function Tasks() {
 
                           <span className={cn(
                             "text-xs font-medium truncate flex-1 leading-none",
-                            task.status === 'done' ? "line-through text-slate-500" : "text-slate-200 group-hover:text-white"
+                            task.status === 'done' ? "line-through text-slate-400" : "text-slate-200 group-hover:text-white"
                           )}>
                             {task.title}
                           </span>
 
+                          {/* If in archive filter: Show quick Restore to Pool button */}
+                          {selectedMonthFilter === 'archive' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateTask(task.id, { status: 'todo' });
+                              }}
+                              className="shrink-0 p-1 text-slate-400 hover:text-[#4ade80] hover:bg-white/10 rounded transition-all cursor-pointer"
+                              title={language === 'pl' ? 'Przywróć do puli (Do zrobienia)' : 'Restore to pool (To Do)'}
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           {/* Target Month Indicator */}
-                          {task.target_month ? (
+                          {selectedMonthFilter !== 'archive' && (task.target_month ? (
                             <button
                               type="button"
                               onClick={(e) => handleCycleTaskMonth(task, e)}
@@ -1289,7 +1242,7 @@ export function Tasks() {
                             >
                               +M
                             </button>
-                          )}
+                          ))}
 
                           {isScheduled && (
                             <span className="shrink-0 text-blue-400" title={`${task.due_date} ${task.due_time ? `@ ${task.due_time}` : ''}`}>
@@ -1315,18 +1268,20 @@ export function Tasks() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5 text-[#4ade80]" />
-                  <h3 className="font-display font-bold text-white text-base sm:text-lg">
+                  <h3 className="font-display font-bold text-white text-base sm:text-lg capitalize">
                     {dateRangeLabel}
                   </h3>
                 </div>
-                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-slate-300">
-                  <Clock className="w-3.5 h-3.5 text-[#38bdf8]" />
-                  <span>05:00 – 22:00</span>
-                </div>
+                {dayCount !== 'month' && (
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-slate-300">
+                    <Clock className="w-3.5 h-3.5 text-[#38bdf8]" />
+                    <span>05:00 – 22:00</span>
+                  </div>
+                )}
               </div>
 
-              {/* 3, 5, 7 dni switcher + Google Calendar button + navigation */}
-              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+              {/* 1, 3, 5, 7 dni, Miesiąc switcher + Google Calendar button + collapse toggle + navigation */}
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
                 {/* Google Calendar integration button */}
                 {!googleToken ? (
                   <button
@@ -1352,21 +1307,33 @@ export function Tasks() {
                   </button>
                 )}
 
-                {/* 3, 5, 7 Days Switcher */}
-                <div className="flex items-center p-1 bg-black/40 rounded-xl border border-white/10">
-                  {([3, 5, 7] as const).map(count => (
+                {/* 1, 3, 5, 7 Days & Month Switcher */}
+                <div className="flex items-center p-1 bg-black/40 rounded-xl border border-white/10 flex-wrap">
+                  {[
+                    { id: 1, label: language === 'pl' ? '1 dzień' : '1 day' },
+                    { id: 3, label: t('tasks.daysView3') },
+                    { id: 5, label: t('tasks.daysView5') },
+                    { id: 7, label: t('tasks.daysView7') },
+                    { id: 'month', label: language === 'pl' ? 'Miesiąc' : 'Month' }
+                  ].map(item => (
                     <button
-                      key={count}
+                      key={item.id}
                       type="button"
-                      onClick={() => setDayCount(count)}
+                      onClick={() => {
+                        setDayCount(item.id as any);
+                        if (isCalendarCollapsed) {
+                          setIsCalendarCollapsed(false);
+                          try { localStorage.setItem('tasks_calendar_collapsed', 'false'); } catch {}
+                        }
+                      }}
                       className={cn(
-                        "px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer",
-                        dayCount === count 
+                        "px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+                        dayCount === item.id 
                           ? "bg-[#4ade80] text-[#1a1a1a] shadow-sm font-bold" 
                           : "text-slate-400 hover:text-white"
                       )}
                     >
-                      {count === 3 ? t('tasks.daysView3') : count === 5 ? t('tasks.daysView5') : t('tasks.daysView7')}
+                      {item.label}
                     </button>
                   ))}
                 </div>
@@ -1376,7 +1343,7 @@ export function Tasks() {
                   <button
                     onClick={handlePrev}
                     type="button"
-                    className="p-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                    className="p-1.5 sm:p-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                     title={language === 'pl' ? 'Poprzedni okres' : 'Previous period'}
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -1384,25 +1351,94 @@ export function Tasks() {
                   <button
                     onClick={handleToday}
                     type="button"
-                    className="px-3 py-1.5 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                    className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-white/10 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     {t('tasks.today')}
                   </button>
                   <button
                     onClick={handleNext}
                     type="button"
-                    className="p-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                    className="p-1.5 sm:p-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                     title={language === 'pl' ? 'Następny okres' : 'Next period'}
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Toggle to collapse/expand calendar view */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isCalendarCollapsed;
+                    setIsCalendarCollapsed(next);
+                    try { localStorage.setItem('tasks_calendar_collapsed', String(next)); } catch {}
+                  }}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                  title={isCalendarCollapsed ? (language === 'pl' ? 'Rozwiń widok kalendarza' : 'Expand calendar view') : (language === 'pl' ? 'Zwiń widok kalendarza' : 'Collapse calendar view')}
+                >
+                  {isCalendarCollapsed ? (
+                    <>
+                      <ChevronDown className="w-4 h-4 text-[#4ade80]" />
+                      <span className="hidden sm:inline text-slate-300">{language === 'pl' ? 'Rozwiń' : 'Expand'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                      <span className="hidden sm:inline text-slate-400">{language === 'pl' ? 'Zwiń' : 'Collapse'}</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
-            {/* Timeline Calendar Container */}
-            <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#121215] shadow-2xl">
-              <div className="min-w-[680px] divide-y divide-white/10">
+            {/* Calendar Body: Collapsed Bar OR Month Grid OR Timeline Grid */}
+            {isCalendarCollapsed ? (
+              <div className="p-4 rounded-xl bg-[#121215] border border-white/5 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <CalendarIcon className="w-5 h-5 text-slate-400" />
+                  <div>
+                    <span className="text-sm font-semibold text-white">
+                      {language === 'pl' ? 'Widok kalendarza jest zwinięty' : 'Calendar view is collapsed'}
+                    </span>
+                    <span className="text-xs text-slate-400 ml-2 font-mono hidden sm:inline">
+                      ({dateRangeLabel})
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCalendarCollapsed(false);
+                    try { localStorage.setItem('tasks_calendar_collapsed', 'false'); } catch {}
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#4ade80]/15 hover:bg-[#4ade80]/25 text-[#4ade80] border border-[#4ade80]/30 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                  <span>{language === 'pl' ? 'Rozwiń kalendarz' : 'Expand calendar'}</span>
+                </button>
+              </div>
+            ) : dayCount === 'month' ? (
+              <TasksMonthView
+                currentDate={currentStartDate}
+                onSelectDate={(dateStr) => {
+                  setSelectedAgendaDate(dateStr);
+                }}
+                onOpenDayAgenda={(dateStr) => {
+                  setSelectedAgendaDate(dateStr);
+                }}
+                onDropTaskOnDate={(taskId, dateStr) => {
+                  updateTask(taskId, {
+                    due_date: dateStr,
+                    in_pool: false,
+                    updatedAt: new Date().toISOString()
+                  });
+                }}
+                draggingTaskId={draggingTaskId}
+              />
+            ) : (
+              /* Timeline Calendar Container */
+              <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#121215] shadow-2xl">
+                <div className="min-w-[680px] divide-y divide-white/10">
                 
                 {/* 1. Header Row (Hours Column + Day Columns) */}
                 <div className={cn("grid sticky top-0 z-20 bg-[#18181c] border-b border-white/10", gridColsClass)}>
@@ -1617,7 +1653,7 @@ export function Tasks() {
                           const isDragOver = dragOverTarget?.dateStr === dateStr && dragOverTarget?.hour === hour;
                           const dayTasks = tasksByDay[dateStr] || { allDay: [], byHour: {}, total: 0 };
                           const slotTasks = dayTasks.byHour[hour] || [];
-                          const slotGoogleEvents = googleEvents.filter(e => {
+                          const startingGoogleEvents = googleEvents.filter(e => {
                             if (e.date !== dateStr || !e.start_time || e.start_time === '00:00') return false;
                             const h = parseInt(e.start_time.split(':')[0], 10);
                             return h === hour;
@@ -1631,36 +1667,66 @@ export function Tasks() {
                               onDrop={(e) => handleSlotDrop(e, dateStr, hour)}
                               onContextMenu={(e) => handleSlotContextMenu(e, dateStr, hour)}
                               className={cn(
-                                "p-1.5 border-r border-white/5 min-h-[58px] relative transition-all group/slot flex flex-col gap-1.5 justify-center",
+                                "p-1.5 border-r border-white/5 h-[72px] relative transition-all group/slot flex flex-col gap-1.5 overflow-visible z-0",
                                 isDragOver
                                   ? "bg-[#4ade80]/20 border-dashed border-[#4ade80] ring-2 ring-[#4ade80]/40 scale-[0.99] rounded-lg"
                                   : "hover:bg-white/[0.03]"
                               )}
                             >
-                              {/* Google Calendar Events for this hour */}
-                              {slotGoogleEvents.length > 0 && (
-                                <div className="flex flex-col gap-1">
-                                  {slotGoogleEvents.map(gEvent => (
-                                    <div
-                                      key={`g-slot-${gEvent.id}`}
-                                      onClick={() => setSelectedAgendaDate(dateStr)}
-                                      className="p-1.5 rounded-xl bg-blue-950/40 border border-blue-500/30 hover:border-blue-400/60 shadow-sm transition-all text-xs flex flex-col gap-1 cursor-pointer"
-                                      title={`${gEvent.title} (${gEvent.start_time}${gEvent.end_time ? ' - ' + gEvent.end_time : ''}) - Google Calendar`}
-                                    >
-                                      <div className="flex items-center justify-between gap-1">
-                                        <span className="px-1.5 py-0.5 rounded bg-blue-500/25 text-blue-300 font-mono text-[10px] font-bold">
-                                          {gEvent.start_time}
-                                        </span>
-                                        <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 font-semibold uppercase">
-                                          Google
-                                        </span>
+                              {/* Google Calendar Events: Starting this hour */}
+                              {startingGoogleEvents.length > 0 && (
+                                <>
+                                  {startingGoogleEvents.map(gEvent => {
+                                    const durInfo = getEventDurationInfo(gEvent.start_time, gEvent.end_time, language);
+                                    const sh = parseInt(gEvent.start_time.split(':')[0], 10);
+                                    const sm = parseInt(gEvent.start_time.split(':')[1], 10);
+                                    const eh = gEvent.end_time ? parseInt(gEvent.end_time.split(':')[0], 10) : sh + 1;
+                                    const em = gEvent.end_time ? parseInt(gEvent.end_time.split(':')[1], 10) : 0;
+                                    let durationMins = (eh * 60 + em) - (sh * 60 + sm);
+                                    if (durationMins <= 0) durationMins = 60;
+                                    
+                                    const topPx = (sm / 60) * 72;
+                                    const heightPx = (durationMins / 60) * 72;
+
+                                    return (
+                                      <div
+                                        key={`g-slot-${gEvent.id}`}
+                                        onClick={() => setSelectedAgendaDate(dateStr)}
+                                        className="absolute left-1 right-1 z-10 rounded-lg bg-[#4285F4]/15 border border-[#4285F4]/30 hover:border-[#4285F4]/60 shadow-sm transition-all text-xs flex flex-col gap-1 cursor-pointer group/gevent p-1.5 overflow-hidden backdrop-blur-sm"
+                                        style={{
+                                          top: `${topPx}px`,
+                                          height: `${heightPx}px`,
+                                        }}
+                                        title={`${gEvent.title} (${durInfo.timeSpan}${!durInfo.isAllDay ? ' • ' + durInfo.formattedDuration : ''}) - Google Calendar`}
+                                      >
+                                        <div className="flex items-start justify-between gap-1 relative z-10">
+                                          <div className="flex items-center gap-1 flex-wrap">
+                                            <span className="text-[#4285F4] font-mono text-[10px] font-bold bg-[#4285F4]/10 px-1 rounded-sm">
+                                              {durInfo.timeSpan}
+                                            </span>
+                                          </div>
+                                          
+                                          {/* Parallel Task Add Button */}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSlotAddPrompt({ dateStr, hour });
+                                              setSlotAddTitle('');
+                                              setSlotAddPriority('medium');
+                                            }}
+                                            className="opacity-0 group-hover/gevent:opacity-100 p-0.5 rounded bg-[#4285F4]/20 hover:bg-[#4285F4]/40 text-[#4285F4] transition-opacity z-20 shrink-0"
+                                            title={language === 'pl' ? `Dodaj równoległe zadanie o ${hourLabel}` : `Add parallel task at ${hourLabel}`}
+                                          >
+                                            <Plus className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                        <div className="font-medium truncate text-xs text-white relative z-10 leading-tight">
+                                          {gEvent.title}
+                                        </div>
                                       </div>
-                                      <div className="font-medium truncate text-xs text-white">
-                                        {gEvent.title}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
+                                    );
+                                  })}
+                                </>
                               )}
 
                               {slotTasks.length > 0 ? (
@@ -1765,168 +1831,10 @@ export function Tasks() {
 
               </div>
             </div>
+          )}
 
           </div>
         </div>
-      )}
-
-      {/* VIEW 2: STATUSY ZADAŃ (KANBAN BOARD: DO ZROBIENIA | W TOKU | ZROBIONE) */}
-      {activeTab === 'board' && (
-        <div className="space-y-6">
-          {/* Quick Add Bar for Board */}
-          <div className="glass-card p-4 rounded-2xl border border-white/10 bg-[#161616]/90 flex items-center gap-2.5">
-            <input
-              type="text"
-              value={quickTitle}
-              onChange={(e) => setQuickTitle(e.target.value)}
-              placeholder={t('tasks.poolQuickAddPlaceholder')}
-              className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#4ade80] transition-colors"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setIsNoteModalOpen(true);
-                if (quickTitle) setNoteContent(quickTitle);
-              }}
-              className="p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-[#1e1e24] hover:bg-[#4ade80]/20 text-slate-300 hover:text-[#4ade80] border border-white/10 hover:border-[#4ade80]/40 transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
-              title={t('tasks.noteIconTooltip')}
-            >
-              <NotebookPen className="w-4 h-4 text-[#4ade80]" />
-              <span className="text-xs font-semibold hidden sm:inline">{language === 'pl' ? 'Notatka Luna' : 'Luna Note'}</span>
-            </button>
-            <button
-              onClick={handleQuickAdd}
-              disabled={!quickTitle.trim()}
-              className="px-5 py-2.5 rounded-xl bg-[#4ade80] text-[#1a1a1a] font-bold text-sm hover:bg-[#4ade80]/90 disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('tasks.poolQuickAddBtn')}</span>
-            </button>
-          </div>
-
-          {/* 3 Columns Kanban */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {(['todo', 'in_progress', 'done'] as const).map(colStatus => {
-              const colTasks = tasks.filter(t => t.status === colStatus);
-              const isDragOver = dragOverStatus === colStatus;
-
-              let colTitle = language === 'pl' ? 'Do zrobienia' : 'To Do';
-              let colIcon = <Circle className="w-4 h-4 text-blue-400" />;
-              let colBadgeColor = "bg-blue-500/20 text-blue-300 border-blue-500/30";
-
-              if (colStatus === 'in_progress') {
-                colTitle = language === 'pl' ? 'W toku' : 'In Progress';
-                colIcon = <PlayCircle className="w-4 h-4 text-orange-400" />;
-                colBadgeColor = "bg-orange-500/20 text-orange-300 border-orange-500/30";
-              } else if (colStatus === 'done') {
-                colTitle = language === 'pl' ? 'Zrobione' : 'Done';
-                colIcon = <CheckCircle2 className="w-4 h-4 text-[#4ade80]" />;
-                colBadgeColor = "bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/30";
-              }
-
-              return (
-                <div
-                  key={colStatus}
-                  onDragOver={(e) => handleStatusDragOver(e, colStatus)}
-                  onDragLeave={() => setDragOverStatus(null)}
-                  onDrop={(e) => handleStatusDrop(e, colStatus)}
-                  className={cn(
-                    "glass-card p-4 sm:p-5 rounded-2xl border border-white/10 bg-[#161616]/90 shadow-xl flex flex-col min-h-[500px] transition-all",
-                    isDragOver ? "ring-2 ring-[#4ade80]/40 border-dashed border-[#4ade80] bg-[#4ade80]/5" : ""
-                  )}
-                >
-                  {/* Column Header */}
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/5">
-                    <div className="flex items-center gap-2">
-                      {colIcon}
-                      <h3 className="font-display font-bold text-white text-base">
-                        {colTitle}
-                      </h3>
-                    </div>
-                    <span className={cn("text-xs font-mono font-semibold px-2 py-0.5 rounded-lg border", colBadgeColor)}>
-                      {colTasks.length}
-                    </span>
-                  </div>
-
-                  {/* Tasks in Column */}
-                  <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-                    {colTasks.length === 0 ? (
-                      <div className="py-12 text-center text-slate-500 text-xs border border-dashed border-white/5 rounded-xl">
-                        {language === 'pl' ? 'Brak zadań w tym statusie' : 'No tasks in this status'}
-                      </div>
-                    ) : (
-                      colTasks.map(task => {
-                        const isScheduled = !!task.due_date && task.due_date.trim() !== '';
-
-                        return (
-                          <div
-                            key={task.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, task.id)}
-                            onDragEnd={handleDragEnd}
-                            onContextMenu={(e) => handleTaskContextMenu(e, task)}
-                            className={cn(
-                              "p-3 rounded-xl border border-white/10 bg-[#1c1c1e] hover:bg-[#222224] transition-all group cursor-grab active:cursor-grabbing shadow-sm flex flex-col gap-2",
-                              draggingTaskId === task.id ? "opacity-30 border-dashed border-[#4ade80]" : ""
-                            )}
-                          >
-                            <div className="flex items-start gap-2">
-                              <div className="pt-0.5 text-slate-600 group-hover:text-slate-400">
-                                <GripVertical className="w-4 h-4" />
-                              </div>
-                              <p className={cn(
-                                "text-sm font-medium leading-snug break-words flex-1",
-                                task.status === 'done' ? "line-through text-slate-500" : "text-white"
-                              )}>
-                                {task.title}
-                              </p>
-                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEdit(task)}
-                                  className="p-1 rounded text-slate-400 hover:text-white"
-                                  title={t('tasks.editTask')}
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteTask(task.id)}
-                                  className="p-1 rounded text-slate-400 hover:text-red-400"
-                                  title={t('tasks.deleteTask')}
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/5 pl-6">
-                              <span className={cn("px-2 py-0.5 rounded-full font-medium border text-[10px]", getPriorityColor(task.priority))}>
-                                {getPriorityLabel(task.priority)}
-                              </span>
-
-                              {isScheduled ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px]">
-                                  <CalendarIcon className="w-2.5 h-2.5" />
-                                  {task.due_date}
-                                </span>
-                              ) : (
-                                <span className="text-slate-500 text-[10px]">
-                                  {language === 'pl' ? 'W puli' : 'In pool'}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* SCHEDULE PROMPT MODAL (All-day vs specific hour) */}
       <AnimatePresence>
@@ -2255,6 +2163,7 @@ export function Tasks() {
                     className="w-full bg-[#1e1e24] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 cursor-pointer"
                   >
                     <option value="">{language === 'pl' ? 'Brak przypisanego miesiąca (pula ogólna)' : 'No specific month (general pool)'}</option>
+                    <option value="idea">{language === 'pl' ? '💡 Pomysł (Idea)' : '💡 Idea'}</option>
                     {availableMonths.map(m => (
                       <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
@@ -2373,6 +2282,7 @@ export function Tasks() {
                     className="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-[#4ade80] cursor-pointer"
                   >
                     <option value="">{language === 'pl' ? 'Pula ogólna (bez przypisanego miesiąca)' : 'General pool (no month)'}</option>
+                    <option value="idea">{language === 'pl' ? '💡 Pomysł (Idea)' : '💡 Idea'}</option>
                     {availableMonths.map(m => (
                       <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
@@ -2446,7 +2356,7 @@ export function Tasks() {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white font-display flex items-center gap-2">
-                      <span>{language === 'pl' ? 'Planowanie z GPT 5.6 Luna' : 'Planning with GPT 5.6 Luna'}</span>
+                      <span>{language === 'pl' ? 'Planowanie z SiftAI' : 'Planning with SiftAI'}</span>
                     </h3>
                     <p className="text-xs text-slate-400">
                       {language === 'pl' 
@@ -2500,7 +2410,7 @@ export function Tasks() {
                   }}
                   className="px-4 py-2 rounded-xl bg-[#4ade80] hover:bg-[#3ec470] text-[#0a120d] font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md"
                 >
-                  <span>{language === 'pl' ? 'Otwórz pełny czat z Luną' : 'Open full Luna chat'}</span>
+                  <span>{language === 'pl' ? 'Otwórz pełny czat z SiftAI' : 'Open full SiftAI chat'}</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -2702,7 +2612,7 @@ export function Tasks() {
                     {isNoteAiLoading ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-[#4ade80] border-t-transparent rounded-full animate-spin" />
-                        <span>{language === 'pl' ? 'Luna analizuje...' : 'Luna is analyzing...'}</span>
+                        <span>{language === 'pl' ? 'SiftAI analizuje...' : 'SiftAI is analyzing...'}</span>
                       </>
                     ) : (
                       <>
@@ -2723,7 +2633,7 @@ export function Tasks() {
                     <div className="flex items-center justify-between pb-2 border-b border-white/5">
                       <span className="text-xs font-bold text-[#4ade80] flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>{language === 'pl' ? 'Sposób wykonania wg GPT 5.6 Luna' : 'Execution plan by GPT 5.6 Luna'}</span>
+                        <span>{language === 'pl' ? 'Sposób wykonania wg SiftAI' : 'Execution plan by SiftAI'}</span>
                       </span>
                       <span className="text-[11px] text-slate-400">
                         {noteAiPlan.steps.length} {language === 'pl' ? 'kroków' : 'steps'}
@@ -2775,7 +2685,7 @@ export function Tasks() {
 
                       <button
                         type="button"
-                        onClick={() => handleDropNoteToPool(noteAiPlan.title, `${noteContent}\n\n--- Plan GPT 5.6 Luna ---\n${noteAiPlan.steps.map((s, i) => `${i+1}. ${s}`).join('\n')}`)}
+                        onClick={() => handleDropNoteToPool(noteAiPlan.title, `${noteContent}\n\n--- Plan SiftAI ---\n${noteAiPlan.steps.map((s, i) => `${i+1}. ${s}`).join('\n')}`)}
                         className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium border border-white/10 transition-all cursor-pointer"
                       >
                         {t('tasks.dropSingleWithPlanBtn')}
@@ -2784,11 +2694,11 @@ export function Tasks() {
                   </motion.div>
                 )}
 
-                {/* Interactive Luna Chat Stream */}
+                {/* Interactive SiftAI Chat Stream */}
                 {noteChatHistory.length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-white/10">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      {language === 'pl' ? 'Rozmowa z modelem GPT 5.6 Luna' : 'Conversation with GPT 5.6 Luna'}
+                      {language === 'pl' ? 'Rozmowa z asystentem SiftAI' : 'Conversation with SiftAI'}
                     </span>
                     <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 scrollbar-none">
                       {noteChatHistory.map((msg, index) => (

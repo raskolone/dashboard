@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Calendar, Activity, Settings, Menu, X, Sun, Moon, Bot, LogOut } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar, Activity, Settings, Menu, X, Sun, Moon, Bot, LogOut, Mail } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '../store/AppContext';
@@ -11,6 +11,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
   const routes = [
     { name: t('sidebar.tasks'), path: '/', icon: CheckSquare },
     { name: t('sidebar.calendar'), path: '/calendar', icon: Calendar },
+    { name: t('sidebar.gmail'), path: '/gmail', icon: Mail },
     { name: t('sidebar.habits'), path: '/habits', icon: Activity },
   ];
 

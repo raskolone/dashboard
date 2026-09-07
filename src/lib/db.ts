@@ -119,3 +119,42 @@ export async function deleteDocument(path: string, docId: string) {
     handleFirestoreError(error, OperationType.DELETE, `${path}/${docId}`);
   }
 }
+
+// Set with merge helper for persistent settings and integrations
+export async function setDocumentWithMerge(path: string, docId: string, data: any) {
+  try {
+    const docRef = doc(db, path, docId);
+    const cleaned = Object.entries(data).reduce((acc, [k, v]) => {
+      if (v !== undefined) acc[k] = v;
+      return acc;
+    }, {} as any);
+
+    await setDoc(docRef, {
+      ...cleaned,
+      userId: auth.currentUser?.uid,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `${path}/${docId}`);
+  }
+}
+
+// Single document subscription helper for user settings
+export function subscribeToDocument<T>(path: string, docId: string, callback: (data: T | null) => void) {
+  const docRef = doc(db, path, docId);
+  return onSnapshot(docRef, 
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const d = snapshot.data();
+        callback({
+          id: snapshot.id,
+          ...d,
+          updatedAt: d.updatedAt?.toDate ? d.updatedAt.toDate().toISOString() : new Date().toISOString()
+        } as T);
+      } else {
+        callback(null);
+      }
+    }, 
+    (error) => handleFirestoreError(error, OperationType.GET, `${path}/${docId}`)
+  );
+}

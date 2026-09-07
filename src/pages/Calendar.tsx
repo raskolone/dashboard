@@ -18,15 +18,17 @@ import {
   CalendarDays,
   Copy,
   Edit3,
-  Sparkles
+  Sparkles,
+  Kanban
 } from 'lucide-react';
 import { EventType, CalendarEvent } from '../types';
 import { GenieModal } from '../components/GenieModal';
-import { cn } from '../lib/utils';
+import { cn, getEventDurationInfo } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
+import { TasksKanbanBoard } from '../components/TasksKanbanBoard';
 
-type CalViewMode = 'daily' | 'weekly' | 'monthly' | 'agenda';
+type CalViewMode = 'daily' | 'weekly' | 'monthly' | 'agenda' | 'statuses';
 
 export function Calendar() {
   const { 
@@ -371,7 +373,8 @@ export function Calendar() {
           { id: 'v-day', label: isPl ? 'Widok dzienny' : 'Day view', checked: calViewMode === 'daily', onClick: () => setCalViewMode('daily') },
           { id: 'v-week', label: isPl ? 'Widok tygodniowy' : 'Week view', checked: calViewMode === 'weekly', onClick: () => setCalViewMode('weekly') },
           { id: 'v-month', label: isPl ? 'Widok miesięczny' : 'Month view', checked: calViewMode === 'monthly', onClick: () => setCalViewMode('monthly') },
-          { id: 'v-agenda', label: isPl ? 'Widok agendy' : 'Agenda view', checked: calViewMode === 'agenda', onClick: () => setCalViewMode('agenda') }
+          { id: 'v-agenda', label: isPl ? 'Widok agendy' : 'Agenda view', checked: calViewMode === 'agenda', onClick: () => setCalViewMode('agenda') },
+          { id: 'v-statuses', label: isPl ? 'Statusy zadań (Kanban)' : 'Task statuses (Kanban)', checked: calViewMode === 'statuses', onClick: () => setCalViewMode('statuses') }
         ]
       },
       ...(isGoogleConnected ? [
@@ -469,7 +472,70 @@ export function Calendar() {
     return days;
   }, [currentDateState]);
 
-  const hourSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
+  const hourSlots = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'];
+
+  const parseTimeToMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':').map(Number);
+    const h = isNaN(parts[0]) ? 0 : parts[0];
+    const m = isNaN(parts[1]) ? 0 : parts[1];
+    return h * 60 + m;
+  };
+
+  const baseMins = 6 * 60; // 06:00
+  const slotHeight = 72; // px per hour
+  const pxPerMin = slotHeight / 60; // 1.2 px per minute
+
+  const dailyLayoutEvents = useMemo(() => {
+    const targetDateStr = currentDateState.toISOString().split('T')[0];
+    const dayEvents = activeEvents
+      .filter(ev => ev.date === targetDateStr)
+      .map(ev => {
+        const startMin = parseTimeToMinutes(ev.start_time);
+        let endMin = parseTimeToMinutes(ev.end_time);
+        if (endMin <= startMin) endMin = startMin + 60;
+        return {
+          event: ev,
+          startMin,
+          endMin,
+          durationMin: endMin - startMin
+        };
+      })
+      .sort((a, b) => a.startMin - b.startMin || (b.endMin - b.startMin) - (a.endMin - a.startMin));
+
+    const result = dayEvents.map(item => {
+      const topPx = Math.max(0, (item.startMin - baseMins) * pxPerMin);
+      const heightPx = Math.max(36, item.durationMin * pxPerMin);
+      return {
+        event: item.event,
+        startMin: item.startMin,
+        endMin: item.endMin,
+        durationMin: item.durationMin,
+        topPx,
+        heightPx,
+        leftPercent: 0,
+        widthPercent: 100
+      };
+    });
+
+    for (let i = 0; i < result.length; i++) {
+      const current = result[i];
+      const overlapping = result.filter(
+        other => other.startMin < current.endMin && other.endMin > current.startMin
+      );
+      const totalCols = overlapping.length;
+      const colIdx = overlapping.indexOf(current);
+      if (totalCols > 1) {
+        current.leftPercent = (colIdx / totalCols) * 100;
+        current.widthPercent = (100 / totalCols) - 2;
+      } else {
+        current.leftPercent = 0;
+        current.widthPercent = 100;
+      }
+    }
+
+    return result;
+  }, [activeEvents, currentDateState, baseMins, pxPerMin]);
 
   const polishWeekdays = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
   const englishWeekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
@@ -570,7 +636,7 @@ export function Calendar() {
         
         {/* Navigation arrow buttons */}
         <div className="flex items-center gap-2">
-          {calViewMode !== 'agenda' && (
+          {calViewMode !== 'agenda' && calViewMode !== 'statuses' && (
             <div className="flex items-center bg-[#1c1c1c] rounded-xl border border-white/5 p-1">
               <button 
                 onClick={handlePrevDate} 
@@ -596,12 +662,12 @@ export function Calendar() {
           )}
 
           <span className="text-sm font-semibold text-white ml-2">
-            {getHeaderDateString()}
+            {calViewMode === 'statuses' ? (language === 'pl' ? 'Tablica statusów zadań' : 'Task Statuses Board') : getHeaderDateString()}
           </span>
         </div>
 
-        {/* View Mode Switching Tabs (Daily, Weekly, Monthly, Agenda) */}
-        <div className="flex bg-[#1c1c1c] p-1 rounded-xl border border-white/5 overflow-x-auto">
+        {/* View Mode Switching Tabs (Daily, Weekly, Monthly, Agenda, Statuses) */}
+        <div className="flex bg-[#1c1c1c] p-1 rounded-xl border border-white/5 overflow-x-auto gap-0.5">
           <button 
             onClick={() => setCalViewMode('daily')}
             className={cn(
@@ -638,18 +704,30 @@ export function Calendar() {
           >
             {language === 'pl' ? 'Agenda' : 'Agenda'}
           </button>
+          <button 
+            onClick={() => setCalViewMode('statuses')}
+            className={cn(
+              "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5",
+              calViewMode === 'statuses' ? 'bg-[#2a2a2a] text-[#4ade80] shadow-sm font-semibold' : 'text-slate-400 hover:text-white'
+            )}
+          >
+            <Kanban className="w-3.5 h-3.5" />
+            {language === 'pl' ? 'Statusy' : 'Statuses'}
+          </button>
         </div>
       </div>
 
       {/* Drag & Drop Hint Ribbon */}
-      <div className="flex items-center gap-2 bg-[#4ade80]/5 border border-[#4ade80]/20 p-3 rounded-xl text-xs text-[#4ade80] font-mono select-none">
-        <span className="animate-pulse flex h-2 w-2 rounded-full bg-[#4ade80]" />
-        <span>
-          {language === 'pl' 
-            ? 'Przeciągnij wydarzenie na inny dzień lub godzinę, aby natychmiast przenieść termin (D&D)!' 
-            : 'Drag and drop events to reschedule them instantly on other days or times (D&D)!'}
-        </span>
-      </div>
+      {calViewMode !== 'statuses' && (
+        <div className="flex items-center gap-2 bg-[#4ade80]/5 border border-[#4ade80]/20 p-3 rounded-xl text-xs text-[#4ade80] font-mono select-none">
+          <span className="animate-pulse flex h-2 w-2 rounded-full bg-[#4ade80]" />
+          <span>
+            {language === 'pl' 
+              ? 'Przeciągnij wydarzenie na inny dzień lub godzinę, aby natychmiast przenieść termin (D&D)!' 
+              : 'Drag and drop events to reschedule them instantly on other days or times (D&D)!'}
+          </span>
+        </div>
+      )}
 
       {/* Rendering calendar widgets */}
       <div className="min-h-[450px]">
@@ -784,10 +862,22 @@ export function Calendar() {
                             </button>
                           </div>
                           
-                          <div className="mt-2 flex items-center gap-1 text-[9px] font-mono text-slate-450 select-none">
-                            <Clock className="w-2.5 h-2.5" />
-                            <span>{ev.start_time} - {ev.end_time}</span>
-                          </div>
+                          {(() => {
+                            const durInfo = getEventDurationInfo(ev.start_time, ev.end_time, language);
+                            return (
+                              <div className="mt-2 flex items-center justify-between gap-1 text-[9px] font-mono text-slate-400 select-none">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5 text-[#4ade80]" />
+                                  <span>{durInfo.timeSpan}</span>
+                                </div>
+                                {!durInfo.isAllDay && (
+                                  <span className="px-1 py-0.2 rounded bg-white/10 text-slate-300 font-sans">
+                                    {durInfo.formattedDuration}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))
                     )}
@@ -828,73 +918,139 @@ export function Calendar() {
               })}
             </div>
 
-            {/* main vertical scroll of hourly divisions */}
-            <div className="glass-card p-5 rounded-3xl border border-[#222222] relative">
-              <div className="space-y-1">
-                {hourSlots.map(hour => {
-                  const targetDateStr = currentDateState.toISOString().split('T')[0];
-                  // Filter events falling into this hour
-                  const hourEvents = activeEvents.filter(ev => ev.date === targetDateStr && ev.start_time.split(':')[0] === hour.split(':')[0]);
-
-                  return (
+            {/* main vertical scroll of hourly divisions with proportional timeline */}
+            <div className="glass-card p-5 rounded-3xl border border-[#222222] overflow-hidden">
+              <div className="relative grid grid-cols-[70px_1fr] items-start">
+                {/* Time labels column */}
+                <div className="flex flex-col select-none pr-3">
+                  {hourSlots.map(hour => (
                     <div 
-                      key={hour}
-                      onClick={() => handleHourlySlotClick(targetDateStr, hour)}
-                      onContextMenu={(e) => handleDateCellContextMenu(e, targetDateStr, hour)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => handleEventDropOnHour(e, hour)}
-                      className={cn(
-                        "grid grid-cols-[80px_1fr] items-start border-b border-white/5 min-h-[64px] hover:bg-white/1 flex items-center transition-all cursor-pointer group py-1.5",
-                        isDraggingEventId ? "border-dashed border-[#4ade80]/20 hover:bg-[#4ade80]/5" : ""
-                      )}
+                      key={hour} 
+                      className="h-[72px] flex items-start text-xs font-mono font-semibold text-slate-500"
                     >
-                      {/* Hour stamp */}
-                      <span className="text-xs font-mono font-semibold text-slate-500 group-hover:text-white transition-colors">
-                        {hour}
-                      </span>
-
-                      {/* Hour stack list */}
-                      <div className="flex flex-wrap items-center gap-2 pl-4">
-                        {hourEvents.length === 0 ? (
-                          <span className="text-[10px] text-slate-650 opacity-0 group-hover:opacity-100 transition-opacity select-none italic">
-                            {language === 'pl' ? 'Kliknij, aby zaplanować slot...' : 'Click to schedule slot...'}
-                          </span>
-                        ) : (
-                          hourEvents.map(ev => (
-                            <div 
-                              key={ev.id}
-                              draggable
-                              onDragStart={(e) => { e.stopPropagation(); handleEventDragStart(e, ev.id); }}
-                              onDragEnd={handleEventDragEnd}
-                              onClick={(e) => { e.stopPropagation(); }}
-                              onContextMenu={(e) => handleEventContextMenu(e, ev)}
-                              className={cn(
-                                "group/pill px-3 py-1.5 rounded-xl font-medium text-xs flex items-center gap-3 cursor-grab active:cursor-grabbing",
-                                getEventColors(ev.type),
-                                isDraggingEventId === ev.id ? "opacity-30" : "opacity-100"
-                              )}
-                            >
-                              <div className="flex items-center gap-1.5 font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                                <span className="capitalize">{ev.title}</span>
-                              </div>
-                              <span className="text-[10px] font-mono text-slate-400 opacity-85 shrink-0 select-none">
-                                {ev.start_time} - {ev.end_time}
-                              </span>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id, ev.title); }}
-                                className="text-slate-400 hover:text-red-400 transition-colors cursor-pointer leading-none"
-                                title={language === 'pl' ? 'Usuń' : 'Delete'}
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ))
-                        )}
-                      </div>
+                      {hour}
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* Timeline grid container */}
+                <div 
+                  className="relative flex flex-col border-l border-white/10"
+                  style={{ height: `${hourSlots.length * slotHeight}px` }}
+                >
+                  {/* Background hour slots for clicking / drop */}
+                  {hourSlots.map((hour, idx) => {
+                    const targetDateStr = currentDateState.toISOString().split('T')[0];
+                    return (
+                      <div 
+                        key={hour}
+                        onClick={() => handleHourlySlotClick(targetDateStr, hour)}
+                        onContextMenu={(e) => handleDateCellContextMenu(e, targetDateStr, hour)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleEventDropOnHour(e, hour)}
+                        className={cn(
+                          "absolute w-full border-b border-white/5 hover:bg-white/[0.02] transition-colors cursor-pointer group flex flex-col justify-between px-3 py-1",
+                          isDraggingEventId ? "border-dashed border-[#4ade80]/20 hover:bg-[#4ade80]/5" : ""
+                        )}
+                        style={{
+                          top: `${idx * slotHeight}px`,
+                          height: `${slotHeight}px`
+                        }}
+                      >
+                        {/* Half-hour subtle guideline */}
+                        <div className="absolute top-[36px] left-0 right-0 border-b border-white/[0.02] pointer-events-none" />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-[11px] font-semibold text-slate-500/60 opacity-0 group-hover:opacity-100 transition-opacity select-none flex items-center gap-1.5">
+                            <Plus className="w-3.5 h-3.5" />
+                            {hour}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Positioned proportional event cards */}
+                  {dailyLayoutEvents.map(({ event: ev, topPx, heightPx, leftPercent, widthPercent }) => {
+                    const durInfo = getEventDurationInfo(ev.start_time, ev.end_time, language);
+                    return (
+                      <div
+                        key={ev.id}
+                        draggable
+                        onDragStart={(e) => { e.stopPropagation(); handleEventDragStart(e, ev.id); }}
+                        onDragEnd={handleEventDragEnd}
+                        onClick={(e) => { e.stopPropagation(); }}
+                        onContextMenu={(e) => handleEventContextMenu(e, ev)}
+                        className={cn(
+                          "group/event absolute rounded-xl border p-2 transition-all cursor-grab active:cursor-grabbing flex flex-col overflow-hidden shadow-sm z-10",
+                          getEventColors(ev.type),
+                          isDraggingEventId === ev.id ? "opacity-30" : "opacity-100"
+                        )}
+                        style={{
+                          top: `${topPx}px`,
+                          height: `${heightPx}px`,
+                          left: `${leftPercent}%`,
+                          width: `${widthPercent}%`
+                        }}
+                      >
+                        {/* Top Row: Time Range & Badges */}
+                        <div className="flex items-start justify-between gap-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-1.5 py-0.5 rounded bg-black/20 text-[10px] font-mono font-bold select-none text-current opacity-90">
+                              {ev.start_time} - {ev.end_time}
+                            </span>
+                            {ev.googleEventId && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#4285F4]/20 text-[#4285F4] text-[8px] font-bold tracking-wider select-none border border-[#4285F4]/30">
+                                GOOGLE
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {/* Hover Add Parallel Button */}
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                const hourStr = ev.start_time.split(':')[0] + ':00';
+                                handleHourlySlotClick(currentDateState.toISOString().split('T')[0], hourStr); 
+                              }}
+                              className="opacity-0 group-hover/event:opacity-100 p-0.5 rounded bg-black/20 hover:bg-black/40 text-current transition-opacity z-20 cursor-pointer"
+                              title={language === 'pl' ? 'Dodaj równoległe zdarzenie' : 'Add parallel event'}
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id, ev.title); }}
+                              className="opacity-0 group-hover/event:opacity-100 p-0.5 rounded hover:bg-black/20 text-current opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+                              title={language === 'pl' ? 'Usuń' : 'Delete'}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Middle Row: Duration Info */}
+                        {heightPx > 40 && (
+                          <div className="mt-1 flex items-center gap-1 text-[9px] font-mono select-none opacity-70">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>{!durInfo.isAllDay ? durInfo.formattedDuration : (language === 'pl' ? 'Cały dzień' : 'All day')}</span>
+                          </div>
+                        )}
+
+                        {/* Title */}
+                        <div className="mt-auto pt-1 flex-1 min-h-0 flex flex-col justify-end">
+                          <span className="text-xs font-bold truncate block select-none capitalize leading-tight">
+                            {ev.title}
+                          </span>
+                          {ev.location && ev.location !== 'Wydarzenie Google' && ev.location !== 'Google Event' && (
+                            <span className="text-[9px] opacity-75 truncate block mt-0.5">
+                              {ev.location}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -937,8 +1093,21 @@ export function Calendar() {
                                   {ev.type}
                                 </span>
                               </div>
-                              <div className="text-xs text-slate-500 mt-1 flex items-center gap-3">
-                                <span className="flex items-center gap-1 font-semibold"><Clock className="w-3" /> {ev.start_time} - {ev.end_time}</span>
+                              <div className="text-xs text-slate-500 mt-1 flex items-center gap-3 flex-wrap">
+                                {(() => {
+                                  const durInfo = getEventDurationInfo(ev.start_time, ev.end_time, language);
+                                  return (
+                                    <span className="flex items-center gap-1.5 font-semibold text-slate-300">
+                                      <Clock className="w-3 text-[#4ade80]" />
+                                      <span>{durInfo.timeSpan}</span>
+                                      {!durInfo.isAllDay && (
+                                        <span className="px-1.5 py-0.2 rounded bg-white/10 text-slate-400 font-sans text-[10px]">
+                                          {durInfo.formattedDuration}
+                                        </span>
+                                      )}
+                                    </span>
+                                  );
+                                })()}
                                 <span className="flex items-center gap-1">
                                   <MapPin className="w-3" /> 
                                   {ev.location === 'Wydarzenie Google' 
@@ -965,6 +1134,13 @@ export function Calendar() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* 5. STATUSES (KANBAN) VIEW */}
+        {calViewMode === 'statuses' && (
+          <div className="pt-2">
+            <TasksKanbanBoard />
           </div>
         )}
 
