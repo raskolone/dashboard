@@ -455,6 +455,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
           endTimeStr = '23:59';
         }
         
+        // Determine clean human-readable location
+        let cleanLocation = e.location ? e.location.trim() : '';
+        if (cleanLocation.includes('google.com/calendar') || cleanLocation.includes('calendar.google.com')) {
+          cleanLocation = '';
+        }
+        if (!cleanLocation) {
+          if (e.hangoutLink || e.conferenceData) {
+            cleanLocation = 'Google Meet';
+          }
+        }
+
         return {
           id: e.id,
           title: e.summary || 'Bez tytułu',
@@ -463,7 +474,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           end_time: endTimeStr,
           type: 'meeting',
           description: e.description || '',
-          location: e.htmlLink || 'Google Meet'
+          location: cleanLocation
         };
       });
       setGoogleEvents(mapped);

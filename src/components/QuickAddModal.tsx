@@ -342,7 +342,7 @@ export function QuickAddModal() {
                             onChange={e => setHabitName(e.target.value)} 
                             required
                             placeholder={language === 'pl' ? 'Wpisz nazwę' : 'Enter name'}
-                            className="bg-transparent text-[#a855f7] text-[13px] font-semibold text-right focus:outline-none w-1/2 placeholder:text-slate-500"
+                            className="bg-transparent text-[#a855f7] text-[13px] font-semibold text-right focus:outline-none flex-1 ml-4 placeholder:text-slate-500"
                           />
                         </div>
                         <div className="flex items-center justify-between pr-4 py-3">

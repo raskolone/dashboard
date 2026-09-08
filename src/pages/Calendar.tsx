@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { EventType, CalendarEvent } from '../types';
 import { GenieModal } from '../components/GenieModal';
-import { cn, getEventDurationInfo } from '../lib/utils';
+import { cn, getEventDurationInfo, formatEventLocation } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
 import { TasksKanbanBoard } from '../components/TasksKanbanBoard';
@@ -1041,11 +1041,14 @@ export function Calendar() {
                           <span className="text-xs font-bold truncate block select-none capitalize leading-tight">
                             {ev.title}
                           </span>
-                          {ev.location && ev.location !== 'Wydarzenie Google' && ev.location !== 'Google Event' && (
-                            <span className="text-[9px] opacity-75 truncate block mt-0.5">
-                              {ev.location}
-                            </span>
-                          )}
+                          {(() => {
+                            const loc = formatEventLocation(ev.location, language);
+                            return loc.label && loc.label !== 'Wydarzenie Google' && loc.label !== 'Google Event' ? (
+                              <span className="text-[9px] opacity-75 truncate block mt-0.5" title={loc.label}>
+                                {loc.label}
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     );
@@ -1108,11 +1111,11 @@ export function Calendar() {
                                     </span>
                                   );
                                 })()}
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-3" /> 
-                                  {ev.location === 'Wydarzenie Google' 
-                                    ? (language === 'pl' ? 'Wydarzenie Google' : 'Google Event') 
-                                    : (ev.location || (language === 'pl' ? 'Brak lokacji' : 'No Location'))}
+                                <span className="flex items-center gap-1 min-w-0">
+                                  <MapPin className="w-3 shrink-0 text-slate-400" /> 
+                                  <span className="truncate max-w-[220px]">
+                                    {formatEventLocation(ev.location, language).label || (language === 'pl' ? 'Brak lokacji' : 'No Location')}
+                                  </span>
                                 </span>
                               </div>
                               {ev.description && (

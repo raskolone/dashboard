@@ -136,3 +136,67 @@ export function getEventDurationInfo(start_time?: string, end_time?: string, lan
     endMinute: em || 0,
   };
 }
+
+export function formatEventLocation(location?: string, lang: 'pl' | 'en' = 'pl'): { isUrl: boolean; label: string; url?: string } {
+  if (!location) return { isUrl: false, label: '' };
+  const trimmed = location.trim();
+  if (!trimmed) return { isUrl: false, label: '' };
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    if (trimmed.includes('calendar.google.com') || trimmed.includes('google.com/calendar')) {
+      return { isUrl: true, label: lang === 'pl' ? 'Kalendarz Google' : 'Google Calendar', url: trimmed };
+    }
+    if (trimmed.includes('meet.google.com')) {
+      return { isUrl: true, label: 'Google Meet', url: trimmed };
+    }
+    if (trimmed.includes('zoom.us')) {
+      return { isUrl: true, label: 'Zoom', url: trimmed };
+    }
+    if (trimmed.includes('teams.microsoft.com') || trimmed.includes('teams.live.com')) {
+      return { isUrl: true, label: 'MS Teams', url: trimmed };
+    }
+    return { isUrl: true, label: lang === 'pl' ? 'Spotkanie online' : 'Online meeting', url: trimmed };
+  }
+
+  // Common Google indicators
+  if (trimmed === 'Wydarzenie Google' || trimmed === 'Google Event') {
+    return { isUrl: false, label: lang === 'pl' ? 'Wydarzenie Google' : 'Google Event' };
+  }
+
+  return { isUrl: false, label: trimmed };
+}
+
+export function getEventTypeName(type?: string, lang: 'pl' | 'en' = 'pl'): string {
+  const t = (type || 'meeting').toLowerCase();
+  if (lang === 'pl') {
+    switch (t) {
+      case 'meeting':
+        return 'Spotkanie';
+      case 'lesson':
+        return 'Lekcja';
+      case 'deadline':
+        return 'Termin';
+      case 'reminder':
+        return 'Przypomnienie';
+      case 'personal':
+        return 'Prywatne';
+      default:
+        return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+  }
+
+  switch (t) {
+    case 'meeting':
+      return 'Meeting';
+    case 'lesson':
+      return 'Lesson';
+    case 'deadline':
+      return 'Deadline';
+    case 'reminder':
+      return 'Reminder';
+    case 'personal':
+      return 'Personal';
+    default:
+      return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+}

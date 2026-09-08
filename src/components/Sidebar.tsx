@@ -19,7 +19,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
     <>
       <motion.div 
         initial={false}
-        animate={{ width: open ? 220 : 68 }}
+        animate={{ width: open ? 256 : 68 }}
         transition={{ type: "spring", stiffness: 350, damping: 30 }}
         className={cn(
           "fixed top-0 left-0 h-screen bg-[#0a0a0a] border-r border-[#222222] z-50 flex flex-col overflow-hidden",
@@ -49,13 +49,14 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
           </AnimatePresence>
         </div>
 
-        <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto overflow-x-hidden min-w-[220px]">
+        <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto overflow-x-hidden min-w-[256px]">
           {routes.map((route) => (
             <NavLink
               key={route.path}
               to={route.path}
+              title={route.name}
               className={({ isActive }) => cn(
-                "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200",
+                "flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 overflow-hidden",
                 isActive 
                   ? "bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_12px_rgba(117,211,110,0.1)]" 
                   : "text-slate-400 hover:text-white hover:bg-white/5",
@@ -63,18 +64,26 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
               )}
             >
               <route.icon className="w-5 h-5 flex-shrink-0" />
-              {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap">{route.name}</motion.span>}
+              {open && (
+                <motion.span 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  className="font-medium text-sm truncate flex-1 min-w-0 text-left"
+                >
+                  {route.name}
+                </motion.span>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-3 border-t border-[#222222] space-y-1 min-w-[220px]">
+        <div className="p-3 border-t border-[#222222] space-y-1 min-w-[256px]">
           {user && (
             <div className={cn(
-              "flex justify-between items-center px-3 py-3 mb-2 rounded-xl transition-all duration-200 text-white bg-white/5",
+              "flex justify-between items-center px-3 py-3 mb-2 rounded-xl transition-all duration-200 text-white bg-white/5 overflow-hidden",
               !open ? "flex-col w-[44px] justify-center px-0 items-center justify-center p-0 h-[44px]" : "w-full"
             )}>
-              <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
                 {user.photoURL ? (
                   <img src={user.photoURL} alt="Profile" className="w-6 h-6 rounded-full flex-shrink-0" />
                 ) : (
@@ -82,13 +91,13 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
                     {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
                   </div>
                 )}
-                {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap truncate">{user.displayName || user.email}</motion.span>}
+                {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm truncate min-w-0">{user.displayName || user.email}</motion.span>}
               </div>
 
               {open && (
                 <button
                   onClick={logoutGoogle}
-                  className="text-slate-400 hover:text-red-400 p-1 rounded-md hover:bg-white/5 transition-colors"
+                  className="text-slate-400 hover:text-red-400 p-1 rounded-md hover:bg-white/5 transition-colors shrink-0"
                   title={t('sidebar.logout')}
                 >
                   <LogOut className="w-4 h-4" />
@@ -99,15 +108,24 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (o: boolean
           
           <NavLink 
             to="/settings"
+            title={t('sidebar.settings')}
             className={({ isActive }) => cn(
-            "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200",
+            "flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 overflow-hidden",
             isActive 
               ? "bg-[#4ade80]/10 text-[#4ade80] shadow-[inset_0_0_12px_rgba(117,211,110,0.1)]" 
               : "text-slate-400 hover:text-white hover:bg-white/5",
             !open ? "justify-start w-[44px]" : "w-full"
           )}>
             <Settings className="w-5 h-5 flex-shrink-0" />
-            {open && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-medium text-sm whitespace-nowrap">{t('sidebar.settings')}</motion.span>}
+            {open && (
+              <motion.span 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                className="font-medium text-sm truncate flex-1 min-w-0 text-left"
+              >
+                {t('sidebar.settings')}
+              </motion.span>
+            )}
           </NavLink>
         </div>
       </motion.div>

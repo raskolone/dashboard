@@ -212,7 +212,7 @@ const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHab
       }}
       className={`glass-card hover:border-[#a855f7]/30 transition-colors rounded-[16px] p-2.5 flex flex-row items-center justify-between cursor-pointer group ${isSkipped && !isEditMode ? 'opacity-50' : ''} ${isEditMode ? 'border-dashed border-white/20' : ''}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
         {isEditMode && (
           <div {...attributes} {...listeners} className="p-2 -ml-2 cursor-grab text-slate-500 hover:text-white shrink-0 active:cursor-grabbing">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
@@ -224,10 +224,10 @@ const SortableHabitItem = ({ habit, selectedDate, setInteractionHabit, toggleHab
         >
           {habit.icon}
         </div>
-        <div>
-          <h3 className={`font-semibold text-[14px] leading-tight tracking-tight ${(isSkipped && !isEditMode) ? 'line-through text-slate-500' : 'text-white'}`}>{habit.name}</h3>
+        <div className="min-w-0 flex-1">
+          <h3 className={`font-semibold text-[14px] leading-tight tracking-tight truncate ${(isSkipped && !isEditMode) ? 'line-through text-slate-500' : 'text-white'}`}>{habit.name}</h3>
           <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-slate-500 text-[11px] font-medium">
+            <p className="text-slate-500 text-[11px] font-medium truncate">
               {habit.target_count > 1 
                 ? `${language === 'pl' ? 'Cel' : 'Goal'}: ${habit.target_count} ${habit.unit || ''}` 
                 : `${language === 'pl' ? 'Cel' : 'Goal'}: 1`} 

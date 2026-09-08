@@ -347,24 +347,24 @@ export function AgendaReportModal({
                                 : 'bg-purple-950/30 border-purple-500/40 hover:border-purple-500/60'
                             }`}
                           >
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg">
+                            <div className="space-y-2 min-w-0">
+                              <div className="flex items-center justify-between gap-2 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="text-lg shrink-0">
                                     {isNeedsReply ? '📩' : isNoContact ? '⚠️' : '🆕'}
                                   </span>
-                                  <h4 className="font-bold text-sm text-white">
+                                  <h4 className="font-bold text-sm text-white truncate">
                                     {item.name}
                                   </h4>
                                 </div>
                                 {item.source && (
-                                  <span className="px-2 py-0.5 rounded-full bg-white/10 text-slate-300 text-[10px] font-semibold">
+                                  <span className="px-2 py-0.5 rounded-full bg-white/10 text-slate-300 text-[10px] font-semibold shrink-0">
                                     {item.source}
                                   </span>
                                 )}
                               </div>
 
-                              <p className="text-xs text-slate-200 leading-relaxed">
+                              <p className="text-xs text-slate-200 leading-relaxed break-words">
                                 {item.contextText}
                               </p>
 
@@ -480,22 +480,22 @@ export function AgendaReportModal({
                         key={st.id}
                         className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-base font-bold shrink-0">
                             {st.status === 'confirmed' ? '✅' : st.status === 'needs_reply' ? '📩' : st.status === 'no_contact' ? '⚠️' : '🆕'}
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-white">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              <span className="font-bold text-sm text-white truncate">
                                 {st.name}
                               </span>
                               {st.source && (
-                                <span className="text-[10px] text-slate-400">
+                                <span className="text-[10px] text-slate-400 shrink-0">
                                   ({st.source})
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-400 mt-0.5">
+                            <p className="text-xs text-slate-400 mt-0.5 line-clamp-2 break-words">
                               {st.contextText}
                             </p>
                           </div>

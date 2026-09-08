@@ -4,6 +4,9 @@ export interface CalendarEvent {
   id: string;
   summary: string;
   description?: string;
+  location?: string;
+  hangoutLink?: string;
+  conferenceData?: any;
   start: { dateTime?: string; date?: string };
   end: { dateTime?: string; date?: string };
   htmlLink: string;

@@ -35,9 +35,12 @@ import {
   Trash2,
   Info,
   SlidersHorizontal,
-  Tag
+  Tag,
+  Video,
+  MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { formatEventLocation, getEventTypeName } from '../lib/utils';
 import {
   generatePeriodicReport,
   PeriodicAnalysis,
@@ -910,23 +913,26 @@ export function DailyReport() {
             {/* AI Strategic Synthesis Banner */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#101914] via-[#0d1410] to-[#07090b] border border-[#4ade80]/30 p-6 shadow-2xl">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                <div className="space-y-2 max-w-3xl">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#4ade80]">
-                    <Zap className="w-4 h-4" />
-                    <span>SYNTEZA STRATEGICZNA SIFTAI</span>
-                    <span className="text-slate-400">•</span>
-                    <span className="text-slate-300 font-normal">
-                      Hasło przewodnie: {analysis?.focusTheme || 'Optymalizacja działań'}
+                <div className="space-y-2.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#4ade80] flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#4ade80]/15 border border-[#4ade80]/30 shrink-0">
+                      <Zap className="w-3.5 h-3.5" />
+                      SYNTEZA STRATEGICZNA SIFTAI
                     </span>
+                    {analysis?.focusTheme && (
+                      <span className="text-slate-300 font-normal text-xs">
+                        Hasło przewodnie: <strong className="text-white font-medium">{analysis.focusTheme}</strong>
+                      </span>
+                    )}
                   </div>
-                  <h2 className="text-xl md:text-2xl font-bold text-white leading-snug">
+                  <h2 className="text-lg md:text-xl font-bold text-white leading-relaxed break-words">
                     {analysis?.summary || 'Przygotowywanie analizy sytuacji...'}
                   </h2>
                 </div>
-                <div className="shrink-0 flex items-center gap-2">
+                <div className="shrink-0 flex items-center gap-2 self-start">
                   <button
                     onClick={() => setIsAddTaskModalOpen(true)}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#4ade80] text-black hover:bg-[#3ec972] transition-colors shadow-md"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#4ade80] text-black hover:bg-[#3ec972] transition-colors shadow-md cursor-pointer whitespace-nowrap"
                   >
                     <Plus className="w-4 h-4" />
                     Dodaj do Puli
@@ -945,12 +951,12 @@ export function DailyReport() {
                     {analysis.actionChecklist.map((item, idx) => (
                       <div
                         key={idx}
-                        className="bg-black/40 border border-white/5 rounded-xl p-3 text-xs text-slate-200 flex items-start gap-2.5"
+                        className="bg-black/40 border border-white/5 rounded-xl p-3.5 text-xs text-slate-200 flex items-start gap-2.5 h-full min-w-0"
                       >
                         <span className="w-5 h-5 rounded-full bg-[#4ade80]/20 text-[#4ade80] flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                           {idx + 1}
                         </span>
-                        <span className="leading-relaxed">{item}</span>
+                        <span className="leading-relaxed break-words min-w-0 flex-1">{item}</span>
                       </div>
                     ))}
                   </div>
@@ -999,13 +1005,13 @@ export function DailyReport() {
                       .map(task => (
                         <div
                           key={task.id}
-                          className="bg-[#16181d] border border-white/5 hover:border-[#4ade80]/30 rounded-xl p-3.5 transition-all space-y-2"
+                          className="bg-[#16181d] border border-white/5 hover:border-[#4ade80]/30 rounded-xl p-3.5 transition-all space-y-2.5 min-w-0"
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="flex items-center gap-2">
+                          <div className="flex items-start justify-between gap-3 min-w-0">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
                                     task.priority === 'urgent'
                                       ? 'bg-red-500/20 text-red-400'
                                       : task.priority === 'high'
@@ -1015,12 +1021,12 @@ export function DailyReport() {
                                 >
                                   {task.priority}
                                 </span>
-                                <h4 className="text-sm font-semibold text-white leading-tight">
+                                <h4 className="text-sm font-semibold text-white leading-tight break-words min-w-0 flex-1">
                                   {task.title}
                                 </h4>
                               </div>
                               {task.description && (
-                                <p className="text-xs text-slate-400 mt-1 line-clamp-1">
+                                <p className="text-xs text-slate-400 mt-1 line-clamp-2 break-words">
                                   {task.description}
                                 </p>
                               )}
@@ -1031,7 +1037,7 @@ export function DailyReport() {
                                 updateTask(task.id, { status: 'done' });
                                 showToast(`Ukończono zadanie "${task.title}"!`);
                               }}
-                              className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-[#4ade80] transition-colors"
+                              className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-[#4ade80] transition-colors shrink-0 cursor-pointer"
                               title="Oznacz jako zrobione"
                             >
                               <CheckCircle2 className="w-4 h-4" />
@@ -1040,10 +1046,10 @@ export function DailyReport() {
 
                           {/* 1-Click Schedule Buttons */}
                           <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/5 text-[11px]">
-                            <span className="text-slate-400 font-medium">Zaplanuj szybko:</span>
+                            <span className="text-slate-400 font-medium shrink-0">Zaplanuj szybko:</span>
                             <button
                               onClick={() => handleSchedulePoolTask(task, targetDateStr, '10:00')}
-                              className="px-2.5 py-1 rounded-lg bg-[#4ade80]/15 hover:bg-[#4ade80]/25 text-[#4ade80] font-medium transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-[#4ade80]/15 hover:bg-[#4ade80]/25 text-[#4ade80] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                             >
                               Na {period === 'day' ? 'dziś' : targetDateStr} (10:00)
                             </button>
@@ -1053,7 +1059,7 @@ export function DailyReport() {
                                 tomorrow.setDate(tomorrow.getDate() + 1);
                                 handleSchedulePoolTask(task, tomorrow.toISOString().split('T')[0], '14:00');
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                             >
                               Na jutro (14:00)
                             </button>
@@ -1062,7 +1068,7 @@ export function DailyReport() {
                                 setSchedulingTaskId(task.id);
                                 setScheduleDate(targetDateStr);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
                             >
                               <Clock className="w-3 h-3" />
                               Wybierz godzinę
@@ -1080,7 +1086,7 @@ export function DailyReport() {
                 <div className="bg-[#111317] border border-[#222222] rounded-2xl p-5 space-y-4">
                   <div className="flex items-center justify-between border-b border-[#222222] pb-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                      <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 shrink-0">
                         <CalendarCheck className="w-4 h-4" />
                       </div>
                       <div>
@@ -1094,7 +1100,7 @@ export function DailyReport() {
                     </div>
                     <button
                       onClick={() => setActiveTab('calendar')}
-                      className="text-xs text-[#4ade80] hover:underline flex items-center gap-1 font-medium"
+                      className="text-xs text-[#4ade80] hover:underline flex items-center gap-1 font-medium cursor-pointer shrink-0"
                     >
                       Szczegóły
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -1107,26 +1113,54 @@ export function DailyReport() {
                     </div>
                   ) : (
                     <div className="space-y-2.5">
-                      {periodEvents.slice(0, 3).map(ev => (
-                        <div
-                          key={ev.id}
-                          className="flex items-center justify-between p-3 rounded-xl bg-[#16181d] border border-white/5"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
-                            <div>
-                              <h5 className="text-xs font-semibold text-white">{ev.title}</h5>
-                              <p className="text-[11px] text-slate-400">
-                                {ev.date} • {ev.start_time || '09:00'} - {ev.end_time || '10:00'}
-                                {ev.location ? ` • ${ev.location}` : ''}
-                              </p>
+                      {periodEvents.slice(0, 3).map(ev => {
+                        const loc = formatEventLocation(ev.location, language);
+                        const typeLabel = getEventTypeName(ev.type, language);
+                        return (
+                          <div
+                            key={ev.id}
+                            className="flex items-center justify-between p-3 rounded-xl bg-[#16181d] border border-white/5 hover:border-white/10 transition-colors gap-3 min-w-0"
+                          >
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-blue-400 shrink-0 shadow-sm" />
+                              <div className="min-w-0 flex-1">
+                                <h5 className="text-xs font-semibold text-white truncate">{ev.title}</h5>
+                                <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 flex-wrap min-w-0">
+                                  <span className="font-mono text-slate-300 shrink-0">
+                                    {ev.date} • {ev.start_time || '09:00'} - {ev.end_time || '10:00'}
+                                  </span>
+                                  {loc.label && (
+                                    <>
+                                      <span className="text-slate-600 shrink-0">•</span>
+                                      {loc.url ? (
+                                        <a
+                                          href={loc.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-blue-400 hover:text-blue-300 hover:underline inline-flex items-center gap-1 truncate max-w-[220px]"
+                                          title={loc.url}
+                                        >
+                                          <Video className="w-3 h-3 shrink-0" />
+                                          <span className="truncate">{loc.label}</span>
+                                          <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                                        </a>
+                                      ) : (
+                                        <span className="text-slate-400 truncate max-w-[200px] inline-flex items-center gap-1">
+                                          <MapPin className="w-3 h-3 shrink-0 text-slate-500" />
+                                          <span className="truncate">{loc.label}</span>
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             </div>
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0 font-medium">
+                              {typeLabel}
+                            </span>
                           </div>
-                          <span className="text-[11px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                            {ev.type || 'spotkanie'}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
@@ -1462,44 +1496,64 @@ export function DailyReport() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {periodEvents.map(ev => (
-                    <div
-                      key={ev.id}
-                      className="bg-[#111317] border border-[#222222] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 shrink-0 mt-0.5">
-                          <Clock className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-400">
-                              {ev.type || 'spotkanie'}
-                            </span>
-                            <span className="text-xs text-slate-400">{ev.date}</span>
+                  {periodEvents.map(ev => {
+                    const loc = formatEventLocation(ev.location, language);
+                    const typeLabel = getEventTypeName(ev.type, language);
+                    return (
+                      <div
+                        key={ev.id}
+                        className="bg-[#111317] border border-[#222222] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 min-w-0"
+                      >
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 shrink-0 mt-0.5">
+                            <Clock className="w-4 h-4" />
                           </div>
-                          <h4 className="text-base font-bold text-white mt-1">{ev.title}</h4>
-                          {ev.description && (
-                            <p className="text-xs text-slate-400 mt-1">{ev.description}</p>
-                          )}
-                          {ev.location && (
-                            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                              <span>Lokalizacja:</span>
-                              <span className="text-slate-300">{ev.location}</span>
-                            </p>
-                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-400 shrink-0">
+                                {typeLabel}
+                              </span>
+                              <span className="text-xs text-slate-400 font-mono">{ev.date}</span>
+                            </div>
+                            <h4 className="text-base font-bold text-white mt-1 break-words">{ev.title}</h4>
+                            {ev.description && (
+                              <p className="text-xs text-slate-400 mt-1 line-clamp-2 break-words">{ev.description}</p>
+                            )}
+                            {loc.label && (
+                              <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                <span className="text-slate-500">Lokalizacja:</span>
+                                {loc.url ? (
+                                  <a
+                                    href={loc.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-blue-400 hover:text-blue-300 hover:underline inline-flex items-center gap-1 truncate max-w-sm"
+                                  >
+                                    <Video className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">{loc.label}</span>
+                                    <ExternalLink className="w-3 h-3 shrink-0 opacity-75" />
+                                  </a>
+                                ) : (
+                                  <span className="text-slate-300 inline-flex items-center gap-1 truncate max-w-sm">
+                                    <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                                    <span className="truncate">{loc.label}</span>
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-3 self-end md:self-center">
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-white block">
-                            {ev.start_time || '09:00'} - {ev.end_time || '10:00'}
-                          </span>
+                        <div className="flex items-center gap-3 self-end md:self-center shrink-0">
+                          <div className="text-right">
+                            <span className="text-sm font-bold font-mono text-white block">
+                              {ev.start_time || '09:00'} - {ev.end_time || '10:00'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1728,35 +1782,35 @@ export function DailyReport() {
                             >
                               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                                 <div
-                                  className="cursor-pointer flex-1"
+                                  className="cursor-pointer flex-1 min-w-0"
                                   onClick={() => {
                                     setSelectedEmail(msg);
                                     setEmailAiReplyDraft(null);
                                   }}
                                 >
-                                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <div className="flex items-center gap-2 flex-wrap mb-1 min-w-0">
                                     {msg.isUnread && (
                                       <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" title="Nieprzeczytany" />
                                     )}
                                     {isImportant && (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
                                         ⭐ Istotne
                                       </span>
                                     )}
                                     {isLowImportance && (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30" title={reason}>
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0" title={reason}>
                                         💤 Mało ważne
                                       </span>
                                     )}
-                                    <h4 className="text-sm font-bold text-white truncate max-w-md">
+                                    <h4 className="text-sm font-bold text-white truncate min-w-0 flex-1">
                                       {msg.subject || '(Bez tematu)'}
                                     </h4>
                                   </div>
 
-                                  <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                                    <span className="text-slate-300 font-medium truncate max-w-[250px]">Od: {msg.from}</span>
+                                  <div className="flex items-center gap-2 text-xs text-slate-400 mt-1 min-w-0 flex-wrap">
+                                    <span className="text-slate-300 font-medium truncate max-w-[220px]">Od: {msg.from}</span>
                                     {reason && isLowImportance && (
-                                      <span className="text-[11px] text-amber-400/80 truncate">• {reason}</span>
+                                      <span className="text-[11px] text-amber-400/80 truncate max-w-xs">• {reason}</span>
                                     )}
                                   </div>
 
